@@ -49,19 +49,16 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
 
   if (!activite) {
     return (
-      <div className="min-h-[500px] flex items-center justify-center bg-gradient-to-br from-slate-50 to-orange-50/30 rounded-xl border-2 border-dashed border-slate-200 shadow-sm">
-        <div className="text-center p-8">
-          <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-4">
-            <Eye className="w-10 h-10 text-orange-400" />
-          </div>
-          <h3 className="font-semibold text-lg text-slate-700">Sélectionnez une activité</h3>
-          <p className="text-sm text-slate-500 mt-2 max-w-xs">
-            Cliquez sur une activité dans la liste pour voir ses détails et prendre une décision
+      <div className="h-full flex items-center justify-center bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+        <div className="text-center p-6">
+          <Eye className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <h3 className="font-medium text-slate-600">Sélectionnez une activité</h3>
+          <p className="text-sm text-slate-400 mt-1">
+            Cliquez sur une activité pour voir ses détails et la valider
           </p>
         </div>
       </div>
     )
-  }
 
   const indicateurs = getIndicateursByActivite(activite.id)
   const statutConfig = STATUT_CONFIG[activite.statut]
@@ -77,7 +74,7 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
   }
 
   return (
-    <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-220px)]">
+    <div className="space-y-4 h-full overflow-y-auto">
       {/* En-tête activité */}
       <Card className="border-orange-200">
         <CardHeader className="pb-3">

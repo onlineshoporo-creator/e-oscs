@@ -194,7 +194,7 @@ export default function ValidationPage() {
 
         {/* Panneau de décision */}
         <div className="lg:col-span-1">
-          <div className="lg:sticky lg:top-24">
+          <div className="sticky top-24">
             <PanneauDecision 
               activite={selectedActivite}
               onDecision={handleDecision}
