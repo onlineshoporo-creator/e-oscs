@@ -59,6 +59,7 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
         </div>
       </div>
     )
+  }
 
   const indicateurs = getIndicateursByActivite(activite.id)
   const statutConfig = STATUT_CONFIG[activite.statut]

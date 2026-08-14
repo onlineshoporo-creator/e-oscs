@@ -1,4 +1,8 @@
-import { Activite, Organisation, Indicateur, Beneficiaire, StatMensuelle } from './types'
+import { Activite, Organisation, Indicateur, Beneficiaire, StatMensuelle, STATUT_CONFIG, CATEGORIES, ORGANISATION_TYPES } from './types'
+
+// Ré-exports pour commodité
+export { STATUT_CONFIG, CATEGORIES, ORGANISATION_TYPES }
+export type { Activite, Organisation, Indicateur, Beneficiaire, StatMensuelle }
 
 // Organisations mock
 export const organisations: Organisation[] = [
