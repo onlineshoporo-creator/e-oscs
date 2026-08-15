@@ -15,6 +15,9 @@
 import { type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
+// Force Node.js runtime (compatible avec Vercel anonymous deployments)
+export const runtime = 'nodejs'
+
 export async function middleware(request: NextRequest) {
   return await updateSession(request)
 }
