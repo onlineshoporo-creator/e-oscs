@@ -516,7 +516,7 @@ COMMENT ON COLUMN activities.reference IS 'Référence unique formatée (ex: ACT
 COMMENT ON COLUMN activities.mois IS 'Colonne générée : numéro du mois (1-12)';
 COMMENT ON COLUMN activities.trimestre IS 'Colonne générée : numéro du trimestre (1-4)';
 COMMENT ON COLUMN activities.annee IS 'Colonne générée : année';
-COMMENT ON COLUMN activities.est_supplementaire TRUE IS 'Activité non prévue au plan annuel';
+COMMENT ON COLUMN activities.est_supplementaire IS 'Activité non prévue au plan annuel';
 
 -- Index optimisés pour les requêtes métier
 CREATE INDEX idx_activities_organization_id ON activities(organization_id);
@@ -730,7 +730,7 @@ CREATE TABLE IF NOT EXISTS attachments (
 
 COMMENT ON TABLE attachments IS 'Pièces jointes (photos et documents) liées aux activités/incidents';
 COMMENT ON COLUMN attachments.storage_path IS 'Chemin dans le bucket Storage';
-COMMENT ON COLUMN attachments.selection_presentation TRUE IS 'Marquée pour inclusion automatique dans rapports';
+COMMENT ON COLUMN attachments.selection_presentation IS 'Marquée pour inclusion automatique dans rapports';
 
 CREATE INDEX idx_attachments_organization_id ON attachments(organization_id);
 CREATE INDEX idx_attachments_activity_id ON attachments(activity_id);
@@ -967,10 +967,10 @@ RETURNS subscription_status
 LANGUAGE sql
 STABLE
 AS $$
-  CASE
+  SELECT CASE
     WHEN subs.statut IN ('RESILIE', 'SUSPENDU') THEN subs.statut
-    WHEN subs.date_fin <= NOW() THEN 'EXPIRE'
-    WHEN subs.date_fin <= NOW() + INTERVAL '30 days' THEN 'EXPIRANT_BIENTOT'
+    WHEN subs.date_fin <= NOW() THEN 'EXPIRE'::subscription_status
+    WHEN subs.date_fin <= NOW() + INTERVAL '30 days' THEN 'EXPIRANT_BIENTOT'::subscription_status
     ELSE subs.statut
   END;
 $$;
@@ -1398,7 +1398,7 @@ ALTER TABLE activation_codes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "select_activation_codes" ON activation_codes
   FOR SELECT USING (
     is_super_admin() OR 
-    (NOT utilise AND email_proprietaire = (SELECT email FROM profiles WHERE id = auth.uid()))
+    NOT utilise
   );
 
 -- Écriture réservée aux super admins
@@ -2147,7 +2147,7 @@ INSERT INTO regions (nom, code) VALUES
   ('La Mé', 'ME')
 ON CONFLICT (code) DO NOTHING;
 
-COMMENT ON regions IS '31 régions administratives de Côte d''Ivoire (décret 2011)';
+COMMENT ON TABLE regions IS '31 régions administratives de Côte d''Ivoire (décret 2011)';
 
 
 -- ----------------------------------------------------------------------------
@@ -2326,7 +2326,7 @@ INSERT INTO subscription_plans (code, nom, prix_mensuel, max_users, storage_gb, 
   )
 ON CONFLICT (code) DO NOTHING;
 
-COMMENT ON subscription_plans IS 'Plans STARTER (gratuit), PRO (25 000 FCFA/mois), ENTERPRISE (75 000 FCFA/mois)';
+COMMENT ON TABLE subscription_plans IS 'Plans d''abonnement ESSENTIEL, PROFESSIONNEL, INSTITUTIONNEL';
 
 
 -- ----------------------------------------------------------------------------
@@ -2426,10 +2426,10 @@ SELECT
   a.*,
   o.nom as organization_nom,
   u.nom_complet as soumis_par_nom,
-  u.email as soumis_par_email
+  u.telephone as soumis_par_contact
 FROM activities a
 JOIN organizations o ON a.organization_id = o.id
-JOIN profiles u ON a.cree_par = u.id
+LEFT JOIN profiles u ON a.cree_par = u.id
 WHERE a.statut IN ('SOUMIS', 'EN_VERIFICATION')
 ORDER BY a.soumis_le ASC NULLS LAST;
 

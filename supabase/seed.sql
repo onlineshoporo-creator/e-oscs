@@ -6,7 +6,6 @@
 -- ============================================================================
 
 -- Désactiver temporairement les triggers/RLS pour le seed
-SET session_replication = 'replica';
 
 -- ============================================================================
 -- 1. PLANS D'ABONNEMENT (3 plans)
@@ -24,7 +23,6 @@ INSERT INTO subscription_plans (code, nom, prix_mensuel, max_users, storage_gb, 
  3, true)
 ON CONFLICT (code) DO NOTHING;
 
-RAISE NOTICE 'Plans d''abonnement insérés : %', row_count;
 
 
 -- ============================================================================
@@ -154,7 +152,6 @@ INSERT INTO regions (nom, code) VALUES
 ('Worodougou', 'WOR')
 ON CONFLICT (nom) DO NOTHING;
 
-RAISE NOTICE 'Régions insérées';
 
 
 -- ============================================================================
@@ -307,7 +304,6 @@ INSERT INTO incident_types (nom, description) VALUES
 ('Autre', 'Autres types d''incidents non classifiés')
 ON CONFLICT (nom) DO NOTHING;
 
-RAISE NOTICE 'Types d''incidents insérés';
 
 
 -- ============================================================================
@@ -324,7 +320,6 @@ INSERT INTO indicators (nom, unite, kind, axe, organization_id) VALUES
 ('Taux de résolution des incidents', '%', 'QUANTITATIF', 'Réponse aux crises', NULL)
 ON CONFLICT DO NOTHING;
 
-RAISE NOTICE 'Indicateurs globaux insérés';
 
 
 -- ============================================================================
@@ -335,7 +330,6 @@ INSERT INTO admin_settings (whatsapp, email, textes) VALUES
 ('2250576103277', 'omouitsi@gmail.com', '{}'::jsonb)
 ON CONFLICT DO NOTHING;
 
-RAISE NOTICE 'Admin settings insérés';
 
 
 -- ============================================================================
@@ -604,7 +598,6 @@ END $$;
 -- ============================================================================
 -- Réactiver les triggers/RLS
 -- ============================================================================
-RESET session_replication;
 
 
 -- ============================================================================
