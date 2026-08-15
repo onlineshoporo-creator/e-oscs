@@ -1,119 +1,65 @@
 import type { Metadata } from "next";
+import { Sora, Inter } from "next/font/google";
+import { PremiumLandingContent } from "@/components/landing/premium-landing-content";
 
-// Landing page components
-import { Navbar } from "@/components/landing/navbar";
-import { HeroSection } from "@/components/landing/hero";
-import { ProblemSection } from "@/components/landing/problem-section";
-import { SolutionSection } from "@/components/landing/solution-section";
-import { FeaturesSection } from "@/components/landing/features-section";
-import { ReportingSection } from "@/components/landing/reporting-section";
-import { AnnualPlanSection } from "@/components/landing/annual-plan-section";
-import { ReportsSection } from "@/components/landing/reports-section";
-import { ComparisonSection } from "@/components/landing/comparison-section";
-import { UsersSection } from "@/components/landing/users-section";
-import { SimplicitySection } from "@/components/landing/simplicity-section";
-import { SecuritySection } from "@/components/landing/security-section";
-import { SubscriptionSection } from "@/components/landing/subscription-section";
-import { HowItWorksSection } from "@/components/landing/how-it-works-section";
-import { RequestFormSection } from "@/components/landing/request-form-section";
-import { ContactSection } from "@/components/landing/contact-section";
-import { FinalCTASection } from "@/components/landing/final-cta";
-import { Footer } from "@/components/landing/footer";
+/* ============================================
+   FONTS GOOGLE - Configuration e-OSCS Premium
+   ============================================ */
+const sora = Sora({
+  subsets: ["latin"],
+  weight: ["700", "800"],
+  variable: "--font-sora",
+  display: "swap",
+});
 
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+/* ============================================
+   METADONNÉES SEO & OPEN GRAPH
+   ============================================ */
 export const metadata: Metadata = {
-  title: "e-OSCS — Plateforme de gestion et reporting des activités | MCNSLP",
+  title: "e-OSCS — Fini les rapports bricolés sur Word et Excel | MCNSLP Côte d'Ivoire",
   description:
-    "e-OSCS centralise la planification, le suivi, la validation et génère automatiquement vos rapports Word et PowerPoint. Une donnée saisie une seule fois, exploitée à tous les niveaux du reporting.",
+    "e-OSCS transforme chaque activité saisie une seule fois en rapports institutionnels prêts à présenter. Validation, consolidation et indicateurs inclus. MCNSLP Côte d'Ivoire.",
   keywords: [
     "e-OSCS",
     "MCNSLP",
     "Côte d'Ivoire",
-    "solidarité",
-    "cohésion sociale",
-    "suivi des activités",
-    "rapport administratif",
+    "rapport trimestriel",
     "Direction Régionale",
     "Direction Départementale",
-    "reporting",
-    "plan annuel",
+    "reporting institutionnel",
+    "suivi des activités",
+    "indicateurs consolidés",
+    "validation tracée",
   ],
-  authors: [{ name: "MCNSLP — Ministère de la Cohésion Nationale" }],
+  authors: [{ name: "MCNSLP — Ministère de la Cohésion Nationale, de la Solidarité Sociale et de la Lutte contre la Pauvreté" }],
   icons: {
     icon: "/logo.svg",
   },
   openGraph: {
-    title: "e-OSCS — Plateforme de gestion des activités MCNSLP",
+    title: "e-OSCS — Rapports institutionnels en un clic | MCNSLP CI",
     description:
-      "Gérez vos activités, suivez vos indicateurs et générez vos rapports automatiquement avec e-OSCS.",
+      "Transformez vos activités saisies une seule fois en rapports Word et PowerPoint conformes. Validation tracée, indicateurs consolidés.",
     siteName: "e-OSCS",
     type: "website",
     locale: "fr_CI",
   },
 };
 
-/**
- * Landing Page e-OSCS
- * 
- * Page d'accueil principale présentant la plateforme e-OSCS.
- * Cette page est conçue pour convertir les visiteurs en utilisateurs
- * en présentant clairement la valeur ajoutée du produit.
- */
+/* ============================================
+   LANDING PAGE e-OSCS PREMIUM
+   Page racine (/) — Production Ready
+   ============================================ */
 export default function LandingPage() {
   return (
-    <main className="min-h-screen overflow-hidden">
-      {/* Navigation sticky */}
-      <Navbar />
-
-      {/* Hero Section - Accroche principale */}
-      <HeroSection />
-
-      {/* Problem Section - Les défis actuels */}
-      <ProblemSection />
-
-      {/* Solution Section - La réponse d'e-OSCS */}
-      <SolutionSection />
-
-      {/* Features Section - Fonctionnalités détaillées */}
-      <FeaturesSection />
-
-      {/* Reporting Section - Processus de reporting */}
-      <ReportingSection />
-
-      {/* Annual Plan Section - Visualisation du plan */}
-      <AnnualPlanSection />
-
-      {/* Reports Section - Types de rapports générés */}
-      <ReportsSection />
-
-      {/* Comparison Section - Tableau comparatif annuel */}
-      <ComparisonSection />
-
-      {/* Users Section - Pour qui ? */}
-      <UsersSection />
-
-      {/* Simplicity Section - Facilité d'utilisation */}
-      <SimplicitySection />
-
-      {/* Security Section - Sécurité des données */}
-      <SecuritySection />
-
-      {/* Subscription Section - CTA abonnement */}
-      <SubscriptionSection />
-
-      {/* How It Works Section - Processus d'inscription */}
-      <HowItWorksSection />
-
-      {/* Request Form Section - Formulaire de demande */}
-      <RequestFormSection />
-
-      {/* Contact Section - Coordonnées de contact */}
-      <ContactSection />
-
-      {/* Final CTA Section - Dernier appel à l'action */}
-      <FinalCTASection />
-
-      {/* Footer */}
-      <Footer />
-    </main>
+    <div className={`${sora.variable} ${inter.variable}`}>
+      <PremiumLandingContent />
+    </div>
   );
 }
