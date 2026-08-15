@@ -1,177 +1,172 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 
 /* ============================================
    LANDING PAGE CONTENT e-OSCS PREMIUM
    Client Component - Production Ready
+   Sans styled-jsx (évite l'hydratation mismatch)
    ============================================ */
 export function PremiumLandingContent() {
+  const headerRef = useRef<HTMLElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  /* === EFFETS CÔTÉ CLIENT === */
+  
+  // Animation au scroll avec IntersectionObserver
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    
+    if (prefersReducedMotion) {
+      // Si reduced motion, tout afficher directement
+      document.querySelectorAll('.animate-on-scroll').forEach(el => {
+        (el as HTMLElement).style.opacity = '1';
+      });
+      return;
+    }
+
+    // Observer pour animations fadeInUp
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+    
+    document.querySelectorAll('.animate-on-scroll').forEach(el => {
+      observer.observe(el);
+    });
+
+    // Observer pour lignes de progression
+    const progressObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('progress-line-animated');
+          progressObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.5 });
+    
+    document.querySelectorAll('.progress-line').forEach(el => {
+      progressObserver.observe(el);
+    });
+
+    return () => {
+      observer.disconnect();
+      progressObserver.disconnect();
+    };
+  }, []);
+
+  // Effet magnétique sur les boutons
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const hasFinePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    
+    if (!prefersReducedMotion && hasFinePointer) {
+      const handleMouseMove = (e: MouseEvent) => {
+        const btn = e.currentTarget as HTMLElement;
+        const rect = btn.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        btn.style.transform = `translate(${x * 0.15}px, ${y * 0.15}px)`;
+      };
+
+      const handleMouseLeave = (e: MouseEvent) => {
+        const btn = e.currentTarget as HTMLElement;
+        btn.style.transform = 'translate(0, 0)';
+      };
+
+      const buttons = document.querySelectorAll('.magnetic-btn');
+      buttons.forEach(btn => {
+        btn.addEventListener('mousemove', handleMouseMove);
+        btn.addEventListener('mouseleave', handleMouseLeave);
+      });
+
+      return () => {
+        buttons.forEach(btn => {
+          btn.removeEventListener('mousemove', handleMouseMove);
+          btn.removeEventListener('mouseleave', handleMouseLeave);
+        });
+      };
+    }
+  }, []);
+
+  // Header sticky glassmorphism + Mobile menu + Smooth scroll
+  useEffect(() => {
+    const header = headerRef.current;
+    const mobileMenu = mobileMenuRef.current;
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    
+    if (!header) return;
+
+    // Header sticky on scroll
+    const handleScroll = () => {
+      const currentScroll = window.pageYOffset;
+      
+      if (currentScroll > 50) {
+        header.classList.add('bg-white/95', 'backdrop-blur-md', 'shadow-lg', 'border-b', 'border-slate-100');
+      } else {
+        header.classList.remove('bg-white/95', 'backdrop-blur-md', 'shadow-lg', 'border-b', 'border-slate-100');
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    // Mobile menu toggle
+    const handleMobileMenuClick = () => {
+      if (!mobileMenu || !mobileMenuBtn) return;
+      const isOpen = !mobileMenu.classList.contains('hidden');
+      mobileMenu.classList.toggle('hidden');
+      mobileMenuBtn.setAttribute('aria-expanded', String(!isOpen));
+    };
+
+    if (mobileMenuBtn && mobileMenu) {
+      mobileMenuBtn.addEventListener('click', handleMobileMenuClick);
+    }
+
+    // Smooth scroll pour les liens ancrages
+    const handleAnchorClick = (e: Event) => {
+      const anchor = e.currentTarget as HTMLAnchorElement;
+      const href = anchor.getAttribute('href');
+      
+      if (href && href !== '#' && href.startsWith('#')) {
+        e.preventDefault();
+        const target = document.querySelector(href);
+        if (target && header) {
+          const headerHeight = header.offsetHeight;
+          const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight - 20;
+          window.scrollTo({
+            top: targetPosition,
+            behavior: 'smooth'
+          });
+          // Fermer le menu mobile si ouvert
+          if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+            mobileMenu.classList.add('hidden');
+          }
+        }
+      }
+    };
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', handleAnchorClick);
+    });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (mobileMenuBtn) {
+        mobileMenuBtn.removeEventListener('click', handleMobileMenuClick);
+      }
+      document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.removeEventListener('click', handleAnchorClick);
+      });
+    };
+  }, []);
+
+  /* === RENDER === */
   return (
     <>
-      <style jsx global>{`
-        /* === TYPOGRAPHIE DE BASE === */
-        body {
-          font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
-          font-size: 16px;
-          line-height: 1.7;
-          color: #172033;
-        }
-        
-        h1, h2, h3, .heading-font {
-          font-family: var(--font-sora), system-ui, sans-serif;
-          line-height: 1.15;
-          letter-spacing: -0.02em;
-        }
-        
-        /* === ANIMATIONS AU SCROLL === */
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(24px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-on-scroll {
-          opacity: 0;
-        }
-        
-        .animate-on-scroll.is-visible {
-          animation: fadeInUp 0.6s ease-out forwards;
-        }
-        
-        .animate-on-scroll.delay-1 { animation-delay: 80ms; }
-        .animate-on-scroll.delay-2 { animation-delay: 160ms; }
-        .animate-on-scroll.delay-3 { animation-delay: 240ms; }
-        .animate-on-scroll.delay-4 { animation-delay: 320ms; }
-        
-        /* Respect reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-          .animate-on-scroll {
-            opacity: 1;
-            animation: none !important;
-          }
-        }
-        
-        /* === EFFET MAGNÉTIQUE SUR CTAs === */
-        @media (hover: hover) and (pointer: fine) {
-          .magnetic-btn {
-            transition: transform 0.15s ease-out;
-          }
-        }
-        
-        /* === MOTIFS AFRICAINS DISCRETS === */
-        .african-pattern {
-          background-image: 
-            linear-gradient(30deg, rgba(247, 127, 0, 0.04) 12%, transparent 12.5%, transparent 87%, rgba(247, 127, 0, 0.04) 87.5%, rgba(247, 127, 0, 0.04)),
-            linear-gradient(150deg, rgba(0, 158, 96, 0.04) 12%, transparent 12.5%, transparent 87%, rgba(0, 158, 96, 0.04) 87.5%, rgba(0, 158, 96, 0.04)),
-            linear-gradient(30deg, rgba(247, 127, 0, 0.04) 12%, transparent 12.5%, transparent 87%, rgba(247, 127, 0, 0.04) 87.5%, rgba(247, 127, 0, 0.04)),
-            linear-gradient(150deg, rgba(0, 158, 96, 0.04) 12%, transparent 12.5%, transparent 87%, rgba(0, 158, 96, 0.04) 87.5%, rgba(0, 158, 96, 0.04)),
-            linear-gradient(60deg, rgba(247, 127, 0, 0.03) 25%, transparent 25.5%, transparent 75%, rgba(247, 127, 0, 0.03) 75%, rgba(247, 127, 0, 0.03)),
-            linear-gradient(60deg, rgba(0, 158, 96, 0.03) 25%, transparent 25.5%, transparent 75%, rgba(0, 158, 96, 0.03) 75%, rgba(0, 158, 96, 0.03));
-          background-size: 80px 140px;
-          background-position: 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;
-        }
-        
-        /* === MOCKUP 3D EFFECT === */
-        .mockup-container {
-          perspective: 1200px;
-        }
-        
-        .mockup-card {
-          transition: transform 0.4s ease-out;
-          transform-style: preserve-3d;
-        }
-        
-        @media (hover: hover) and (pointer: fine) {
-          .mockup-card:hover {
-            transform: rotateY(-2deg) rotateX(1deg) scale(1.01);
-          }
-        }
-        
-        /* === PROGRESS LINE ANIMATION === */
-        .progress-line {
-          background: linear-gradient(to bottom, #009E60, #F77F00);
-        }
-        
-        .progress-line-animated {
-          background: linear-gradient(to bottom, #009E60, #F77F00);
-          animation: progressGrow 1.5s ease-out forwards;
-          transform-origin: top;
-        }
-        
-        @keyframes progressGrow {
-          from { transform: scaleY(0); }
-          to { transform: scaleY(1); }
-        }
-      `}</style>
-
-      {/* Script pour animations au scroll */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            document.addEventListener('DOMContentLoaded', function() {
-              // Vérifier reduced motion preference
-              const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-              
-              if (!prefersReducedMotion) {
-                const observer = new IntersectionObserver((entries) => {
-                  entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                      entry.target.classList.add('is-visible');
-                      observer.unobserve(entry.target);
-                    }
-                  });
-                }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
-                
-                document.querySelectorAll('.animate-on-scroll').forEach(el => {
-                  observer.observe(el);
-                });
-                
-                // Animation ligne de progression
-                const progressObserver = new IntersectionObserver((entries) => {
-                  entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                      entry.target.classList.add('progress-line-animated');
-                      progressObserver.unobserve(entry.target);
-                    }
-                  });
-                }, { threshold: 0.5 });
-                
-                document.querySelectorAll('.progress-line').forEach(el => {
-                  progressObserver.observe(el);
-                });
-              } else {
-                // Si reduced motion, tout afficher directement
-                document.querySelectorAll('.animate-on-scroll').forEach(el => {
-                  el.style.opacity = '1';
-                });
-              }
-              
-              // Effet magnétique sur les boutons
-              if (!prefersReducedMotion && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
-                document.querySelectorAll('.magnetic-btn').forEach(btn => {
-                  btn.addEventListener('mousemove', function(e) {
-                    const rect = this.getBoundingClientRect();
-                    const x = e.clientX - rect.left - rect.width / 2;
-                    const y = e.clientY - rect.top - rect.height / 2;
-                    this.style.transform = 'translate(' + (x * 0.15) + 'px, ' + (y * 0.15) + 'px)';
-                  });
-                  
-                  btn.addEventListener('mouseleave', function() {
-                    this.style.transform = 'translate(0, 0)';
-                  });
-                });
-              }
-            });
-          `,
-        }}
-      />
-
       {/* ==========================================
           LANDING PAGE PRINCIPALE
           ========================================== */}
@@ -186,6 +181,7 @@ export function PremiumLandingContent() {
 
         {/* ===== 1. HEADER STICKY GLASSMORPHISM ===== */}
         <header
+          ref={headerRef}
           id="header"
           className="fixed top-1 left-0 right-0 z-50 transition-all duration-300"
           role="banner"
@@ -198,48 +194,43 @@ export function PremiumLandingContent() {
               {/* Logo e-OSCS avec couleurs distinctes */}
               <a href="/" className="flex items-center gap-2 group" aria-label="e-OSCS - Accueil">
                 <span className="text-2xl font-extrabold text-[#009E60]">e</span>
+                <span className="text-xl font-bold text-[#0F172A]">-</span>
                 <span className="text-2xl font-extrabold text-[#F77F00]">OSCS</span>
               </a>
 
               {/* Navigation desktop */}
-              <ul className="hidden md:flex items-center gap-6 lg:gap-8" role="list">
-                <li>
-                  <a href="#problemes" className="text-sm font-medium text-slate-600 hover:text-[#F77F00] transition-colors">
-                    Problèmes
+              <div className="hidden md:flex items-center gap-8">
+                {[
+                  { label: "Fonctionnalités", href: "#fonctionnalites" },
+                  { label: "Comment ça marche", href: "#comment-ca-marche" },
+                  { label: "Tarifs", href: "#tarifs" },
+                  { label: "Témoignages", href: "#temoignages" },
+                  { label: "FAQ", href: "#faq" },
+                ].map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="text-sm font-medium text-slate-600 hover:text-[#F77F00] transition-colors"
+                  >
+                    {link.label}
                   </a>
-                </li>
-                <li>
-                  <a href="#fonctionnalites" className="text-sm font-medium text-slate-600 hover:text-[#F77F00] transition-colors">
-                    Fonctionnalités
-                  </a>
-                </li>
-                <li>
-                  <a href="#tarifs" className="text-sm font-medium text-slate-600 hover:text-[#F77F00] transition-colors">
-                    Tarifs
-                  </a>
-                </li>
-                <li>
-                  <a href="#faq" className="text-sm font-medium text-slate-600 hover:text-[#F77F00] transition-colors">
-                    FAQ
-                  </a>
-                </li>
-              </ul>
+                ))}
+                <a
+                  href="#demande"
+                  className="magnetic-btn inline-flex items-center px-5 py-2.5 text-sm font-semibold text-white bg-[#F77F00] rounded-xl shadow-lg shadow-orange-500/20 hover:bg-[#E67300] transition-colors"
+                >
+                  Demander un accès
+                </a>
+              </div>
 
-              {/* CTA discret outline */}
-              <a
-                href="#demande"
-                className="hidden sm:inline-flex items-center px-5 py-2.5 text-sm font-semibold text-[#F77F00] border-2 border-[#F77F00] rounded-xl hover:bg-orange-50 transition-all magnetic-btn"
-              >
-                Demander mon espace
-              </a>
-
-              {/* Menu mobile button */}
+              {/* Bouton menu mobile */}
               <button
-                type="button"
                 id="mobile-menu-btn"
-                className="md:hidden p-2 rounded-lg text-slate-700 hover:bg-slate-100"
-                aria-label="Ouvrir le menu"
+                type="button"
+                className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
                 aria-expanded="false"
+                aria-controls="mobile-menu"
+                aria-label="Ovrir le menu de navigation"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
@@ -248,34 +239,39 @@ export function PremiumLandingContent() {
             </div>
 
             {/* Menu mobile (caché par défaut) */}
-            <div id="mobile-menu" className="md:hidden hidden bg-white/95 backdrop-blur-lg rounded-2xl shadow-xl border border-slate-100 mt-2 p-4 mb-4">
-              <nav aria-label="Navigation mobile">
-                <ul className="space-y-1" role="list">
-                  {["Problèmes", "Fonctionnalités", "Tarifs", "FAQ"].map((item) => (
-                    <li key={item}>
-                      <a
-                        href={`#${item.toLowerCase()}`}
-                        className="block px-4 py-3 text-slate-700 hover:text-[#F77F00] hover:bg-orange-50 rounded-lg font-medium transition-colors"
-                      >
-                        {item}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-                <div className="pt-4 mt-4 border-t border-slate-100">
+            <div
+              ref={mobileMenuRef}
+              id="mobile-menu"
+              className="hidden md:hidden pb-4 border-t border-slate-100 mt-2"
+            >
+              <div className="flex flex-col gap-3 pt-4">
+                {[
+                  { label: "Fonctionnalités", href: "#fonctionnalites" },
+                  { label: "Comment ça marche", href: "#comment-ca-marche" },
+                  { label: "Tarifs", href: "#tarifs" },
+                  { label: "Témoignages", href: "#temoignages" },
+                  { label: "FAQ", href: "#faq" },
+                ].map((link) => (
                   <a
-                    href="#demande"
-                    className="block w-full px-5 py-3 text-center text-sm font-semibold text-white bg-[#F77F00] rounded-xl hover:bg-[#E67300] transition-colors"
+                    key={link.href}
+                    href={link.href}
+                    className="px-3 py-2 text-base font-medium text-slate-600 hover:text-[#F77F00] hover:bg-orange-50 rounded-lg transition-colors"
                   >
-                    Demander mon espace
+                    {link.label}
                   </a>
-                </div>
-              </nav>
+                ))}
+                <a
+                  href="#demande"
+                  className="mt-2 inline-flex items-center justify-center px-5 py-3 text-base font-semibold text-white bg-[#F77F00] rounded-xl shadow-lg shadow-orange-500/20 hover:bg-[#E67300] transition-colors"
+                >
+                  Demander un accès
+                </a>
+              </div>
             </div>
           </nav>
         </header>
 
-        {/* ===== 2. HERO SECTION ===== */}
+        {/* ===== 2. SECTION HERO ===== */}
         <section
           className="relative min-h-screen flex items-center pt-20 pb-32 african-pattern overflow-hidden"
           aria-label="Section principale"
@@ -300,12 +296,12 @@ export function PremiumLandingContent() {
                 </div>
 
                 {/* Titre accrocheur PROBLÈME */}
-                <h1 className="text-4xl sm:text-5xl lg:text-[56px] xl:text-[64px] font-extrabold text-[#0F172A] leading-[1.1]">
+                <h1 className="landing-heading text-4xl sm:text-5xl lg:text-[56px] xl:text-[64px] font-extrabold text-[#0F172A] leading-[1.1]">
                   Fini les rapports trimestriels bricolés sur Word et Excel.
                 </h1>
 
                 {/* Sous-titre explicatif */}
-                <p className="text-lg sm:text-xl text-slate-600 leading-relaxed max-w-xl mx-auto lg:mx-0">
+                <p className="landing-body text-lg sm:text-xl text-slate-600 leading-relaxed max-w-xl mx-auto lg:mx-0">
                   e-OSCS transforme chaque activité saisie une seule fois en rapports institutionnels prêts à présenter — validation, consolidation et indicateurs inclus.
                 </p>
 
@@ -329,6 +325,23 @@ export function PremiumLandingContent() {
                     </svg>
                     Voir la démo
                   </a>
+                </div>
+
+                {/* Preuve sociale mini */}
+                <div className="flex items-center gap-4 justify-center lg:justify-start pt-4">
+                  <div className="flex -space-x-2">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className="w-9 h-9 rounded-full bg-gradient-to-br from-[#F77F00]/80 to-[#009E60]/80 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white"
+                      >
+                        {['AK', 'KN', 'MA', 'DJ'][i - 1]}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm text-slate-500">
+                    <span className="font-semibold text-slate-700">+12 directions</span> nous font déjà confiance
+                  </p>
                 </div>
               </div>
 
@@ -378,9 +391,9 @@ export function PremiumLandingContent() {
                               item.active ? "bg-[#F77F00] text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"
                             }`}
                           >
-                            <span className="flex-1">{item.label}</span>
+                            {item.label}
                             {item.badge && (
-                              <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
+                              <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
                                 {item.badge}
                               </span>
                             )}
@@ -389,913 +402,991 @@ export function PremiumLandingContent() {
                       </div>
 
                       {/* Contenu principal mockup */}
-                      <div className="flex-1 p-4 sm:p-5 bg-[#F8FAFC] min-w-0">
-                        {/* Badge trimestre clôturé */}
-                        <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                          T2 2026 clôturé ✓
-                        </div>
-
-                        {/* Cartes KPI */}
-                        <div className="grid grid-cols-3 gap-3 mb-4">
-                          {/* KPI 1 */}
-                          <div className="bg-white rounded-xl p-3 border border-slate-100 shadow-sm">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
-                                <svg className="w-4 h-4 text-[#F77F00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                              </div>
-                            </div>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wide">Activités validées</p>
-                            <p className="text-xl font-bold text-slate-900">124</p>
+                      <div className="flex-1 p-4 sm:p-5 bg-slate-50 min-h-[320px] sm:min-h-[380px]">
+                        {/* En-tête contenu */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h3 className="text-sm font-semibold text-slate-800">Tableau de bord</h3>
+                            <p className="text-xs text-slate-500">Trimestre 4 • 2024</p>
                           </div>
-                          
-                          {/* KPI 2 */}
-                          <div className="bg-white rounded-xl p-3 border border-slate-100 shadow-sm">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                                <svg className="w-4 h-4 text-[#009E60]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                              </div>
-                            </div>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wide">Bénéficiaires</p>
-                            <p className="text-xl font-bold text-slate-900">8&nbsp;540</p>
-                          </div>
-                          
-                          {/* KPI 3 */}
-                          <div className="bg-white rounded-xl p-3 border border-slate-100 shadow-sm">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                                <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                </svg>
-                              </div>
-                            </div>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wide">Taux plan</p>
-                            <p className="text-xl font-bold text-slate-900">78<span className="text-sm text-slate-500">%</span></p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-md font-medium">
+                              ● En ligne
+                            </span>
                           </div>
                         </div>
 
-                        {/* Mini bar-chart vert/orange */}
-                        <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
-                          <p className="text-xs font-semibold text-slate-700 mb-3">Réalisation par trimestre</p>
-                          <div className="space-y-2">
+                        {/* KPI Cards */}
+                        <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
+                          {[
+                            { value: "47", label: "Activités", color: "#F77F00", change: "+12%" },
+                            { value: "38", label: "Validées", color: "#009E60", change: "+8%" },
+                            { value: "9", label: "En attente", color: "#D97706", change: "-3" },
+                            { value: "94%", label: "Taux compl.", color: "#2563EB", change: "+5%" },
+                          ].map((kpi) => (
+                            <div key={kpi.label} className="bg-white rounded-lg p-2.5 sm:p-3 border border-slate-100">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-lg sm:text-xl font-bold" style={{ color: kpi.color }}>
+                                  {kpi.value}
+                                </span>
+                                <span className={`text-[10px] sm:text-xs font-medium ${kpi.change.startsWith('+') ? 'text-green-600' : 'text-amber-600'}`}>
+                                  {kpi.change}
+                                </span>
+                              </div>
+                              <span className="text-[10px] sm:text-xs text-slate-500">{kpi.label}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Graphique barres simplifié */}
+                        <div className="bg-white rounded-lg p-3 sm:p-4 border border-slate-100 mb-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-semibold text-slate-700">Activités par mois</span>
+                            <span className="text-[10px] text-slate-400">T4 2024</span>
+                          </div>
+                          <div className="flex items-end gap-1.5 h-20 sm:h-24">
                             {[
-                              { label: "T1", planned: 90, realized: 75 },
-                              { label: "T2", planned: 95, realized: 92 },
-                              { label: "T3", planned: 88, realized: 45 },
-                              { label: "T4", planned: 85, realized: 20 },
+                              { month: "O", height: 45 },
+                              { month: "N", height: 70 },
+                              { month: "D", height: 90 },
                             ].map((bar) => (
-                              <div key={bar.label} className="flex items-center gap-2">
-                                <span className="text-[10px] text-slate-500 w-6">{bar.label}</span>
-                                <div className="flex-1 h-4 bg-slate-100 rounded overflow-hidden flex">
-                                  <div 
-                                    className="bg-[#F77F00]/30 h-full" 
-                                    style={{ width: `${bar.planned}%` }}
-                                  />
-                                  <div 
-                                    className="bg-[#009E60] h-full" 
-                                    style={{ width: `${bar.realized}%` }}
-                                  />
-                                </div>
+                              <div key={bar.month} className="flex-1 flex flex-col items-center gap-1">
+                                <div
+                                  className="w-full rounded-t-sm bg-gradient-to-t from-[#F77F00] to-[#FF9933]"
+                                  style={{ height: `${bar.height}%` }}
+                                />
+                                <span className="text-[9px] text-slate-400">{bar.month}</span>
                               </div>
                             ))}
                           </div>
-                          <div className="flex items-center gap-4 mt-3 text-[10px] text-slate-500">
-                            <span className="flex items-center gap-1">
-                              <span className="w-2 h-2 rounded bg-[#F77F00]/50" /> Prévu
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <span className="w-2 h-2 rounded bg-[#009E60]" /> Réalisé
-                            </span>
+                        </div>
+
+                        {/* Tableau activités récentes */}
+                        <div className="bg-white rounded-lg border border-slate-100 overflow-hidden">
+                          <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
+                            <span className="text-xs font-semibold text-slate-700">Activités récentes</span>
                           </div>
+                          {[
+                            { name: "Atelier cohésion sociale", status: "Validée", statusColor: "bg-green-100 text-green-700" },
+                            { name: "Visite terrain Daloa", status: "En cours", statusColor: "bg-amber-100 text-amber-700" },
+                            { name: "Rapport mensuel nov.", status: "Brouillon", statusColor: "bg-slate-100 text-slate-600" },
+                          ].map((act, i) => (
+                            <div
+                              key={i}
+                              className="px-3 py-2 flex items-center justify-between border-b border-slate-50 last:border-0"
+                            >
+                              <span className="text-[11px] text-slate-700 truncate mr-2">{act.name}</span>
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap ${act.statusColor}`}>
+                                {act.status}
+                              </span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Bandeau preuve sous mockup */}
-                <p className="text-center text-sm text-slate-500 italic mt-6 animate-on-scroll delay-3">
-                  « Désormais les DR/DD passent d&apos;une semaine de consolidation à 20 minutes »
-                </p>
+                  {/* Ombre décorative sous le mockup */}
+                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-[#F77F00]/10 rounded-[50%] blur-xl" />
+                </div>
               </div>
             </div>
           </div>
         </section>
 
         {/* ===== 3. SECTION PROBLÈME ("Vous reconnaissez ?") ===== */}
-        <section id="problemes" className="py-24 lg:py-32 bg-white relative" aria-label="Les problèmes actuels">
+        <section id="probleme" className="py-20 lg:py-28 bg-white" aria-label="Problématiques">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Titre section */}
+            {/* En-tête section */}
             <div className="text-center max-w-3xl mx-auto mb-16 animate-on-scroll">
-              <span className="inline-block px-4 py-1.5 bg-orange-100 text-[#F77F00] text-sm font-semibold rounded-full mb-4">
-                Vous reconnaissez ?
+              <span className="inline-block text-sm font-semibold text-[#F77F00] uppercase tracking-wide mb-4">
+                La réalité terrain
               </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#0F172A] mb-4">
-                Les défis du reporting trimestriel
+              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
+                Vous reconnaissez ces situations ?
               </h2>
-              <p className="text-lg text-slate-600">
-                Chaque trimestre, le même calvaire se répète dans nos Directions.
+              <p className="landing-body text-lg text-slate-600">
+                Chaque trimestre, les mêmes difficultés se répètent dans les directions régionales et départementales.
               </p>
             </div>
 
-            {/* 3 cartes problème */}
+            {/* Grille 3 problèmes */}
             <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
-              {/* Carte 1 : Ressaisie */}
-              <article className="animate-on-scroll delay-1 group bg-[#FFFBF5] rounded-2xl p-8 border border-orange-100 hover:border-[#F77F00]/30 hover:shadow-lg transition-all duration-300" style={{ boxShadow: '0 8px 30px rgb(15 23 42 / .06)' }}>
-                <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <svg className="w-7 h-7 text-[#F77F00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-[#0F172A] mb-3">
-                  La ressaisie sans fin
-                </h3>
-                <p className="text-slate-600 leading-relaxed">
-                  Chaque trimestre, les mêmes données recopiées d&apos;Excel vers Word, avec des chiffres qui ne concordent jamais.
-                </p>
-              </article>
+              {[
+                {
+                  icon: (
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.217.38 2.846 1.835 2.592L4.5 18.75m0 0V12m0 3.75H18M3.697 16.296 6.09 13.88m2.914 2.914 2.81-2.81M12 12h6.75m-6.75 0 2.81 2.81M18.75 12v6m0-3.75h.008v.008H18.75Z" />
+                    </svg>
+                  ),
+                  title: "Perte de données entre Word et Excel",
+                  description: "Les activités saisies dans un fichier Excel finissent mal copiées-collées dans le rapport Word. Résultat : incohérences, chiffres qui ne correspondent pas, heures perdues à tout vérifier.",
+                  stat: "73% des agents",
+                  highlight: true,
+                },
+                {
+                  icon: (
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 9a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                  ),
+                  title: "Rush de dernière minute avant échéance",
+                  description: "La semaine précédant la remise du rapport trimestriel, c'est la course : reconstituer les activités oubliées, retrouver les preuves photos, demander les validations en urgence.",
+                  stat: "-48h de stress",
+                  highlight: false,
+                },
+                {
+                  icon: (
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                    </svg>
+                  ),
+                  title: "Consolidation impossible au niveau central",
+                  description: "Le ministère reçoit 36 formats différents des 36 directions. Consolider tout ça demande des semaines de travail manuel, quand ce n'est pas tout simplement impossible.",
+                  stat: "36 formats différents",
+                  highlight: false,
+                },
+              ].map((problem, index) => (
+                <div
+                  key={index}
+                  className={`group relative p-6 lg:p-8 rounded-2xl border transition-all duration-300 animate-on-scroll delay-${index + 1} ${
+                    problem.highlight
+                      ? "bg-gradient-to-br from-[#FFF7ED] to-[#FFFBF5] border-[#FED7AA] shadow-lg shadow-orange-500/5"
+                      : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-lg"
+                  }`}
+                >
+                  {/* Icône */}
+                  <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl mb-5 ${
+                    problem.highlight ? "bg-[#F77F00]/10 text-[#F77F00]" : "bg-slate-100 text-slate-600 group-hover:bg-[#F77F00]/10 group-hover:text-[#F77F00] transition-colors"
+                  }`}>
+                    {problem.icon}
+                  </div>
 
-              {/* Carte 2 : Validation chronophage */}
-              <article className="animate-on-scroll delay-2 group bg-[#FFFBF5] rounded-2xl p-8 border border-orange-100 hover:border-[#F77F00]/30 hover:shadow-lg transition-all duration-300" style={{ boxShadow: '0 8px 30px rgb(15 23 42 / .06)' }}>
-                <div className="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <svg className="w-7 h-7 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-[#0F172A] mb-3">
-                  La validation chronophage
-                </h3>
-                <p className="text-slate-600 leading-relaxed">
-                  Activités envoyées par email ou WhatsApp, sans traçabilité : qui a validé quoi, quand, pourquoi ?
-                </p>
-              </article>
+                  {/* Stat en badge */}
+                  <div className="inline-block mb-3">
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                      problem.highlight ? "bg-[#F77F00]/10 text-[#F77F00]" : "bg-slate-100 text-slate-600"
+                    }`}>
+                      {problem.stat}
+                    </span>
+                  </div>
 
-              {/* Carte 3 : Indicateurs introuvables */}
-              <article className="animate-on-scroll delay-3 group bg-[#FFFBF5] rounded-2xl p-8 border border-orange-100 hover:border-[#F77F00]/30 hover:shadow-lg transition-all duration-300" style={{ boxShadow: '0 8px 30px rgb(15 23 42 / .06)' }}>
-                <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <svg className="w-7 h-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+                  {/* Titre */}
+                  <h3 className="landing-heading text-lg lg:text-xl font-bold text-[#0F172A] mb-3">
+                    {problem.title}
+                  </h3>
+
+                  {/* Description */}
+                  <p className="landing-body text-sm lg:text-base text-slate-600 leading-relaxed">
+                    {problem.description}
+                  </p>
                 </div>
-                <h3 className="text-xl font-bold text-[#0F172A] mb-3">
-                  Des indicateurs introuvables
-                </h3>
-                <p className="text-slate-600 leading-relaxed">
-                  Bénéficiaires éparpillés dans des cahiers : impossible de répondre vite au niveau central.
-                </p>
-              </article>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ===== 4. SECTION FONCTIONNALITÉS ===== */}
-        <section id="fonctionnalites" className="py-24 lg:py-32 bg-[#F8FAFC] relative african-pattern" aria-label="Fonctionnalités">
+        {/* ===== 4. SECTION FONCTIONNALITÉS CLÉS ===== */}
+        <section id="fonctionnalites" className="py-20 lg:py-28 bg-[#FFFBF5] african-pattern" aria-label="Fonctionnalités">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Titre section */}
+            {/* En-tête section */}
             <div className="text-center max-w-3xl mx-auto mb-16 animate-on-scroll">
-              <span className="inline-block px-4 py-1.5 bg-green-100 text-[#009E60] text-sm font-semibold rounded-full mb-4">
-                La solution e-OSCS
+              <span className="inline-block text-sm font-semibold text-[#009E60] uppercase tracking-wide mb-4">
+                Fonctionnalités clés
               </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#0F172A] mb-4">
-                Tout ce qu&apos;il vous faut, rien de superflu
+              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
+                Tout ce qu'il vous faut, rien de superflu
               </h2>
-              <p className="text-lg text-slate-600">
-                Quatre piliers pour transformer votre reporting trimestriel.
+              <p className="landing-body text-lg text-slate-600">
+                Quatre piliers technologiques conçus spécifiquement pour les réalités du MCNSLP ivoirien.
               </p>
             </div>
 
-            {/* 4 cartes fonctionnalités avec icônes SVG inline */}
+            {/* Grille 4 fonctionnalités avec SVG inline */}
             <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
-              {/* Feature 1 : Saisie unique */}
-              <article className="animate-on-scroll delay-1 bg-white rounded-2xl p-8 lg:p-10 border border-slate-100 hover:border-[#009E60]/30 hover:shadow-xl transition-all duration-300 group" style={{ boxShadow: '0 8px 30px rgb(15 23 42 / .06)' }}>
-                <div className="flex items-start gap-6">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#F77F00] to-[#FF9933] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              {[
+                {
+                  svg: (
+                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-16 h-16">
+                      <rect x="8" y="12" width="48" height="40" rx="4" stroke="#F77F00" strokeWidth="2.5" fill="#FFF7ED"/>
+                      <line x1="8" y1="22" x2="56" y2="22" stroke="#F77F00" strokeWidth="2.5"/>
+                      <circle cx="16" cy="17" r="2" fill="#F77F00"/>
+                      <circle cx="22" cy="17" r="2" fill="#F77F00"/>
+                      <circle cx="28" cy="17" r="2" fill="#F77F00"/>
+                      <rect x="14" y="28" width="20" height="3" rx="1.5" fill="#FED7AA"/>
+                      <rect x="14" y="35" width="36" height="2" rx="1" fill="#E2E8F0"/>
+                      <rect x="14" y="41" width="30" height="2" rx="1" fill="#E2E8F0"/>
+                      <rect x="14" y="47" width="34" height="2" rx="1" fill="#E2E8F0"/>
+                      <path d="M42 32l4 4 8-8" stroke="#009E60" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-[#0F172A] mb-3">
-                      Saisie unique, exploitée partout
-                    </h3>
-                    <p className="text-slate-600 leading-relaxed mb-4">
-                      Guide pas-à-pas, anti-doublon, photos et pièces jointes. Une seule saisie qui alimente automatiquement tous vos rapports.
-                    </p>
-                    <ul className="space-y-2">
-                      {["Formulaire intelligent par type d'activité", "Détection automatique des doublons", "Photos et preuves jointes"].map((item) => (
-                        <li key={item} className="flex items-center gap-2 text-sm text-slate-600">
-                          <svg className="w-4 h-4 text-[#009E60] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </article>
+                  ),
+                  title: "Saisie unique, restitution multiple",
+                  description: "Vous saisissez une activité UNE seule fois avec photos, localisation et indicateurs. Le système génère automatiquement : fiches d'activité, tableaux de bord trimestriels, rapports consolidés au format institutionnel.",
+                  badge: "Gain de temps",
+                  color: "orange",
+                },
+                {
+                  svg: (
+                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-16 h-16">
+                      <rect x="12" y="8" width="40" height="48" rx="4" stroke="#009E60" strokeWidth="2.5" fill="#ECFDF5"/>
+                      <path d="M20 20h24M20 28h24M20 36h16" stroke="#009E60" strokeWidth="2" strokeLinecap="round"/>
+                      <rect x="28" y="44" width="16" height="6" rx="3" fill="#009E60"/>
+                      <circle cx="46" cy="47" r="6" stroke="#F77F00" strokeWidth="2" fill="#FFF7ED"/>
+                      <path d="M44 47l2 2 4-4" stroke="#F77F00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  ),
+                  title: "Circuit de validation intégré",
+                  description: "Chaque activité suit un circuit de validation clair : agent → chef de service → directeur régional → direction centrale. Notifications automatiques à chaque étape, historique complet des validations.",
+                  badge: "Traçabilité totale",
+                  color: "green",
+                },
+                {
+                  svg: (
+                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-16 h-16">
+                      <rect x="8" y="16" width="48" height="32" rx="4" stroke="#2563EB" strokeWidth="2.5" fill="#EFF6FF"/>
+                      <path d="M8 26h48" stroke="#2563EB" strokeWidth="2.5"/>
+                      <bar x="14" y="32" width="8" height="12" rx="1" fill="#93C5FD"/>
+                      <rect x="14" y="34" width="8" height="10" rx="1" fill="#3B82F6"/>
+                      <rect x="26" y="36" width="8" height="8" rx="1" fill="#60A5FA"/>
+                      <rect x="38" y="30" width="8" height="14" rx="1" fill="#2563EB"/>
+                      <circle cx="18" cy="20" r="2" fill="#2563EB"/>
+                      <circle cx="32" cy="20" r="2" fill="#2563EB"/>
+                      <circle cx="46" cy="20" r="2" fill="#2563EB"/>
+                    </svg>
+                  ),
+                  title: "Tableaux de bord & indicateurs en temps réel",
+                  description: "Visualisez instantanément l'avancement de votre direction : taux de réalisation du plan annuel, couverture géographique, répartition par type d'activité, comparaison inter-périodes.",
+                  badge: "Visibilité 360°",
+                  color: "blue",
+                },
+                {
+                  svg: (
+                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-16 h-16">
+                      <path d="M12 52V20a8 8 0 0 1 8-8h24a8 8 0 0 1 8 8v32" stroke="#0F172A" strokeWidth="2.5" fill="#F8FAFC"/>
+                      <rect x="18" y="24" width="28" height="6" rx="2" fill="#F77F00"/>
+                      <rect x="18" y="34" width="20" height="4" rx="1" fill="#E2E8F0"/>
+                      <rect x="18" y="42" width="24" height="4" rx="1" fill="#E2E8F0"/>
+                      <circle cx="48" cy="44" r="8" stroke="#009E60" strokeWidth="2.5" fill="#ECFDF5"/>
+                      <path d="M45 44l2 2 4-4" stroke="#009E60" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  ),
+                  title: "Rapports prêts à présenter en 1 clic",
+                  description: "Générez votre rapport trimestriel ou annuel en un clic : mise en page professionnelle, graphiques intégrés, données consolidées, format PDF conforme aux standards ministériels.",
+                  badge: "Export PDF/Excel",
+                  color: "slate",
+                },
+              ].map((feature, index) => (
+                <div
+                  key={index}
+                  className="group bg-white rounded-2xl p-6 lg:p-8 border border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-300 animate-on-scroll delay-(index % 2) + 1"
+                >
+                  <div className="flex items-start gap-5">
+                    {/* SVG Icon */}
+                    <div className="flex-shrink-0 mt-1">
+                      {feature.svg}
+                    </div>
 
-              {/* Feature 2 : Workflow validation */}
-              <article className="animate-on-scroll delay-2 bg-white rounded-2xl p-8 lg:p-10 border border-slate-100 hover:border-[#009E60]/30 hover:shadow-xl transition-all duration-300 group" style={{ boxShadow: '0 8px 30px rgb(15 23 42 / .06)' }}>
-                <div className="flex items-start gap-6">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#009E60] to-[#10B981] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-[#0F172A] mb-3">
-                      Workflow de validation tracé
-                    </h3>
-                    <p className="text-slate-600 leading-relaxed mb-4">
-                      Brouillon → Soumis → Validé → Consolidé ; chaque décision est datée, motivée et historisée.
-                    </p>
-                    <ul className="space-y-2">
-                      {["Chaîne de validation configurable", "Historique complet des décisions", "Notifications automatiques"].map((item) => (
-                        <li key={item} className="flex items-center gap-2 text-sm text-slate-600">
-                          <svg className="w-4 h-4 text-[#009E60] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </article>
+                    {/* Contenu */}
+                    <div className="flex-1">
+                      {/* Badge */}
+                      <span className={`inline-block text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full mb-3 ${
+                        feature.color === 'orange' ? 'bg-orange-100 text-orange-700' :
+                        feature.color === 'green' ? 'bg-green-100 text-green-700' :
+                        feature.color === 'blue' ? 'bg-blue-100 text-blue-700' :
+                        'bg-slate-100 text-slate-700'
+                      }`}>
+                        {feature.badge}
+                      </span>
 
-              {/* Feature 3 : Rapports auto */}
-              <article className="animate-on-scroll delay-3 bg-white rounded-2xl p-8 lg:p-10 border border-slate-100 hover:border-[#009E60]/30 hover:shadow-xl transition-all duration-300 group" style={{ boxShadow: '0 8px 30px rgb(15 23 42 / .06)' }}>
-                <div className="flex items-start gap-6">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-[#0F172A] mb-3">
-                      Rapports Word &amp; PowerPoint en un clic
-                    </h3>
-                    <p className="text-slate-600 leading-relaxed mb-4">
-                      Canevas national, 15 sections générées automatiquement, nommage normalisé conforme aux standards MCNSLP.
-                    </p>
-                    <ul className="space-y-2">
-                      {["Document Word formaté prêt à imprimer", "Présentation PowerPoint incluse", "Archivage automatique daté"].map((item) => (
-                        <li key={item} className="flex items-center gap-2 text-sm text-slate-600">
-                          <svg className="w-4 h-4 text-[#009E60] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </article>
+                      {/* Titre */}
+                      <h3 className="landing-heading text-lg lg:text-xl font-bold text-[#0F172A] mb-3">
+                        {feature.title}
+                      </h3>
 
-              {/* Feature 4 : Indicateurs consolidés */}
-              <article className="animate-on-scroll delay-4 bg-white rounded-2xl p-8 lg:p-10 border border-slate-100 hover:border-[#009E60]/30 hover:shadow-xl transition-all duration-300 group" style={{ boxShadow: '0 8px 30px rgb(15 23 42 / .06)' }}>
-                <div className="flex items-start gap-6">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-[#0F172A] mb-3">
-                      Indicateurs consolidés T1 → annuel
-                    </h3>
-                    <p className="text-slate-600 leading-relaxed mb-4">
-                      Tableau « Indicateur | T1 | T2 | T3 | T4 | Total » calculé seul, exportable en un instant.
-                    </p>
-                    <ul className="space-y-2">
-                      {["Consolidation automatique par période", "Comparaison année précédente", "Export Excel pour analyses"].map((item) => (
-                        <li key={item} className="flex items-center gap-2 text-sm text-slate-600">
-                          <svg className="w-4 h-4 text-[#009E60] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
+                      {/* Description */}
+                      <p className="landing-body text-sm lg:text-base text-slate-600 leading-relaxed">
+                        {feature.description}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </article>
+              ))}
             </div>
           </div>
         </section>
 
         {/* ===== 5. SECTION COMMENT ÇA MARCHE ===== */}
-        <section id="comment-ca-marche" className="py-24 lg:py-32 bg-white relative" aria-label="Comment ça marche">
+        <section id="comment-ca-marche" className="py-20 lg:py-28 bg-white relative overflow-hidden" aria-label="Fonctionnement">
+          {/* Ligne de progression verticale */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-0.5 hidden lg:block">
+            <div className="progress-line absolute inset-0 w-full" />
+          </div>
+
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Titre section */}
-            <div className="text-center max-w-3xl mx-auto mb-16 animate-on-scroll">
-              <span className="inline-block px-4 py-1.5 bg-blue-100 text-blue-700 text-sm font-semibold rounded-full mb-4">
-                En 3 étapes simples
+            {/* En-tête section */}
+            <div className="text-center max-w-3xl mx-auto mb-20 animate-on-scroll">
+              <span className="inline-block text-sm font-semibold text-[#F77F00] uppercase tracking-wide mb-4">
+                Mode d'emploi
               </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#0F172A] mb-4">
-                Comment ça marche ?
+              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
+                Trois étapes, et vous êtes opérationnel
               </h2>
-              <p className="text-lg text-slate-600">
-                De la demande à vos premiers rapports, en moins de 48 heures.
+              <p className="landing-body text-lg text-slate-600">
+                Pas de formation complexe, pas de migration de données. Vous commencez à saisir vos activités dès le premier jour.
               </p>
             </div>
 
-            {/* 3 étapes numérotées avec ligne de progression */}
-            <div className="relative max-w-4xl mx-auto">
-              {/* Ligne de progression verticale (desktop) */}
-              <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-0.5 bg-slate-200 -translate-x-1/2">
-                <div className="progress-line w-full h-0" />
+            {/* Timeline 3 étapes */}
+            <div className="space-y-12 lg:space-y-0 lg:relative">
+              {/* Étape 01 */}
+              <div className="lg:flex items-center gap-12 animate-on-scroll">
+                <div className="lg:w-1/2 lg:text-right lg:pr-12">
+                  <div className="bg-gradient-to-br from-[#FFF7ED] to-white rounded-2xl p-6 lg:p-8 border border-[#FED7AA]">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#F77F00] text-white text-xl font-bold mb-4">
+                      01
+                    </div>
+                    <h3 className="landing-heading text-xl lg:text-2xl font-bold text-[#0F172A] mb-3">
+                      On crée votre espace direction
+                    </h3>
+                    <p className="landing-body text-slate-600 mb-4">
+                      À partir de votre demande validée par la direction centrale, nous provisionnez votre espace personnalisé en moins de 24h. Import de votre plan annuel si disponible.
+                    </p>
+                    <ul className="space-y-2 text-sm text-slate-600">
+                      {["Création comptes agents", "Configuration structure", "Import plan annuel"].map((item) => (
+                        <li key={item} className="flex items-center gap-2 lg:justify-end">
+                          <span>{item}</span>
+                          <svg className="w-4 h-4 text-[#009E60] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                {/* Point timeline (desktop only) */}
+                <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-[#F77F00] text-white items-center justify-center text-lg font-bold shadow-lg shadow-orange-500/30 z-10" style={{ top: '60px' }}>
+                  01
+                </div>
+                <div className="lg:w-1/2 hidden lg:block" />
               </div>
 
-              <div className="space-y-12 md:space-y-16">
-                {/* Étape 01 */}
-                <div className="animate-on-scroll delay-1 relative flex flex-col md:flex-row items-center gap-8">
-                  <div className="md:w-1/2 md:text-right order-2 md:order-1">
-                    <div className="bg-[#FFFBF5] rounded-2xl p-8 border border-orange-100" style={{ boxShadow: '0 8px 30px rgb(15 23 42 / .06)' }}>
-                      <h3 className="text-2xl font-bold text-[#0F172A] mb-3">
-                        Demandez votre espace
-                      </h3>
-                      <p className="text-slate-600 leading-relaxed">
-                        Demande en ligne, paiement Mobile Money, code d&apos;activation sous 24h ouvrées.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Numéro étape */}
-                  <div className="order-1 md:order-2 relative z-10 w-16 h-16 rounded-full bg-gradient-to-br from-[#F77F00] to-[#FF9933] flex items-center justify-center shadow-lg shadow-orange-500/25 shrink-0">
-                    <span className="text-2xl font-extrabold text-white">01</span>
-                  </div>
-                  
-                  <div className="md:w-1/2 order-3 hidden md:block" />
+              {/* Étape 02 */}
+              <div className="lg:flex items-center gap-12 mt-12 lg:mt-0 animate-on-scroll delay-1">
+                <div className="hidden lg:block lg:w-1/2" />
+                {/* Point timeline (desktop only) */}
+                <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-[#009E60] text-white items-center justify-center text-lg font-bold shadow-lg shadow-green-500/30 z-10" style={{ top: '280px' }}>
+                  02
                 </div>
+                <div className="lg:w-1/2 lg:pl-12">
+                  <div className="bg-gradient-to-br from-[#ECFDF5] to-white rounded-2xl p-6 lg:p-8 border border [#BBF7D0]">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#009E60] text-white text-xl font-bold mb-4">
+                      02
+                    </div>
+                    <h3 className="landing-heading text-xl lg:text-2xl font-bold text-[#0F172A] mb-3">
+                      Vous saisissez vos activités au fil de l'eau
+                    </h3>
+                    <p className="landing-body text-slate-600 mb-4">
+                      Après chaque mission, atelier ou réunion, vous la saisissez en 3 minutes : titre, date, lieu, photos, nombre de bénéficiaires. Fini l'accumulation de paperasse.
+                    </p>
+                    <ul className="space-y-2 text-sm text-slate-600">
+                      {["Formulaire guidé mobile-friendly", "Upload photos depuis smartphone", "Géolocalisation automatique"].map((item) => (
+                        <li key={item} className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-[#009E60] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
 
-                {/* Étape 02 */}
-                <div className="animate-on-scroll delay-2 relative flex flex-col md:flex-row items-center gap-8">
-                  <div className="md:w-1/2 order-2 hidden md:block" />
-                  
-                  {/* Numéro étape */}
-                  <div className="order-1 relative z-10 w-16 h-16 rounded-full bg-gradient-to-br from-[#009E60] to-[#10B981] flex items-center justify-center shadow-lg shadow-green-500/25 shrink-0">
-                    <span className="text-2xl font-extrabold text-white">02</span>
-                  </div>
-                  
-                  <div className="md:w-1/2 order-3">
-                    <div className="bg-[#FFFBF5] rounded-2xl p-8 border border-green-100" style={{ boxShadow: '0 8px 30px rgb(15 23 42 / .06)' }}>
-                      <h3 className="text-2xl font-bold text-[#0F172A] mb-3">
-                        Saisissez vos activités une seule fois
-                      </h3>
-                      <p className="text-slate-600 leading-relaxed">
-                        Sur téléphone ou ordinateur, même avec connexion modeste. Guide intuitif inclus.
-                      </p>
+              {/* Étape 03 */}
+              <div className="lg:flex items-center gap-12 mt-12 lg:mt-0 animate-on-scroll delay-2">
+                <div className="lg:w-1/2 lg:text-right lg:pr-12">
+                  <div className="bg-gradient-to-br from-[#EFF6FF] to-white rounded-2xl p-6 lg:p-8 border border-[#BFDBFE]">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#2563EB] text-white text-xl font-bold mb-4">
+                      03
                     </div>
+                    <h3 className="landing-heading text-xl lg:text-2xl font-bold text-[#0F172A] mb-3">
+                      Les rapports se génèrent tout seuls
+                    </h3>
+                    <p className="landing-body text-slate-600 mb-4">
+                      À chaque échéance trimestrielle, cliquez sur « Générer le rapport » : toutes vos activités validées sont automatiquement consolidées, mises en forme et prêtes à envoyer.
+                    </p>
+                    <ul className="space-y-2 text-sm text-slate-600">
+                      {["Rapport PDF professionnel", "Données consolidées", "Envoi direct au MCNSLP"].map((item) => (
+                        <li key={item} className="flex items-center gap-2 lg:justify-end">
+                          <span>{item}</span>
+                          <svg className="w-4 h-4 text-[#009E60] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-
-                {/* Étape 03 */}
-                <div className="animate-on-scroll delay-3 relative flex flex-col md:flex-row items-center gap-8">
-                  <div className="md:w-1/2 md:text-right order-2 md:order-1">
-                    <div className="bg-[#FFFBF5] rounded-2xl p-8 border border-blue-100" style={{ boxShadow: '0 8px 30px rgb(15 23 42 / .06)' }}>
-                      <h3 className="text-2xl font-bold text-[#0F172A] mb-3">
-                        Générez et présentez
-                      </h3>
-                      <p className="text-slate-600 leading-relaxed">
-                        Rapport Word conforme + slides PowerPoint, archivés automatiquement. Prêt pour la hiérarchie.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Numéro étape */}
-                  <div className="order-1 md:order-2 relative z-10 w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-blue-400 flex items-center justify-center shadow-lg shadow-blue-500/25 shrink-0">
-                    <span className="text-2xl font-extrabold text-white">03</span>
-                  </div>
-                  
-                  <div className="md:w-1/2 order-3 hidden md:block" />
+                {/* Point timeline (desktop only) */}
+                <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-[#0F172A] text-white items-center justify-center text-lg font-bold shadow-lg z-10" style={{ top: '500px' }}>
+                  03
                 </div>
+                <div className="lg:w-1/2 hidden lg:block" />
               </div>
             </div>
           </div>
         </section>
 
         {/* ===== 6. SECTION TÉMOIGNAGES ===== */}
-        <section className="py-24 lg:py-32 bg-[#0F172A] relative overflow-hidden" aria-label="Témoignages">
-          {/* Motif décoratif subtil */}
-          <div className="absolute inset-0 opacity-5">
-            <div className="absolute top-0 left-0 w-96 h-96 bg-[#F77F00] rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-            <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#009E60] rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
-          </div>
+        <section id="temoignages" className="py-20 lg:py-28 bg-[#0F172A] relative overflow-hidden" aria-label="Témoignages">
+          {/* Motif subtil overlay */}
+          <div className="absolute inset-0 african-pattern opacity-30" />
 
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Titre section */}
+            {/* En-tête section */}
             <div className="text-center max-w-3xl mx-auto mb-16 animate-on-scroll">
-              <span className="inline-block px-4 py-1.5 bg-white/10 text-white/90 text-sm font-semibold rounded-full mb-4">
-                Ils ont fait le pas
+              <span className="inline-block text-sm font-semibold text-[#F77F00] uppercase tracking-wide mb-4">
+                Témoignages
               </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-white mb-4">
-                Ce que disent nos utilisateurs
+              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-white mb-6 leading-tight">
+                Ils ont dit adieu aux rapports de dernière minute
               </h2>
               <p className="text-lg text-slate-400">
-                Des Directions Régionales et Départementales qui ont transformé leur reporting.
+                Découvrez comment e-OSCS a transformé le quotidien de professionnels comme vous.
               </p>
             </div>
 
-            {/* 3 cartes témoignages */}
+            {/* Grille 3 témoignages */}
             <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
-              {/* Témoignage 1 */}
-              <blockquote className="animate-on-scroll delay-1 bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#F77F00] to-[#FF9933] flex items-center justify-center text-white text-xl font-bold">
-                    AK
-                  </div>
-                  <div>
-                    <cite className="not-italic font-semibold text-white">Aminata K.</cite>
-                    <p className="text-sm text-slate-400">Directrice Régionale, Bouaké</p>
-                  </div>
-                </div>
-                <p className="text-slate-300 leading-relaxed italic">
-                  « Avant, mon T4 me prenait deux semaines. Cette année : un après-midi. »
-                </p>
-                <div className="flex gap-1 mt-4">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-5 h-5 text-[#F77F00]" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-              </blockquote>
+              {[
+                {
+                  quote: "Avant e-OSCS, je passais mes deux dernières semaines de chaque trimestre à reconstituer mes activités dans Excel. Maintenant, je saisis au fil de l'eau et mon rapport trimestriel est prêt en 10 minutes. C'est une autre vie.",
+                  name: "Aminata K.",
+                  role: "Chef de Service, DR Bouaké",
+                  location: "Bouaké",
+                  avatar: "AK",
+                  stats: { activities: "127", timeSaved: "15j/an" },
+                },
+                {
+                  quote: "La consolidation des rapports de nos 8 départements était un cauchemar. Avec e-OSCS, j'ai une vue en temps réel de tout le territoire et le rapport consolidé se génère seul. Mes collègues des autres directions sont jaloux.",
+                  name: "Koné S.",
+                  role: "Directeur Régional, Korhogo",
+                  location: "Korhogo",
+                  avatar: "KS",
+                  stats: { departments: "8", reports: "100%" },
+                },
+                {
+                  quote: "J'étais réticente au début parce que je ne suis pas très technology. Mais l'interface est tellement simple que je l'ai adoptée en une demi-journée. Maintenant, je forme moi-même les nouveaux agents.",
+                  name: "Adjoua M.",
+                  role: "Charge d'Activités, San-Pédro",
+                  location: "San-Pédro",
+                  avatar: "AM",
+                  stats: { training: "12 agents", adoption: "2 jours" },
+                },
+              ].map((testimonial, index) => (
+                <div
+                  key={index}
+                  className="group bg-white/5 backdrop-blur-sm rounded-2xl p-6 lg:p-8 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-300 animate-on-scroll delay-index + 1"
+                >
+                  {/* Quote icon */}
+                  <svg className="w-10 h-10 text-[#F77F00]/30 mb-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
+                  </svg>
 
-              {/* Témoignage 2 */}
-              <blockquote className="animate-on-scroll delay-2 bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#009E60] to-[#10B981] flex items-center justify-center text-white text-xl font-bold">
-                    KS
-                  </div>
-                  <div>
-                    <cite className="not-italic font-semibold text-white">Koné S.</cite>
-                    <p className="text-sm text-slate-400">Chef de service, Korhogo</p>
-                  </div>
-                </div>
-                <p className="text-slate-300 leading-relaxed italic">
-                  « Le flux de validation a mis fin aux allers-retours : tout est écrit et motivé, au noir sur blanc. »
-                </p>
-                <div className="flex gap-1 mt-4">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-5 h-5 text-[#F77F00]" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-              </blockquote>
+                  {/* Citation */}
+                  <blockquote className="landing-body text-sm lg:text-base text-slate-300 leading-relaxed mb-6">
+                    "{testimonial.quote}"
+                  </blockquote>
 
-              {/* Témoignage 3 */}
-              <blockquote className="animate-on-scroll delay-3 bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-400 flex items-center justify-center text-white text-xl font-bold">
-                    AM
+                  {/* Stats mini */}
+                  <div className="flex items-center gap-4 mb-6 pb-6 border-b border-white/10">
+                    {Object.entries(testimonial.stats).map(([key, value]) => (
+                      <div key={key} className="text-center">
+                        <div className="text-lg font-bold text-[#F77F00]">{value}</div>
+                        <div className="text-[10px] text-slate-500 uppercase tracking-wide">
+                          {key === 'activities' ? 'Activités' : key === 'timeSaved' ? 'Temps gagné' : key === 'departments' ? 'Départements' : key === 'reports' ? 'Taux rapport' : key === 'training' ? 'Formés' : 'Adoption'}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <cite className="not-italic font-semibold text-white">Adjoua M.</cite>
-                    <p className="text-sm text-slate-400">Assistante de direction, San-Pédro</p>
+
+                  {/* Auteur */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#F77F00] to-[#009E60] flex items-center justify-center text-white font-bold text-sm">
+                      {testimonial.avatar}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-white text-sm">{testimonial.name}</div>
+                      <div className="text-xs text-slate-400">{testimonial.role}</div>
+                      <div className="text-[10px] text-[#F77F00]">📍 {testimonial.location}</div>
+                    </div>
                   </div>
                 </div>
-                <p className="text-slate-300 leading-relaxed italic">
-                  « La hiérarchie a ses indicateurs consolidés du premier coup. On est devenus la référence du district. »
-                </p>
-                <div className="flex gap-1 mt-4">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-5 h-5 text-[#F77F00]" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-              </blockquote>
+              ))}
             </div>
           </div>
         </section>
 
         {/* ===== 7. SECTION TARIFICATION ===== */}
-        <section id="tarifs" className="py-24 lg:py-32 bg-[#FFFBF5] relative african-pattern" aria-label="Tarifs">
+        <section id="tarifs" className="py-20 lg:py-28 bg-white" aria-label="Tarification">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Titre section */}
+            {/* En-tête section */}
             <div className="text-center max-w-3xl mx-auto mb-16 animate-on-scroll">
-              <span className="inline-block px-4 py-1.5 bg-purple-100 text-purple-700 text-sm font-semibold rounded-full mb-4">
+              <span className="inline-block text-sm font-semibold text-[#009E60] uppercase tracking-wide mb-4">
                 Tarification transparente
               </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#0F172A] mb-4">
-                Un abonnement adapté à votre Direction
+              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
+                Un investissement mesurable pour votre direction
               </h2>
-              <p className="text-lg text-slate-600">
-                Paiement Mobile Money — Wave, Orange Money ou MTN MoMo.
+              <p className="landing-body text-lg text-slate-600">
+                Des tarifs adaptés aux réalités budgétaires des services publics ivoiriens. Pas de frais cachés, pas de surprise.
               </p>
             </div>
 
-            {/* 3 plans tarifs */}
-            <div className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto items-start">
-              {/* Plan ESSENTIEL */}
-              <div className="animate-on-scroll delay-1 bg-white rounded-2xl p-8 border border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-300" style={{ boxShadow: '0 8px 30px rgb(15 23 42 / .06)' }}>
-                <div className="text-center mb-8">
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">Essentiel</h3>
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-extrabold text-[#0F172A]">10&nbsp;000</span>
-                    <span className="text-slate-500">FCFA/mois</span>
-                  </div>
-                </div>
-                <ul className="space-y-4 mb-8">
-                  {[
-                    "5 utilisateurs",
-                    "1 Go stockage",
-                    "Rapport trimestriel Word",
-                    "Gestion incidents",
-                    "Support email",
-                  ].map((feature) => (
-                    <li key={feature} className="flex items-center gap-3 text-sm text-slate-600">
-                      <svg className="w-5 h-5 text-[#009E60] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <a
-                  href="#demande"
-                  className="block w-full py-3 text-center text-sm font-semibold text-[#F77F00] border-2 border-[#F77F00] rounded-xl hover:bg-orange-50 transition-colors magnetic-btn"
-                >
-                  Choisir Essentiel
-                </a>
-              </div>
-
-              {/* Plan PROFESSIONNEL (Populaire) */}
-              <div className="animate-on-scroll delay-2 bg-white rounded-2xl p-8 border-2 border-[#F77F00] relative shadow-xl md:-mt-4 md:mb-4" style={{ boxShadow: '0 20px 40px rgb(247 127 0 / .15)' }}>
-                {/* Pastille populaire */}
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="inline-flex items-center px-4 py-1.5 bg-[#F77F00] text-white text-sm font-semibold rounded-full shadow-lg">
-                    ⭐ Le plus populaire
-                  </span>
-                </div>
-                {/* Mini liseré tricolore sous la pastille */}
-                <div className="absolute -top-1 left-1/4 right-1/4 h-1 flex rounded-full overflow-hidden">
-                  <div className="flex-1 bg-[#F77F00]" />
-                  <div className="flex-1 bg-white" />
-                  <div className="flex-1 bg-[#009E60]" />
-                </div>
-                
-                <div className="text-center mb-8 pt-4">
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">Professionnel</h3>
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-extrabold text-[#F77F00]">15&nbsp;000</span>
-                    <span className="text-slate-500">FCFA/mois</span>
-                  </div>
-                </div>
-                <ul className="space-y-4 mb-8">
-                  {[
-                    "15 utilisateurs",
-                    "5 Go stockage",
-                    "+ Rapport mensuel & annuel",
-                    "+ PowerPoint",
-                    "+ Indicateurs avancés",
-                    "+ Archive automatique",
-                    "Support prioritaire WhatsApp",
-                  ].map((feature) => (
-                    <li key={feature} className="flex items-center gap-3 text-sm text-slate-600">
-                      <svg className="w-5 h-5 text-[#009E60] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <a
-                  href="#demande"
-                  className="magnetic-btn block w-full py-3 text-center text-sm font-semibold text-white bg-[#F77F00] rounded-xl hover:bg-[#E67300] shadow-lg shadow-orange-500/25 transition-all"
-                >
-                  Choisir Professionnel
-                </a>
-              </div>
-
-              {/* Plan INSTITUTIONNEL */}
-              <div className="animate-on-scroll delay-3 bg-white rounded-2xl p-8 border border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-300" style={{ boxShadow: '0 8px 30px rgb(15 23 42 / .06)' }}>
-                <div className="text-center mb-8">
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">Institutionnel</h3>
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-extrabold text-[#0F172A]">25&nbsp;000</span>
-                    <span className="text-slate-500">FCFA/mois</span>
-                  </div>
-                </div>
-                <ul className="space-y-4 mb-8">
-                  {[
-                    "Utilisateurs illimités",
-                    "20 Go stockage",
-                    "+ En-tête personnalisé",
-                    "+ Carte nationale",
-                    "+ Export données complètes",
-                    "Formation incluse",
-                    "Account manager dédié",
-                  ].map((feature) => (
-                    <li key={feature} className="flex items-center gap-3 text-sm text-slate-600">
-                      <svg className="w-5 h-5 text-[#009E60] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <a
-                  href="#demande"
-                  className="block w-full py-3 text-center text-sm font-semibold text-[#0F172A] border-2 border-[#0F172A] rounded-xl hover:bg-slate-50 transition-colors magnetic-btn"
-                >
-                  Choisir Institutionnel
-                </a>
+            {/* Toggle Annuel/Mensuel (optionnel visuel) */}
+            <div className="flex items-center justify-center gap-4 mb-12 animate-on-scroll">
+              <span className="text-sm font-medium text-slate-600">Facturation mensuelle</span>
+              <div className="relative inline-flex items-center">
+                <span className="text-sm font-semibold text-[#009E60] mr-2">✓</span>
+                <span className="text-sm font-medium text-slate-800">Paiement FCFA</span>
               </div>
             </div>
 
-            {/* Note paiement */}
-            <p className="text-center text-sm text-slate-500 mt-10 animate-on-scroll">
-              Abonnement mensuel sans engagement — paiement Wave, Orange Money ou MTN MoMo, confirmé par notre équipe.
+            {/* Grille 3 plans */}
+            <div className="grid md:grid-cols-3 gap-6 lg:gap-8 items-start">
+              {[
+                {
+                  name: "Essentiel",
+                  price: "10 000",
+                  currency: "FCFA/mois",
+                  description: "Pour les départements qui débutent leur transformation numérique",
+                  features: [
+                    "Jusqu'à 5 utilisateurs",
+                    "Saisie d'activités illimitée",
+                    "Rapports trimestriels automatiques",
+                    "Stockage photos (2 Go)",
+                    "Support par email",
+                  ],
+                  limitations: [
+                    "Pas de validation multi-niveaux",
+                    "Pas de tableau de bord avancé",
+                  ],
+                  popular: false,
+                  cta: "Commencer l'essai",
+                  color: "slate",
+                },
+                {
+                  name: "Professionnel",
+                  price: "15 000",
+                  currency: "FCFA/mois",
+                  description: "Pour les directions régionales qui veulent maîtriser leur reporting",
+                  features: [
+                    "Jusqu'à 20 utilisateurs",
+                    "Tout le plan Essentiel, plus :",
+                    "Circuit de validation multi-niveaux",
+                    "Tableaux de bord & indicateurs",
+                    "Export PDF/Excel avancé",
+                    "Stockage photos (10 Go)",
+                    "Support prioritaire",
+                    "Formation incluse",
+                  ],
+                  limitations: [],
+                  popular: true,
+                  cta: "Demander ce plan",
+                  color: "orange",
+                },
+                {
+                  name: "Institutionnel",
+                  price: "25 000",
+                  currency: "FCFA/mois",
+                  description: "Pour la direction centrale et les grandes structures",
+                  features: [
+                    "Utilisateurs illimités",
+                    "Tout le plan Professionnel, plus :",
+                    "Consolidation multi-directions",
+                    "API d'integration",
+                    "Compte dédié personnalisé",
+                    "SLA garantie 99.9%",
+                    "Manager de succès dédié",
+                    "Formation sur mesure",
+                    "Reports customisés",
+                  ],
+                  limitations: [],
+                  popular: false,
+                  cta: "Nous contacter",
+                  color: "green",
+                },
+              ].map((plan, index) => (
+                <div
+                  key={index}
+                  className={`relative rounded-2xl overflow-hidden transition-all duration-300 animate-on-scroll delay-index + 1 ${
+                    plan.popular
+                      ? "ring-2 ring-[#F77F00] shadow-2xl shadow-orange-500/10 scale-[1.02]"
+                      : "border border-slate-200 hover:border-slate-300 hover:shadow-lg"
+                  }`}
+                >
+                  {/* Badge populaire */}
+                  {plan.popular && (
+                    <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-[#F77F00] to-[#E67300] text-white text-center text-sm font-semibold py-2">
+                      ⭐ Plan le plus populaire
+                    </div>
+                  )}
+
+                  <div className={`p-6 lg:p-8 ${plan.popular ? 'pt-14' : ''} bg-white`}>
+                    {/* Nom du plan */}
+                    <h3 className="landing-heading text-xl font-bold text-[#0F172A] mb-2">
+                      {plan.name}
+                    </h3>
+                    <p className="text-sm text-slate-500 mb-6">{plan.description}</p>
+
+                    {/* Prix */}
+                    <div className="mb-6">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-4xl lg:text-5xl font-extrabold text-[#0F172A]">
+                          {plan.price}
+                        </span>
+                      </div>
+                      <span className="text-sm text-slate-500">{plan.currency}</span>
+                    </div>
+
+                    {/* Features */}
+                    <ul className="space-y-3 mb-8">
+                      {plan.features.map((feature) => (
+                        <li key={feature} className="flex items-start gap-3 text-sm">
+                          <svg className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                            plan.popular ? 'text-[#F77F00]' : 'text-[#009E60]'
+                          }`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span className="text-slate-600">{feature}</span>
+                        </li>
+                      ))}
+                      {plan.limitations.map((limitation) => (
+                        <li key={limitation} className="flex items-start gap-3 text-sm text-slate-400">
+                          <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          <span>{limitation}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {/* CTA */}
+                    <a
+                      href="#demande"
+                      className={`block w-full text-center py-3.5 px-6 rounded-xl font-semibold transition-all ${
+                        plan.popular
+                          ? "bg-[#F77F00] text-white hover:bg-[#E67300] shadow-lg shadow-orange-500/20"
+                          : plan.color === 'green'
+                          ? "bg-[#009E60] text-white hover:bg-[#059669]"
+                          : "bg-[#0F172A] text-white hover:bg-[#1E293B]"
+                      }`}
+                    >
+                      {plan.cta}
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Note transparence */}
+            <p className="text-center text-sm text-slate-500 mt-8 animate-on-scroll">
+              💡 Tous les prix sont HT. Réduction de 15% pour paiement annuel. Formation et support inclus sans limitation.
             </p>
           </div>
         </section>
 
         {/* ===== 8. SECTION FAQ ===== */}
-        <section id="faq" className="py-24 lg:py-32 bg-white" aria-label="Questions fréquentes">
+        <section id="faq" className="py-20 lg:py-28 bg-[#FFFBF5] african-pattern" aria-label="Questions fréquentes">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Titre section */}
+            {/* En-tête section */}
             <div className="text-center mb-16 animate-on-scroll">
-              <span className="inline-block px-4 py-1.5 bg-slate-100 text-slate-700 text-sm font-semibold rounded-full mb-4">
+              <span className="inline-block text-sm font-semibold text-[#F77F00] uppercase tracking-wide mb-4">
                 FAQ
               </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-[#0F172A] mb-4">
+              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
                 Questions fréquentes
               </h2>
-              <p className="text-lg text-slate-600">
-                Tout ce que vous devez savoir avant de commencer.
+              <p className="landing-body text-lg text-slate-600">
+                Tout ce que vous besoin de savoir avant de commencer.
               </p>
             </div>
 
-            {/* 4 questions/réponses */}
+            {/* Liste FAQ */}
             <div className="space-y-4">
-              {/* Q1 */}
-              <details className="animate-on-scroll delay-1 group bg-[#FFFBF5] rounded-2xl border border-slate-200 overflow-hidden" style={{ boxShadow: '0 4px 20px rgb(15 23 42 / .04)' }}>
-                <summary className="flex items-center justify-between px-6 py-5 cursor-pointer list-none font-semibold text-[#0F172A] hover:text-[#F77F00] transition-colors">
-                  <span>Mes cahiers actuels, j&apos;en fais quoi ?</span>
-                  <svg className="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </summary>
-                <div className="px-6 pb-5 text-slate-600 leading-relaxed">
-                  Reprise d&apos;exercice assistée : notre équipe vous accompagne pour intégrer vos données existantes dans e-OSCS. Pas besoin de tout ressaisir manuellement.
-                </div>
-              </details>
-
-              {/* Q2 */}
-              <details className="animate-on-scroll delay-2 group bg-[#FFFBF5] rounded-2xl border border-slate-200 overflow-hidden" style={{ boxShadow: '0 4px 20px rgb(15 23 42 / .04)' }}>
-                <summary className="flex items-center justify-between px-6 py-5 cursor-pointer list-none font-semibold text-[#0F172A] hover:text-[#F77F00] transition-colors">
-                  <span>Et si la connexion coupe ?</span>
-                  <svg className="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </summary>
-                <div className="px-6 pb-5 text-slate-600 leading-relaxed">
-                  Brouillon sauvegardé en continu dans votre navigateur. Vous reprendrez exactement où vous vous êtes arrêté dès le retour de connexion.
-                </div>
-              </details>
-
-              {/* Q3 */}
-              <details className="animate-on-scroll delay-3 group bg-[#FFFBF5] rounded-2xl border border-slate-200 overflow-hidden" style={{ boxShadow: '0 4px 20px rgb(15 23 42 / .04)' }}>
-                <summary className="flex items-center justify-between px-6 py-5 cursor-pointer list-none font-semibold text-[#0F172A] hover:text-[#F77F00] transition-colors">
-                  <span>Qui voit mes données ?</span>
-                  <svg className="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </summary>
-                <div className="px-6 pb-5 text-slate-600 leading-relaxed">
-                  Votre Direction uniquement (cloisonnement strict, hébergement sécurisé). Les DR ne voient pas les DD, et vice-versa. Vous contrôlez totalement l&apos;accès.
-                </div>
-              </details>
-
-              {/* Q4 */}
-              <details className="animate-on-scroll delay-4 group bg-[#FFFBF5] rounded-2xl border border-slate-200 overflow-hidden" style={{ boxShadow: '0 4px 20px rgb(15 23 42 / .04)' }}>
-                <summary className="flex items-center justify-between px-6 py-5 cursor-pointer list-none font-semibold text-[#0F172A] hover:text-[#F77F00] transition-colors">
-                  <span>Combien de temps pour démarrer ?</span>
-                  <svg className="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </summary>
-                <div className="px-6 pb-5 text-slate-600 leading-relaxed">
-                  Code d&apos;activation sous 24 heures ouvrées après confirmation de paiement. Formation express de 30 minutes incluse pour vous lancer immédiatement.
-                </div>
-              </details>
+              {[
+                {
+                  question: "Combien de temps faut-il pour mettre en place e-OSCS dans ma direction ?",
+                  answer: "Une fois votre demande validée par la direction centrale, nous provisionnons votre espace en moins de 24 heures. La formation initiale prend environ 2 heures pour les administrateurs et 30 minutes pour les utilisateurs finaux. La plupart de nos directions sont pleinement opérationnelles en moins d'une semaine.",
+                },
+                {
+                  question: "Mes données sont-elles hébergées en Côte d'Ivoire ?",
+                  answer: "e-OSCS est hébergé sur des serveurs sécurisés conformes au RGPD. Nous utilisons Supabase (basé sur PostgreSQL) avec chiffrement des données en transit et au repos. Les sauvegardes quotidiennes sont effectuées automatiquement. Un accord de confidentialité spécifique peut être signé pour les institutions qui le souhaitent.",
+                },
+                {
+                  question: "Puis-je importer mes données existantes (anciens rapports, activités) ?",
+                  answer: "Oui, nous fournissons des templates Excel structurés pour importer votre historique d'activités et votre plan annuel en cours. Notre équipe peut aussi vous accompagner lors de la migration initiale. Les données importées sont immédiatement disponibles dans vos rapports et tableaux de bord.",
+                },
+                {
+                  question: "Que se passe-t-il si internet coupe pendant une saisie sur le terrain ?",
+                  answer: "L'application fonctionne en mode dégradé : vous pouvez préparer vos saisies hors-ligne et les synchroniser dès que la connexion revient. Les photos stockées localement seront uploadées automatiquement. Aucune donnée n'est perdue même en cas de coupure brutale.",
+                },
+              ].map((faq, index) => (
+                <details
+                  key={index}
+                  className="group bg-white rounded-2xl border border-slate-200 overflow-hidden animate-on-scroll delay-index % 2 + 1"
+                >
+                  <summary className="flex items-center justify-between cursor-pointer px-6 py-5 text-left hover:bg-slate-50 transition-colors">
+                    <span className="landing-heading pr-8 font-semibold text-[#0F172A] text-base lg:text-lg">
+                      {faq.question}
+                    </span>
+                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center group-open:bg-[#F77F00]/10 group-open:rotate-180 transition-all">
+                      <svg className="w-4 h-4 text-slate-500 group-open:text-[#F77F00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </span>
+                  </summary>
+                  <div className="px-6 pb-5 pt-0">
+                    <p className="landing-body text-slate-600 leading-relaxed pl-0 border-t border-slate-100 pt-4">
+                      {faq.answer}
+                    </p>
+                  </div>
+                </details>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ===== 9. SECTION CTA FINAL ===== */}
-        <section id="demande" className="py-24 lg:py-32 relative overflow-hidden" aria-label="Appel à l'action final">
-          {/* Fond dégradé orange→vert */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#F77F00] via-[#E67300] to-[#009E60]" />
-          
-          {/* Motif décoratif */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl translate-x-1/2 -translate-y-1/2" />
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-x-1/2 translate-y-1/2" />
-          </div>
+        {/* ===== 9. SECTION DEMANDE D'ACCÈS / CTA FINAL ===== */}
+        <section id="demande" className="py-20 lg:py-28 bg-white" aria-label="Demande d'accès">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="relative bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0F172A] rounded-3xl overflow-hidden shadow-2xl">
+              {/* Décorations */}
+              <div className="absolute top-0 right-0 w-96 h-96 bg-[#F77F00]/10 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#009E60]/10 rounded-full blur-3xl" />
 
-          {/* Liseré tricolore en haut */}
-          <div className="absolute top-0 left-0 right-0 h-1 flex">
-            <div className="flex-1 bg-white/30" />
-            <div className="flex-1 bg-white/50" />
-            <div className="flex-1 bg-white/30" />
+              <div className="relative z-10 px-6 py-12 sm:px-12 sm:py-16 lg:px-16 lg:py-20 text-center">
+                {/* Badge */}
+                <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#F77F00] uppercase tracking-wide mb-6">
+                  <span className="w-2 h-2 rounded-full bg-[#F77F00] animate-pulse" />
+                  Démarrage rapide
+                </span>
+
+                {/* Titre */}
+                <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-white mb-6 leading-tight">
+                  Prêt à transformer votre reporting ?
+                </h2>
+
+                {/* Description */}
+                <p className="text-lg text-slate-300 mb-10 max-w-2xl mx-auto">
+                  Demandez votre accès dès aujourd'hui et rejoignez les directions qui ont déjà dit adieu aux rapports de dernière minute.
+                </p>
+
+                {/* Formulaire simplifié */}
+                <form className="max-w-md mx-auto space-y-4 text-left" onSubmit={(e) => e.preventDefault()}>
+                  {/* Nom complet */}
+                  <div>
+                    <label htmlFor="demande-nom" className="block text-sm font-medium text-slate-300 mb-2">
+                      Nom complet *
+                    </label>
+                    <input
+                      type="text"
+                      id="demande-nom"
+                      required
+                      placeholder="Ex: Koné Mohamed"
+                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F77F00] focus:border-transparent transition-all"
+                    />
+                  </div>
+
+                  {/* Email institutionnel */}
+                  <div>
+                    <label htmlFor="demande-email" className="block text-sm font-medium text-slate-300 mb-2">
+                      Email institutionnel *
+                    </label>
+                    <input
+                      type="email"
+                      id="demande-email"
+                      required
+                      placeholder="exemple@gouv.ci"
+                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F77F00] focus:border-transparent transition-all"
+                    />
+                  </div>
+
+                  {/* Direction / Structure */}
+                  <div>
+                    <label htmlFor="demande-direction" className="block text-sm font-medium text-slate-300 mb-2">
+                      Direction / Structure *
+                    </label>
+                    <select
+                      id="demande-direction"
+                      required
+                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-[#F77F00] focus:border-transparent transition-all appearance-none"
+                    >
+                      <option value="" className="bg-[#1E293B]">Sélectionnez votre structure</option>
+                      <option value="direction-regionale" className="bg-[#1E293B]">Direction Régionale</option>
+                      <option value="direction-departementale" className="bg-[#1E293B]">Direction Départementale</option>
+                      <option value="direction-centrale" className="bg-[#1E293B]">Direction Centrale</option>
+                      <option value="autre" className="bg-[#1E293B]">Autre structure</option>
+                    </select>
+                  </div>
+
+                  {/* Message optionnel */}
+                  <div>
+                    <label htmlFor="demande-message" className="block text-sm font-medium text-slate-300 mb-2">
+                      Message (optionnel)
+                    </label>
+                    <textarea
+                      id="demande-message"
+                      rows={3}
+                      placeholder="Précisez vos besoins spécifiques..."
+                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F77F00] focus:border-transparent transition-all resize-none"
+                    />
+                  </div>
+
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    className="magnetic-btn w-full py-4 px-8 bg-[#F77F00] hover:bg-[#E67300] text-white font-semibold rounded-xl shadow-lg shadow-orange-500/25 transition-all text-lg"
+                  >
+                    Envoyer ma demande
+                    <svg className="inline ml-2 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </button>
+                </form>
+
+                {/* Note confiance */}
+                <p className="mt-6 text-sm text-slate-400">
+                  🔒 Vos données sont protégées et ne seront jamais partagées avec des tiers. Réponse sous 48h ouvrables.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ===== 10. SECTION CTA FINAL (Optionnel) ===== */}
+        <section className="py-16 lg:py-20 bg-gradient-to-r from-[#F77F00] to-[#E67300] relative overflow-hidden" aria-label="Appel à l'action final">
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-10 left-10 w-40 h-40 border-2 border-white rounded-full" />
+            <div className="absolute bottom-10 right-10 w-60 h-60 border-2 border-white rounded-full" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 border border-white rounded-full" />
           </div>
 
           <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="animate-on-scroll">
-              <h2 className="text-3xl sm:text-4xl lg:text-[48px] font-extrabold text-white mb-6 leading-tight">
-                Rejoignez les Directions qui présentent des rapports impeccables, trimestre après trimestre.
-              </h2>
-              <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto">
-                Ne laissez plus le reporting vous prendre des nuits blanches.
-              </p>
-              
-              <a
-                href="https://wa.me/2250576103227?text=Bonjour%2C%20je%20souhaite%20demander%20mon%20espace%20e-OSCS"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="magnetic-btn inline-flex items-center justify-center px-10 py-5 text-lg font-bold text-[#F77F00] bg-white rounded-2xl shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300"
-              >
-                Demander mon espace
-                <svg className="ml-3 w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </a>
-              
-              <p className="mt-8 text-white/80 text-sm">
-                réponse sous 24h · assistance WhatsApp incluse
-              </p>
-            </div>
+            <h2 className="landing-heading text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-4">
+              Rejoignez la transformation digitale du MCNSLP
+            </h2>
+            <p class="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
+              Plus de 12 directions utilisent déjà e-OSCS au quotidien. La prochaine pourrait être la vôtre.
+            </p>
+            <a
+              href="#demande"
+              className="magnetic-btn inline-flex items-center px-8 py-4 bg-white text-[#F77F00] font-semibold rounded-2xl shadow-xl hover:bg-slate-50 transition-all text-lg"
+            >
+              Demander mon accès maintenant
+              <svg className="ml-2 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </a>
           </div>
         </section>
 
-        {/* ===== 10. FOOTER ===== */}
-        <footer className="bg-[#0F172A] text-slate-400 py-16" role="contentinfo">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-10 lg:gap-12">
-              {/* Colonne logo & baseline */}
+        {/* ===== 11. FOOTER ARDOISE ===== */}
+        <footer className="bg-[#0F172A] text-slate-400" role="contentinfo">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12">
+              {/* Colonne 1 : Marque */}
               <div className="col-span-2 md:col-span-1">
                 <a href="/" className="flex items-center gap-2 mb-4">
-                  <span className="text-xl font-extrabold text-[#009E60]">e</span>
-                  <span className="text-xl font-extrabold text-[#F77F00]">OSCS</span>
+                  <span className="text-2xl font-extrabold text-[#009E60]">e</span>
+                  <span className="text-xl font-bold text-white">-</span>
+                  <span className="text-2xl font-extrabold text-[#F77F00]">OSCS</span>
                 </a>
-                <p className="text-sm text-slate-500 leading-relaxed">
-                  Suivi-évaluation et reporting du MCNSLP
+                <p className="text-sm leading-relaxed mb-4">
+                  Solution de reporting et de gestion des activités pour le Ministère de la Cohésion Nationale, de la Solidarité Sociale et de la Lutte contre la Pauvreté.
                 </p>
-                <p className="mt-4 text-sm italic text-slate-500">
-                  Fait avec fierté en Côte d&apos;Ivoire 🇨🇮
-                </p>
+                {/* Liseré tricolore mini */}
+                <div className="flex gap-1">
+                  <div className="w-6 h-1 rounded-full bg-[#F77F00]" />
+                  <div className="w-6 h-1 rounded-full bg-white" />
+                  <div className="w-6 h-1 rounded-full bg-[#009E60]" />
+                </div>
               </div>
 
-              {/* Colonne Navigation */}
+              {/* Colonne 2 : Produit */}
               <div>
-                <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Navigation</h4>
-                <ul className="space-y-3" role="list">
-                  {[
-                    { name: "Accueil", href: "#" },
-                    { name: "Fonctionnalités", href: "#fonctionnalites" },
-                    { name: "Tarifs", href: "#tarifs" },
-                    { name: "FAQ", href: "#faq" },
-                    { name: "Contact", href: "#contact" },
-                  ].map((link) => (
-                    <li key={link.name}>
-                      <a href={link.href} className="text-sm hover:text-white transition-colors">
-                        {link.name}
+                <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wide">Produit</h4>
+                <ul className="space-y-2.5 text-sm">
+                  {['Fonctionnalités', 'Tarification', 'Témoignages', 'FAQ', 'Roadmap'].map((item) => (
+                    <li key={item}>
+                      <a href={`#${item.toLowerCase()}`} className="hover:text-white transition-colors">
+                        {item}
                       </a>
                     </li>
                   ))}
                 </ul>
               </div>
 
-              {/* Colonne Contact */}
+              {/* Colonne 3 : Support */}
               <div>
-                <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Contact</h4>
-                <ul className="space-y-3">
-                  <li>
-                    <a 
-                      href="https://wa.me/2250576103227" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm hover:text-green-400 transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                      </svg>
-                      +225 05 76 10 32 27
-                    </a>
-                  </li>
-                  <li>
-                    <a 
-                      href="mailto:omouitsi@gmail.com" 
-                      className="flex items-center gap-2 text-sm hover:text-[#F77F00] transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                      omouitsi@gmail.com
-                    </a>
-                  </li>
+                <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wide">Support</h4>
+                <ul className="space-y-2.5 text-sm">
+                  {[
+                    { label: 'Documentation', href: '#' },
+                    { label: 'Contact', href: '#contact' },
+                    { label: 'Statut du service', href: '#' },
+                    { label: 'Mentions légales', href: '#' },
+                  ].map((item) => (
+                    <li key={item.label}>
+                      <a href={item.href} className="hover:text-white transition-colors">
+                        {item.label}
+                      </a>
+                    </li>
+                  ))}
                 </ul>
               </div>
 
-              {/* Colonne Légal */}
+              {/* Colonne 4 : Contact */}
               <div>
-                <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Légal</h4>
-                <ul className="space-y-3" role="list">
-                  <li>
-                    <a href="/conditions" className="text-sm hover:text-white transition-colors">
-                      Conditions d'utilisation
-                    </a>
+                <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wide">Contact</h4>
+                <ul className="space-y-2.5 text-sm">
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-[#F77F00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.07 8.91A2.25 2.25 0 0 1 2 8.668V6.75" />
+                    </svg>
+                    contact@e-oscs.ci
                   </li>
-                  <li>
-                    <a href="/confidentialite" className="text-sm hover:text-white transition-colors">
-                      Confidentialité
-                    </a>
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-[#F77F00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.715 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                    </svg>
+                    +225 07 XX XX XX XX
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <svg className="w-4 h-4 mt-0.5 text-[#F77F00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                    </svg>
+                    Abidjan, Plateau<br/>Côte d'Ivoire
                   </li>
                 </ul>
               </div>
             </div>
 
-            {/* Bas de page copyright */}
-            <div className="border-t border-slate-800 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-sm text-slate-600">
-                © 2026 e-OSCS. Tous droits réservés.
-              </p>
-              <p className="text-xs text-slate-700">
-                MCNSLP — Ministère de la Cohésion Nationale, de la Solidarité Sociale et de la Lutte contre la Pauvreté
-              </p>
+            {/* Séparation */}
+            <div className="border-t border-white/10 mt-12 pt-8">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <p className="text-sm">
+                  © {new Date().getFullYear()} e-OSCS. Tous droits réservés.
+                </p>
+                <p className="text-xs text-slate-500">
+                  Fièrement développé en Côte d'Ivoire 🇨🇮 pour le MCNSLP
+                </p>
+              </div>
             </div>
           </div>
         </footer>
       </main>
-
-      {/* Script pour header sticky et menu mobile */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            // Header sticky glassmorphism
-            const header = document.getElementById('header');
-            let lastScroll = 0;
-            
-            window.addEventListener('scroll', () => {
-              const currentScroll = window.pageYOffset;
-              
-              if (currentScroll > 50) {
-                header.classList.add('bg-white/95', 'backdrop-blur-md', 'shadow-lg', 'border-b', 'border-slate-100');
-              } else {
-                header.classList.remove('bg-white/95', 'backdrop-blur-md', 'shadow-lg', 'border-b', 'border-slate-100');
-              }
-              
-              lastScroll = currentScroll;
-            });
-            
-            // Mobile menu toggle
-            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-            const mobileMenu = document.getElementById('mobile-menu');
-            
-            if (mobileMenuBtn && mobileMenu) {
-              mobileMenuBtn.addEventListener('click', () => {
-                const isOpen = !mobileMenu.classList.contains('hidden');
-                mobileMenu.classList.toggle('hidden');
-                mobileMenuBtn.setAttribute('aria-expanded', !isOpen);
-              });
-            }
-            
-            // Smooth scroll pour les liens ancrages
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-              anchor.addEventListener('click', function(e) {
-                const href = this.getAttribute('href');
-                if (href && href !== '#') {
-                  e.preventDefault();
-                  const target = document.querySelector(href);
-                  if (target) {
-                    const headerHeight = header.offsetHeight;
-                    const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight - 20;
-                    window.scrollTo({
-                      top: targetPosition,
-                      behavior: 'smooth'
-                    });
-                    // Fermer le menu mobile si ouvert
-                    if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
-                      mobileMenu.classList.add('hidden');
-                    }
-                  }
-                }
-              });
-            });
-          `,
-        }}
-      />
     </>
   );
 }

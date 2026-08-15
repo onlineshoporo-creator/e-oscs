@@ -602,4 +602,105 @@
   .table-premium tr:hover td {
     background-color: #F8FAFC;
   }
+
+  /* --- LANDING PAGE e-OSCS --- */
+  
+  /* Animations au scroll */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-on-scroll {
+    opacity: 0;
+  }
+  
+  .animate-on-scroll.is-visible {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+  
+  .animate-on-scroll.delay-1 { animation-delay: 80ms; }
+  .animate-on-scroll.delay-2 { animation-delay: 160ms; }
+  .animate-on-scroll.delay-3 { animation-delay: 240ms; }
+  .animate-on-scroll.delay-4 { animation-delay: 320ms; }
+  
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-on-scroll {
+      opacity: 1;
+      animation: none !important;
+    }
+  }
+  
+  /* Effet magnétique sur CTAs */
+  @media (hover: hover) and (pointer: fine) {
+    .magnetic-btn {
+      transition: transform 0.15s ease-out;
+    }
+  }
+  
+  /* Motifs africains discrets */
+  .african-pattern {
+    background-image: 
+      linear-gradient(30deg, rgba(247, 127, 0, 0.04) 12%, transparent 12.5%, transparent 87%, rgba(247, 127, 0, 0.04) 87.5%, rgba(247, 127, 0, 0.04)),
+      linear-gradient(150deg, rgba(0, 158, 96, 0.04) 12%, transparent 12.5%, transparent 87%, rgba(0, 158, 96, 0.04) 87.5%, rgba(0, 158, 96, 0.04)),
+      linear-gradient(30deg, rgba(247, 127, 0, 0.04) 12%, transparent 12.5%, transparent 87%, rgba(247, 127, 0, 0.04) 87.5%, rgba(247, 127, 0, 0.04)),
+      linear-gradient(150deg, rgba(0, 158, 96, 0.04) 12%, transparent 12.5%, transparent 87%, rgba(0, 158, 96, 0.04) 87.5%, rgba(0, 158, 96, 0.04)),
+      linear-gradient(60deg, rgba(247, 127, 0, 0.03) 25%, transparent 25.5%, transparent 75%, rgba(247, 127, 0, 0.03) 75%, rgba(247, 127, 0, 0.03)),
+      linear-gradient(60deg, rgba(0, 158, 96, 0.03) 25%, transparent 25.5%, transparent 75%, rgba(0, 158, 96, 0.03) 75%, rgba(0, 158, 96, 0.03));
+    background-size: 80px 140px;
+    background-position: 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;
+  }
+  
+  /* Mockup 3D effect */
+  .mockup-container {
+    perspective: 1200px;
+  }
+  
+  .mockup-card {
+    transition: transform 0.4s ease-out;
+    transform-style: preserve-3d;
+  }
+  
+  @media (hover: hover) and (pointer: fine) {
+    .mockup-card:hover {
+      transform: rotateY(-2deg) rotateX(1deg) scale(1.01);
+    }
+  }
+  
+  /* Progress line animation */
+  .progress-line {
+    background: linear-gradient(to bottom, #009E60, #F77F00);
+  }
+  
+  .progress-line-animated {
+    background: linear-gradient(to bottom, #009E60, #F77F00);
+    animation: progressGrow 1.5s ease-out forwards;
+    transform-origin: top;
+  }
+  
+  @keyframes progressGrow {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+  }
+  
+  /* Typographie landing page */
+  .landing-heading {
+    font-family: var(--font-sora), 'Plus Jakarta Sans', system-ui, sans-serif;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+  
+  .landing-body {
+    font-family: var(--font-inter), 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    color: #172033;
+  }
 }
