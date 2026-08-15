@@ -1,0 +1,615 @@
+     1→-- ============================================================================
+     2→-- SEED e-OSCS - Données initiales
+     3→-- ============================================================================
+     4→-- Idempotent : peut être exécuté plusieurs fois sans erreur
+     5→-- Exécution : psql ou Supabase SQL Editor après la migration 0001_init
+     6→-- ============================================================================
+     7→
+     8→-- Désactiver temporairement les triggers/RLS pour le seed
+     9→
+    10→-- ============================================================================
+    11→-- 1. PLANS D'ABONNEMENT (3 plans)
+    12→-- ============================================================================
+    13→
+    14→INSERT INTO subscription_plans (code, nom, prix_mensuel, max_users, storage_gb, features, ordre, actif) VALUES
+    15→('ESSENTIEL', 'Essentiel', 10000, 5, 1, 
+    16→ '{"monthly_report": false, "annual_report": false, "pptx": false, "advanced_indicators": false, "archive": false, "custom_templates": false, "national_stats": false, "data_export": false}'::jsonb,
+    17→ 1, true),
+    18→('PROFESSIONNEL', 'Professionnel', 15000, 15, 5,
+    19→ '{"monthly_report": true, "annual_report": true, "pptx": true, "advanced_indicators": true, "archive": true, "custom_templates": false, "national_stats": false, "data_export": false}'::jsonb,
+    20→ 2, true),
+    21→('INSTITUTIONNEL', 'Institutionnel', 25000, NULL, 20,
+    22→ '{"monthly_report": true, "annual_report": true, "pptx": true, "advanced_indicators": true, "archive": true, "custom_templates": true, "national_stats": true, "data_export": true}'::jsonb,
+    23→ 3, true)
+    24→ON CONFLICT (code) DO NOTHING;
+    25→
+    26→
+    27→
+    28→-- ============================================================================
+    29→-- 2. CATÉGORIES D'ACTIVITÉS + TYPES
+    30→-- ============================================================================
+    31→
+    32→-- 2.1 Catégories principales (5 catégories)
+    33→INSERT INTO activity_categories (code, nom, description, couleur) VALUES
+    34→('SOLIDARITE', 'Solidarité', 'Actions de solidarité et d''assistance aux populations vulnérables', '#F77F00'),
+    35→('COHESION_SOCIALE', 'Cohésion sociale', 'Activités de cohésion sociale, sensibilisation et vivre-ensemble', '#009E60'),
+    36→('VISITES_COMPASSION', 'Visites de compassion', 'Visites d''écoute et d''accompagnement des personnes en difficulté', '#0891B2'),
+    37→('ALERTE_PRECOCE', 'Alerte précoce', 'Gestion des alertes et intervention rapide sur incidents', '#DC2626'),
+    38→('AUTRES', 'Autres', 'Autres activités administratives et événementielles', '#64748B')
+    39→ON CONFLICT (code) DO NOTHING;
+    40→
+    41→-- Récupérer les IDs des catégories pour les types
+    42→DO $$
+    43→DECLARE
+    44→  v_cat_solidarite UUID;
+    45→  v_cat_cohesion UUID;
+    46→  v_cat_visites UUID;
+    47→  v_cat_alerte UUID;
+    48→  v_cat_autres UUID;
+    49→BEGIN
+    50→  -- Récupérer les IDs des catégories
+    51→  SELECT id INTO v_cat_solidarite FROM activity_categories WHERE code = 'SOLIDARITE';
+    52→  SELECT id INTO v_cat_cohesion FROM activity_categories WHERE code = 'COHESION_SOCIALE';
+    53→  SELECT id INTO v_cat_visites FROM activity_categories WHERE code = 'VISITES_COMPASSION';
+    54→  SELECT id INTO v_cat_alerte FROM activity_categories WHERE code = 'ALERTE_PRECOCE';
+    55→  SELECT id INTO v_cat_autres FROM activity_categories WHERE code = 'AUTRES';
+    56→  
+    57→  RAISE NOTICE 'Catégories récupérées : Solidarité=%, Cohésion=%, Visites=%, Alerte=%, Autres=%', 
+    58→    v_cat_solidarite, v_cat_cohesion, v_cat_visites, v_cat_alerte, v_cat_autres;
+    59→
+    60→  -- 2.2 Types par catégorie
+    61→  
+    62→  -- Solidarité : 6 types
+    63→  INSERT INTO activity_types (category_id, nom) VALUES
+    64→    (v_cat_solidarite, 'Action de solidarité'),
+    65→    (v_cat_solidarite, 'Assistance'),
+    66→    (v_cat_solidarite, 'Appui matériel'),
+    67→    (v_cat_solidarite, 'Appui financier'),
+    68→    (v_cat_solidarite, 'Distribution'),
+    69→    (v_cat_solidarite, 'Aide aux personnes vulnérables')
+    70→  ON CONFLICT DO NOTHING;
+    71→  
+    72→  -- Cohésion sociale : 8 types
+    73→  INSERT INTO activity_types (category_id, nom) VALUES
+    74→    (v_cat_cohesion, 'Sensibilisation'),
+    75→    (v_cat_cohesion, 'Formation'),
+    76→    (v_cat_cohesion, 'Dialogue'),
+    77→    (v_cat_cohesion, 'Sport'),
+    78→    (v_cat_cohesion, 'Activité communautaire'),
+    79→    (v_cat_cohesion, 'Activité culturelle'),
+    80→    (v_cat_cohesion, 'Promotion de la paix'),
+    81→    (v_cat_cohesion, 'Vivre-ensemble')
+    82→  ON CONFLICT DO NOTHING;
+    83→  
+    84→  -- Visites de compassion : 3 types
+    85→  INSERT INTO activity_types (category_id, nom) VALUES
+    86→    (v_cat_visites, 'Visite'),
+    87→    (v_cat_visites, 'Assistance'),
+    88→    (v_cat_visites, 'Accompagnement')
+    89→  ON CONFLICT DO NOTHING;
+    90→  
+    91→  -- Alerte précoce : 4 types
+    92→  INSERT INTO activity_types (category_id, nom) VALUES
+    93→    (v_cat_alerte, 'Alerte'),
+    94→    (v_cat_alerte, 'Vérification'),
+    95→    (v_cat_alerte, 'Suivi'),
+    96→    (v_cat_alerte, 'Intervention')
+    97→  ON CONFLICT DO NOTHING;
+    98→  
+    99→  -- Autres : 6 types
+   100→  INSERT INTO activity_types (category_id, nom) VALUES
+   101→    (v_cat_autres, 'Réunion'),
+   102→    (v_cat_autres, 'Cérémonie'),
+   103→    (v_cat_autres, 'Mission'),
+   104→    (v_cat_autres, 'Atelier'),
+   105→    (v_cat_autres, 'Supervision'),
+   106→    (v_cat_autres, 'Journée internationale/nationale')
+   107→  ON CONFLICT DO NOTHING;
+   108→  
+   109→  RAISE NOTICE 'Types d''activités insérés';
+   110→END $$;
+   111→
+   112→
+   113→-- ============================================================================
+   114→-- 3. RÉGIONS DE CÔTE D'IVOIRE (31 régions + 2 districts autonomes)
+   115→-- ============================================================================
+   116→
+   117→INSERT INTO regions (nom, code) VALUES
+   118→-- Districts autonomes (2)
+   119→('District d''Abidjan', 'ABJ'),
+   120→('District de Yamoussoukro', 'YKR'),
+   121→
+   122→-- Régions (31)
+   123→('Agnéby-Tiassa', 'AGT'),
+   124→('Bafing', 'BAF'),
+   125→('Bagoué', 'BAG'),
+   126→('Béré', 'BER'),
+   127→('Bounkani', 'BKN'),
+   128→('Cavally', 'CAV'),
+   129→('Folon', 'FOL'),
+   130→('Gbêkê', 'GBE'),
+   131→('Gbôklé', 'GBK'),
+   132→('Gôh', 'GOH'),
+   133→('Gontougo', 'GNT'),
+   134→('Grands-Ponts', 'GRP'),
+   135→('Guémon', 'GUE'),
+   136→('Hambol', 'HAM'),
+   137→('Haut-Sassandra', 'HSS'),
+   138→('Iffou', 'IFF'),
+   139→('Indénié-Djuablin', 'IDJ'),
+   140→('Kabadougou', 'KAB'),
+   141→('La Mé', 'LME'),
+   142→('Lôh-Djiboua', 'LDJ'),
+   143→('Marahoué', 'MAR'),
+   144→('Moronou', 'MOR'),
+   145→('N''Zi', 'NZI'),
+   146→('Nawa', 'NAW'),
+   147→('Poro', 'POR'),
+   148→('San-Pédro', 'SAN'),
+   149→('Sud-Comoé', 'SUC'),
+   150→('Tchologo', 'TCH'),
+   151→('Tonkpi', 'TON'),
+   152→('Worodougou', 'WOR')
+   153→ON CONFLICT (nom) DO NOTHING;
+   154→
+   155→
+   156→
+   157→-- ============================================================================
+   158→-- 4. DÉPARTEMENTS (principaux départements par région)
+   159→-- ============================================================================
+   160→
+   161→DO $$
+   162→DECLARE
+   163→  v_region_abidjan UUID;
+   164→  v_region_bouake UUID;
+   165→  v_region_daloa UUID;
+   166→  v_region_korhogo UUID;
+   167→  v_region_sanpedro UUID;
+   168→  v_region_yamoussoukro UUID;
+   169→  v_region_man UUID;
+   170→  v_region_gagnoa UUID;
+   171→  v_region_soubre UUID;
+   172→  v_region_abengourou UUID;
+   173→  v_region_sassandra UUID;
+   174→  v_region_bondoukou UUID;
+   175→BEGIN
+   176→  -- Récupérer les IDs des régions pour les départements
+   177→  SELECT id INTO v_region_abidjan FROM regions WHERE nom = 'District d''Abidjan';
+   178→  SELECT id INTO v_region_yamoussoukro FROM regions WHERE nom = 'District de Yamoussoukro';
+   179→  SELECT id INTO v_region_bouake FROM regions WHERE nom = 'Gbêkê';
+   180→  SELECT id INTO v_region_daloa FROM regions WHERE nom = 'Haut-Sassandra';
+   181→  SELECT id INTO v_region_korhogo FROM regions WHERE nom = 'Poro';
+   182→  SELECT id INTO v_region_sanpedro FROM regions WHERE nom = 'San-Pédro';
+   183→  SELECT id INTO v_region_man FROM regions WHERE nom = 'Tonkpi';
+   184→  SELECT id INTO v_region_gagnoa FROM regions WHERE nom = 'Gôh';
+   185→  SELECT id INTO v_region_soubre FROM regions WHERE nom = 'Nawa';
+   186→  SELECT id INTO v_region_abengourou FROM regions WHERE nom = 'Indénié-Djuablin';
+   187→  SELECT id INTO v_region_sassandra FROM regions WHERE nom = 'Gbôklé';
+   188→  SELECT id INTO v_region_bondoukou FROM regions WHERE nom = 'Zanzan';
+   189→
+   190→  -- Départements du District d'Abidjan (10 communes traitées comme départements)
+   191→  INSERT INTO departments (nom, code, region_id) VALUES
+   192→    ('Abidjan', 'ABJ', v_region_abidjan),
+   193→    ('Attécoubé', 'ATC', v_region_abidjan),
+   194→    ('Adjamé', 'ADJ', v_region_abidjan),
+   195→    ('Yopougon', 'YOP', v_region_abidjan),
+   196→    ('Cocody', 'COC', v_region_abidjan),
+   197→    ('Plateau', 'PLA', v_region_abidjan),
+   198→    ('Treichville', 'TRV', v_region_abidjan),
+   199→    ('Marcory', 'MAR', v_region_abidjan),
+   200→    ('Koumassi', 'KMS', v_region_abidjan),
+   201→    ('Port-Bouët', 'PBT', v_region_abidjan)
+   202→  ON CONFLICT DO NOTHING;
+   203→
+   204→  -- Départements de Gbêkê (Bouaké)
+   205→  INSERT INTO departments (nom, code, region_id) VALUES
+   206→    ('Bouaké', 'BKE', v_region_bouake),
+   207→    ('Sakassou', 'SKS', v_region_bouake),
+   208→    ('Béoumi', 'BEU', v_region_bouake),
+   209→    ('Botro', 'BOT', v_region_bouake),
+   210→    ('Koko', 'KKO', v_region_bouake)
+   211→  ON CONFLICT DO NOTHING;
+   212→
+   213→  -- Départements de Haut-Sassandra (Daloa)
+   214→  INSERT INTO departments (nom, code, region_id) VALUES
+   215→    ('Daloa', 'DAL', v_region_daloa),
+   216→    ('Issia', 'ISS', v_region_daloa),
+   217→    ('Vavoua', 'VAV', v_region_daloa),
+   218→    ('Zoukougbeu', 'ZOZ', v_region_daloa),
+   219→    ('Bouaflé', 'BUF', v_region_daloa)
+   220→  ON CONFLICT DO NOTHING;
+   221→
+   222→  -- Départements de Poro (Korhogo)
+   223→  INSERT INTO departments (nom, code, region_id) VALUES
+   224→    ('Korhogo', 'KRG', v_region_korhogo),
+   225→    ('Sinématiali', 'SIN', v_region_korhogo),
+   226→    ('Kong', 'KNG', v_region_korhogo),
+   227→    ('M''Bengué', 'MBG', v_region_korhogo)
+   228→  ON CONFLICT DO NOTHING;
+   229→
+   230→  -- Départements de San-Pédro
+   231→  INSERT INTO departments (nom, code, region_id) VALUES
+   232→    ('San-Pédro', 'SPD', v_region_sanpedro),
+   233→    ('Tabou', 'TAB', v_region_sanpedro),
+   234→    ('Saint-Pierre-Du-Sud', 'SPS', v_region_sanpedro),
+   235→    ('Djouroutou', 'DJR', v_region_sanpedro)
+   236→  ON CONFLICT DO NOTHING;
+   237→
+   238→  -- Départements de Yamoussoukro
+   239→  INSERT INTO departments (nom, code, region_id) VALUES
+   240→    ('Yamoussoukro', 'YMK', v_region_yamoussoukro),
+   241→    ('Attiegouakro', 'ATG', v_region_yamoussoukro),
+   242→    ('Yamoussoukro-Ville', 'YMV', v_region_yamoussoukro)
+   243→  ON CONFLICT DO NOTHING;
+   244→
+   245→  -- Départements de Tonkpi (Man)
+   246→  INSERT INTO departments (nom, code, region_id) VALUES
+   247→    ('Man', 'MAN', v_region_man),
+   248→    ('Danané', 'DAN', v_region_man),
+   249→    ('Zouan-Hounien', 'ZOU', v_region_man),
+   250→    ('Bin-Houyé', 'BIN', v_region_man),
+   251→    ('Bloléquin', 'BLO', v_region_man),
+   252→    ('Toulépleu', 'TOU', v_region_man),
+   253→    ('Kpânzan', 'KPA', v_region_man)
+   254→  ON CONFLICT DO NOTHING;
+   255→
+   256→  -- Départements de Gôh (Gagnoa)
+   257→  INSERT INTO departments (nom, code, region_id) VALUES
+   258→    ('Gagnoa', 'GGA', v_region_gagnoa),
+   259→    ('Oumé', 'OUM', v_region_gagnoa),
+   260→    ('Loulou', 'LOL', v_region_gagnoa)
+   261→  ON CONFLICT DO NOTHING;
+   262→
+   263→  -- Départements de Nawa (Soubré)
+   264→  INSERT INTO departments (nom, code, region_id) VALUES
+   265→    ('Soubré', 'SUB', v_region_soubre),
+   266→    ('Buyo', 'BUY', v_region_soubre),
+   267→    ('Méagui', 'MEA', v_region_soubre),
+   268→    ('Guiglo', 'GUI', v_region_soubre),
+   269→    ('Toulépleu-Guiré', 'TLG', v_region_soubre)
+   270→  ON CONFLICT DO NOTHING;
+   271→
+   272→  -- Départements d'Indénié-Djuablin (Abengourou)
+   273→  INSERT INTO departments (nom, code, region_id) VALUES
+   274→    ('Abengourou', 'ABE', v_region_abengourou),
+   275→    ('Agboville', 'AGB', v_region_abengourou),
+   276→    ('Assikoi', 'ASK', v_region_abengourou),
+   277→    ('Betitie', 'BET', v_region_abengourou)
+   278→  ON CONFLICT DO NOTHING;
+   279→
+   280→  -- Départements supplémentaires importants
+   281→  -- Gbôklé (Sassandra)
+   282→  INSERT INTO departments (nom, code, region_id) VALUES
+   283→    ('Sassandra', 'SSA', v_region_sassandra),
+   284→    ('Fresco', 'FRS', v_region_sassandra),
+   285→    ('Soubre-Gbôklé', 'SGB', v_region_sassandra)
+   286→  ON CONFLICT DO NOTHING;
+   287→
+   288→  RAISE NOTICE 'Départements insérés';
+   289→END $$;
+   290→
+   291→
+   292→-- ============================================================================
+   293→-- 5. TYPES D'INCIDENTS (8 types)
+   294→-- ============================================================================
+   295→
+   296→INSERT INTO incident_types (nom, description) VALUES
+   297→('Conflit communautaire', 'Conflits entre communautés ou groupes sociaux'),
+   298→('Catastrophe naturelle', 'Événements naturels majeurs (inondations, sécheresse, tremblement de terre)'),
+   299→('Incendie', 'Incendies de forêts, habitations ou infrastructures'),
+   300→('Inondation', 'Inondations dues aux pluies ou crues'),
+   301→('Épidémie', 'Propagation de maladies contagieuses'),
+   302→('Accident', 'Accidents de la route, du travail ou domestiques'),
+   303→('Tension sociale', 'Tensions sociales pouvant dégénérer en conflits'),
+   304→('Autre', 'Autres types d''incidents non classifiés')
+   305→ON CONFLICT (nom) DO NOTHING;
+   306→
+   307→
+   308→
+   309→-- ============================================================================
+   310→-- 6. INDICATEURS GLOBAUX (7 indicateurs)
+   311→-- ============================================================================
+   312→
+   313→INSERT INTO indicators (nom, unite, kind, axe, organization_id) VALUES
+   314→('Nombre d''activités réalisées', 'activités', 'QUANTITATIF', 'Performance globale', NULL),
+   315→('Nombre de bénéficiaires directs', 'personnes', 'QUANTITATIF', 'Impact social', NULL),
+   316→('Nombre de femmes bénéficiaires', 'femmes', 'QUANTITATIF', 'Genre et inclusion', NULL),
+   317→('Nombre de personnes vulnérables assistées', 'personnes', 'QUANTITATIF', 'Protection sociale', NULL),
+   318→('Nombre de sessions de sensibilisation', 'sessions', 'QUANTITATIF', 'Prévention', NULL),
+   319→('Nombre d''alertes traitées', 'alertes', 'QUANTITATIF', 'Sécurité', NULL),
+   320→('Taux de résolution des incidents', '%', 'QUANTITATIF', 'Réponse aux crises', NULL)
+   321→ON CONFLICT DO NOTHING;
+   322→
+   323→
+   324→
+   325→-- ============================================================================
+   326→-- 7. ADMIN SETTINGS
+   327→-- ============================================================================
+   328→
+   329→INSERT INTO admin_settings (whatsapp, email, textes) VALUES
+   330→('2250576103277', 'omouitsi@gmail.com', '{}'::jsonb)
+   331→ON CONFLICT DO NOTHING;
+   332→
+   333→
+   334→
+   335→-- ============================================================================
+   336→-- 8. DONNÉES DÉMO (SEED_DEMO)
+   337→-- Activation conditionnelle via variable ou toujours présent
+   338→-- ============================================================================
+   339→
+   340→DO $$
+   341→DECLARE
+   342→  v_org_demo UUID;
+   343→  v_plan_pro UUID;
+   344→  v_region_abidjan UUID;
+   345→  v_user_proprietaire UUID;
+   346→  v_user_agent UUID;
+   347→  v_cat_solidarite UUID;
+   348→  v_cat_cohesion UUID;
+   349→  v_cat_visites UUID;
+   350→  v_type_distri UUID;
+   351→  v_type_sensib UUID;
+   352→  v_type_formation UUID;
+   353→  v_type_visite UUID;
+   354→  v_type_accompagnement UUID;
+   355→  v_type_dialogue UUID;
+   356→  v_type_activite_commu UUID;
+   357→  v_type_sport UUID;
+   358→  v_incident_conflit UUID;
+   359→BEGIN
+   360→  -- Vérifier si l'organisation demo existe déjà
+   361→  SELECT id INTO v_org_demo FROM organizations WHERE nom = 'DR DÉMO Abidjan';
+   362→  
+   363→  IF v_org_demo IS NULL THEN
+   364→    -- Créer l'organisation démo
+   365→    INSERT INTO organizations (nom, type_org, region, departement, telephone, email, actif)
+   366→    VALUES ('DR DÉMO Abidjan', 'DR', 'District d''Abidjan', 'Abidjan', '+2250700000000', 'demo@eoscs.ci', true)
+   367→    RETURNING id INTO v_org_demo;
+   368→    
+   369→    -- Récupérer le plan Professionnel
+   370→    SELECT id INTO v_plan_pro FROM subscription_plans WHERE code = 'PROFESSIONNEL';
+   371→    
+   372→    -- Récupérer la région Abidjan
+   373→    SELECT id INTO v_region_abidjan FROM regions WHERE nom = 'District d''Abidjan';
+   374→    
+   375→    -- Créer un abonnement pour l'org démo (12 mois à partir de maintenant)
+   376→    INSERT INTO subscriptions (organization_id, plan_id, date_debut, date_fin, duree_mois, statut, montant)
+   377→    VALUES (v_org_demo, v_plan_pro, NOW(), NOW() + INTERVAL '12 months', 12, 'ACTIF', 180000);
+   378→    
+   379→    -- Créer les périodes pour 2026
+   380→    INSERT INTO periods (organization_id, annee, trimestre, statut) VALUES
+   381→      (v_org_demo, 2026, 1, 'OUVERT'),
+   382→      (v_org_demo, 2026, 2, 'OUVERT');
+   383→    
+   384→    -- Créer le plan annuel
+   385→    INSERT INTO annual_plans (organization_id, annee, titre, statut)
+   386→    VALUES (v_org_demo, 2026, 'Plan annuel 2026 - DR DÉMO Abidjan', 'OUVERT');
+   387→    
+   388→    RAISE NOTICE 'Organisation démo créée avec ID : %', v_org_demo;
+   389→  ELSE
+   390→    RAISE NOTICE 'Organisation démo existe déjà avec ID : %', v_org_demo;
+   391→  END IF;
+   392→  
+   393→  -- Récupérer les IDs des catégories et types pour les activités
+   394→  SELECT id INTO v_cat_solidarite FROM activity_categories WHERE code = 'SOLIDARITE';
+   395→  SELECT id INTO v_cat_cohesion FROM activity_categories WHERE code = 'COHESION_SOCIALE';
+   396→  SELECT id INTO v_cat_visites FROM activity_categories WHERE code = 'VISITES_COMPASSION';
+   397→  
+   398→  -- Récupérer les types d'activités
+   399→  SELECT id INTO v_type_distri FROM activity_types WHERE nom = 'Distribution' AND category_id = v_cat_solidarite;
+   400→  SELECT id INTO v_type_sensib FROM activity_types WHERE nom = 'Sensibilisation' AND category_id = v_cat_cohesion;
+   401→  SELECT id INTO v_type_formation FROM activity_types WHERE nom = 'Formation' AND category_id = v_cat_cohesion;
+   402→  SELECT id INTO v_type_visite FROM activity_types WHERE nom = 'Visite' AND category_id = v_cat_visites;
+   403→  SELECT id INTO v_type_accompagnement FROM activity_types WHERE nom = 'Accompagnement' AND category_id = v_cat_visites;
+   404→  SELECT id INTO v_type_dialogue FROM activity_types WHERE nom = 'Dialogue' AND category_id = v_cat_cohesion;
+   405→  SELECT id INTO v_type_activite_commu FROM activity_types WHERE nom = 'Activité communautaire' AND category_id = v_cat_cohesion;
+   406→  SELECT id INTO v_type_sport FROM activity_types WHERE nom = 'Sport' AND category_id = v_cat_cohesion;
+   407→  
+   408→  -- Récupérer le type d'incident conflit
+   409→  SELECT id INTO v_incident_conflit FROM incident_types WHERE nom = 'Conflit communautaire';
+   410→  
+   411→  -- Insérer 8 activités variées sur T1/T2 2026 si elles n'existent pas déjà
+   412→  -- Activité 1 : Distribution alimentaire (Janvier 2026)
+   413→  INSERT INTO activities (
+   414→    organization_id, reference, date_activite, region, departement,
+   415→    category_id, type_id, intitule, description, objectif,
+   416→    structure_responsable, responsables, resultats, statut
+   417→  ) VALUES (
+   418→    v_org_demo, 'ACT-2026-001', '2026-01-15', 'District d''Abidjan', 'Yopougon',
+   419→    v_cat_solidarite, v_type_distri, 
+   420→    'Distribution alimentaire aux familles vulnérables',
+   421→    'Distribution de kits alimentaires aux familles défavorisées du quartier Andokoi',
+   422→    'Soutenir 100 familles pendant la période de soudure',
+   423→    'Service solidarité', ARRAY['Koné Ibrahim', 'Touré Aminata'],
+   424→    '150 kits distribués, 120 familles bénéficiaires',
+   425→    'VALIDE'
+   426→  ) ON CONFLICT (reference) DO NOTHING;
+   427→  
+   428→  -- Bénéficiaires activité 1
+   429→  INSERT INTO beneficiaries (activity_id, hommes, femmes, enfants, adultes, personnes_agees, vulnerables, total)
+   430→  SELECT id, 35, 45, 40, 30, 10, 50, 150 FROM activities WHERE reference = 'ACT-2026-001'
+   431→  ON CONFLICT DO NOTHING;
+   432→  
+   433→  -- Activité 2 : Sensibilisation paix (Février 2026)
+   434→  INSERT INTO activities (
+   435→    organization_id, reference, date_activite, region, departement,
+   436→    category_id, type_id, intitule, description, objectif,
+   437→    structure_responsable, responsables, resultats, statut
+   438→  ) VALUES (
+   439→    v_org_demo, 'ACT-2026-002', '2026-02-20', 'District d''Abidjan', 'Abobo',
+   440→    v_cat_cohesion, v_type_sensib,
+   441→    'Campagne de sensibilisation pour la paix',
+   442→    'Sensibilisation des jeunes sur l''importance du vivre-ensemble et de la tolérance',
+   443→    'Toucher 500 jeunes avec un message de paix',
+   444→    'Service cohésion sociale', ARRAY['Bamba Kofi', 'Coulibaly Fatou'],
+   445→    '520 participants, 300 brochures distribuées',
+   446→    'VALIDE'
+   447→  ) ON CONFLICT (reference) DO NOTHING;
+   448→  
+   449→  -- Bénéficiaires activité 2
+   450→  INSERT INTO beneficiaries (activity_id, hommes, femmes, enfants, adultes, personnes_agees, vulnerables, total)
+   451→  SELECT id, 280, 240, 80, 440, 0, 60, 520 FROM activities WHERE reference = 'ACT-2026-002'
+   452→  ON CONFLICT DO NOTHING;
+   453→  
+   454→  -- Activité 3 : Formation leadership (Mars 2026)
+   455→  INSERT INTO activities (
+   456→    organization_id, reference, date_activite, region, departement,
+   457→    category_id, type_id, intitule, description, objectif,
+   458→    structure_responsable, responsables, resultats, statut
+   459→  ) VALUES (
+   460→    v_org_demo, 'ACT-2026-003', '2026-03-10', 'District d''Abidjan', 'Plateau',
+   461→    v_cat_cohesion, v_type_formation,
+   462→    'Formation au leadership communautaire',
+   463→    'Formation de 30 leaders communautaires sur la gestion des conflits et la médiation',
+   464→    'Renforcer les capacités de 30 leaders locaux',
+   465→    'Service formation', ARRAY['Diallo Mohamed', 'Yao Marie'],
+   466→    '30 formés, 90% de satisfaction',
+   467→    'VALIDE'
+   468→  ) ON CONFLICT (reference) DO NOTHING;
+   469→  
+   470→  -- Bénéficiaires activité 3
+   471→  INSERT INTO beneficiaries (activity_id, hommes, femmes, enfants, adultes, personnes_agees, vulnerables, total)
+   472→  SELECT id, 18, 12, 0, 30, 0, 5, 30 FROM activities WHERE reference = 'ACT-2026-003'
+   473→  ON CONFLICT DO NOTHING;
+   474→  
+   475→  -- Activité 4 : Visite compassion (Mars 2026)
+   476→  INSERT INTO activities (
+   477→    organization_id, reference, date_activite, region, departement,
+   478→    category_id, type_id, intitule, description, objectif,
+   479→    structure_responsable, responsables, resultats, statut
+   480→  ) VALUES (
+   481→    v_org_demo, 'ACT-2026-004', '2026-03-25', 'District d''Abidjan', 'Treichville',
+   482→    v_cat_visites, v_type_visite,
+   483→    'Visite au centre de soins palliatifs',
+   484→    'Visite d''écoute et de soutien moral aux patients du centre de soins palliatifs',
+   485→    'Apporter un réconfort aux patients et personnels soignants',
+   486→    'Service visites', ARRAY['Koffi Jeanne', 'Ouattara Issa'],
+   487→    '25 patients visités, dons de produits d''hygiène',
+   488→    'VALIDE'
+   489→  ) ON CONFLICT (reference) DO NOTHING;
+   490→  
+   491→  -- Bénéficiaires activité 4
+   492→  INSERT INTO beneficiaries (activity_id, hommes, femmes, enfants, adultes, personnes_agees, vulnerables, total)
+   493→  SELECT id, 8, 12, 0, 17, 8, 25, 25 FROM activities WHERE reference = 'ACT-2026-004'
+   494→  ON CONFLICT DO NOTHING;
+   495→  
+   496→  -- Activité 5 : Dialogue intercommunautaire (Avril 2026)
+   497→  INSERT INTO activities (
+   498→    organization_id, reference, date_activite, region, departement,
+   499→    category_id, type_id, intitule, description, objectif,
+   500→    structure_responsable, responsables, resultats, statut
+   501→  ) VALUES (
+   502→    v_org_demo, 'ACT-2026-005', '2026-04-05', 'District d''Abidjan', 'Adjame',
+   503→    v_cat_cohesion, v_type_dialogue,
+   504→    'Table ronde intercommunautaire',
+   505→    'Rencontre entre représentants des différentes communautés du quartier Adjamé',
+   506→    'Créer un espace de dialogue et prévenir les tensions',
+   507→    'Service médiation', ARRAY['Konaté Sékou', 'Aya Marie-Louise'],
+   508→    '45 participants, 3 accords signés',
+   509→    'VALIDE'
+   510→  ) ON CONFLICT (reference) DO NOTHING;
+   511→  
+   512→  -- Bénéficiaires activité 5
+   513→  INSERT INTO beneficiaries (activity_id, hommes, femmes, enfants, adultes, personnes_agees, vulnerables, total)
+   514→  SELECT id, 25, 20, 0, 45, 0, 10, 45 FROM activities WHERE reference = 'ACT-2026-005'
+   515→  ON CONFLICT DO NOTHING;
+   516→  
+   517→  -- Activité 6 : Activité sportive (Avril 2026)
+   518→  INSERT INTO activities (
+   519→    organization_id, reference, date_activite, region, departement,
+   520→    category_id, type_id, intitule, description, objectif,
+   521→    structure_responsable, responsables, resultats, statut
+   522→  ) VALUES (
+   523→    v_org_demo, 'ACT-2026-006', '2026-04-18', 'District d''Abidjan', 'Cocody',
+   524→    v_cat_cohesion, v_type_sport,
+   525→    'Tournoi de football pour la paix',
+   526→    'Organisation d''un tournoi de football réunissant des jeunes de différents quartiers',
+   527→    'Promouvoir la cohésion par le sport',
+   528→    'Service sports', ARRAY['Bamba Hervé', 'Diabaté Awa'],
+   529→    '8 équipes, 120 joueurs, finale réussie',
+   530→    'VALIDE'
+   531→  ) ON CONFLICT (reference) DO NOTHING;
+   532→  
+   533→  -- Bénéficiaires activité 6
+   534→  INSERT INTO beneficiaries (activity_id, hommes, femmes, enfants, adultes, personnes_agees, vulnerables, total)
+   535→  SELECT id, 95, 25, 65, 55, 0, 20, 120 FROM activities WHERE reference = 'ACT-2026-006'
+   536→  ON CONFLICT DO NOTHING;
+   537→  
+   538→  -- Activité 7 : Accompagnement personnes âgées (Mai 2026)
+   539→  INSERT INTO activities (
+   540→    organization_id, reference, date_activite, region, departement,
+   541→    category_id, type_id, intitule, description, objectif,
+   542→    structure_responsable, responsables, resultats, statut
+   543→  ) VALUES (
+   544→    v_org_demo, 'ACT-2026-007', '2026-05-12', 'District d''Abidjan', 'Marcory',
+   545→    v_cat_visites, v_type_accompagnement,
+   546→    'Accompagnement des personnes âgées isolées',
+   547→    'Programme de visite régulière et d''aide aux personnes âgées seules du quartier Marcory',
+   548→    'Accompagner 30 personnes âgées isolées',
+   549→    'Service compassion', ARRAY['Yao Philomène', 'Kouadio Emmanuel'],
+   550→    '30 personnes suivies, 15 visites à domicile réalisées',
+   551→    'EN_VERIFICATION'
+   552→  ) ON CONFLICT (reference) DO NOTHING;
+   553→  
+   554→  -- Bénéficiaires activité 7
+   555→  INSERT INTO beneficiaries (activity_id, hommes, femmes, enfants, adultes, personnes_agees, vulnerables, total)
+   556→  SELECT id, 8, 22, 0, 5, 25, 30, 30 FROM activities WHERE reference = 'ACT-2026-007'
+   557→  ON CONFLICT DO NOTHING;
+   558→  
+   559→  -- Activité 8 : Journée communautaire (Mai 2026)
+   560→  INSERT INTO activities (
+   561→    organization_id, reference, date_activite, region, departement,
+   562→    category_id, type_id, intitule, description, objectif,
+   563→    structure_responsable, responsables, resultats, statut
+   564→  ) VALUES (
+   565→    v_org_demo, 'ACT-2026-008', '2026-05-28', 'District d''Abidjan', 'Koumassi',
+   566→    v_cat_cohesion, v_type_activite_commu,
+   567→    'Journée de nettoyage et cohésion communautaire',
+   568→    'Grande journée de salubrité et de renforcement des liens communautaires',
+   569→    'Mobiliser 200 habitants pour l''amélioration de leur cadre de vie',
+   570→    'Service animation', ARRAY['Touré Mamadou', 'Affi Évelyne'],
+   571→    '250 participants, 3 tonnes de déchets collectés',
+   572→    'SOUMIS'
+   573→  ) ON CONFLICT (reference) DO NOTHING;
+   574→  
+   575→  -- Bénéficiaires activité 8
+   576→  INSERT INTO beneficiaries (activity_id, hommes, femmes, enfants, adultes, personnes_agees, vulnerables, total)
+   577→  SELECT id, 110, 140, 60, 190, 0, 30, 250 FROM activities WHERE reference = 'ACT-2026-008'
+   578→  ON CONFLICT DO NOTHING;
+   579→  
+   580→  -- Incident démo : Tension sociale (Janvier 2026)
+   581→  INSERT INTO incidents (
+   582→    organization_id, date, lieu, region, departement,
+   583→    nature, type_id, gravite, victimes, deces,
+   584→    actions_entreprises, acteurs, statut
+   585→  ) VALUES (
+   586→    v_org_demo, '2026-01-22', 'Quartier PK18, Abobo', 'District d''Abidjan', 'Abobo',
+   587→    'Tension entre groupes de jeunes suite à un différend foncier', v_incident_conflit,
+   588→    'MOYENNE', 0, 0,
+   589→    'Médiation engagée, rencontre avec les chefs de quartier prévue',
+   590→    ARRAY['MCNSLP', 'Chefs de quartier', 'Jeunesse'],
+   591→    'CLOTURE'
+   592→  );
+   593→  
+   594→  RAISE NOTICE 'Données démo créées (8 activités + 1 incident)';
+   595→END $$;
+   596→
+   597→
+   598→-- ============================================================================
+   599→-- Réactiver les triggers/RLS
+   600→-- ============================================================================
+   601→
+   602→
+   603→-- ============================================================================
+   604→-- VÉRIFICATION DU SEED
+   605→-- ============================================================================
+   606→SELECT 'subscription_plans' as table_name, count(*) as rows FROM subscription_plans
+   607→UNION ALL SELECT 'regions', count(*) FROM regions
+   608→UNION ALL SELECT 'departments', count(*) FROM departments
+   609→UNION ALL SELECT 'activity_categories', count(*) FROM activity_categories
+   610→UNION ALL SELECT 'activity_types', count(*) FROM activity_types
+   611→UNION ALL SELECT 'incident_types', count(*) FROM incident_types
+   612→UNION ALL SELECT 'indicateurs_globaux', count(*) FROM indicators WHERE organization_id IS NULL
+   613→UNION ALL SELECT 'admin_settings', count(*) FROM admin_settings
+   614→ORDER BY table_name;
+   615→

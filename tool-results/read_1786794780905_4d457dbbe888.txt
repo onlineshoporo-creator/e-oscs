@@ -1,0 +1,2002 @@
+     1→-- ============================================================================
+     2→-- MIGRATION INITIALE e-OSCS (SaaS Multi-Tenant pour MCNSLP Côte d'Ivoire)
+     3→-- ============================================================================
+     4→-- Fichier : 0001_init.sql
+     5→-- Description : Schéma complet de la base de données avec RLS, fonctions, triggers
+     6→-- Version : 1.0.0
+     7→-- Date création : 2025
+     8→-- ============================================================================
+     9→
+    10→-- ============================================================================
+    11→-- PARTIE 1 : TYPES ENUMÉRÉS (ENUMS)
+    12→-- ============================================================================
+    13→
+    14→-- Type énuméré pour les rôles au sein d'une organisation
+    15→DO $$ BEGIN
+    16→  CREATE TYPE org_role AS ENUM ('PROPRIETAIRE', 'AGENT', 'LECTEUR');
+    17→EXCEPTION
+    18→  WHEN duplicate_object THEN NULL;
+    19→END $$;
+    20→
+    21→COMMENT ON TYPE org_role IS 'Rôle d''un utilisateur dans une organisation : PROPRIETAIRE (droits complets), AGENT (lecture/écriture), LECTEUR (lecture seule)';
+    22→
+    23→-- Type énuméré pour les statuts d'abonnement
+    24→DO $$ BEGIN
+    25→  CREATE TYPE subscription_status AS ENUM ('DEMANDE', 'EN_TRAITEMENT', 'EN_ATTENTE_PAIEMENT', 'ACTIF', 'EXPIRANT_BIENTOT', 'EXPIRE', 'SUSPENDU', 'RESILIE');
+    26→EXCEPTION
+    27→  WHEN duplicate_object THEN NULL;
+    28→END $$;
+    29→
+    30→COMMENT ON TYPE subscription_status IS 'Statut d''un abonnement organisationnel';
+    31→
+    32→-- Type énuméré pour les statuts d'activité
+    33→DO $$ BEGIN
+    34→  CREATE TYPE activity_status AS ENUM ('BROUILLON', 'SOUMIS', 'EN_VERIFICATION', 'VALIDE', 'REJETE', 'CORRECTION', 'CONSOLIDE');
+    35→EXCEPTION
+    36→  WHEN duplicate_object THEN NULL;
+    37→END $$;
+    38→
+    39→COMMENT ON TYPE activity_status IS 'Cycle de vie d''une activité : BROUILLON -> SOUMIS -> EN_VERIFICATION -> VALIDÉ/REJETÉ -> CORRECTION/CONSOLIDÉ';
+    40→
+    41→-- Type énuméré pour les statuts de demande d'abonnement
+    42→DO $$ BEGIN
+    43→  CREATE TYPE request_status AS ENUM ('NOUVELLE', 'EN_CONTACT', 'EN_ATTENTE_PAIEMENT', 'AYEE', 'REFUSEE', 'CLOTUREE');
+    44→EXCEPTION
+    45→  WHEN duplicate_object THEN NULL;
+    46→END $$;
+    47→
+    48→COMMENT ON TYPE request_status IS 'Statut d''une demande d''abonnement reçue via le formulaire public';
+    49→
+    50→-- Type énuméré pour les statuts de période (trimestre)
+    51→DO $$ BEGIN
+    52→  CREATE TYPE period_status AS ENUM ('OUVERT', 'CLOTURE');
+    53→EXCEPTION
+    54→  WHEN duplicate_object THEN NULL;
+    55→END $$;
+    56→
+    57→COMMENT ON TYPE period_status IS 'Statut d''une période de déclaration : OUVERT (saisie possible) ou CLOTURÉE';
+    58→
+    59→-- Type énuméré pour le type d'indicateur
+    60→DO $$ BEGIN
+    61→  CREATE TYPE indicator_kind AS ENUM ('QUANTITATIF', 'QUALITATIF');
+    62→EXCEPTION
+    63→  WHEN duplicate_object THEN NULL;
+    64→END $$;
+    65→
+    66→COMMENT ON TYPE indicator_kind IS 'Nature d''un indicateur : QUANTITATIF (valeur numérique) ou QUALITATIF (texte descriptif)';
+    67→
+    68→-- Type énuméré pour la gravité d'un incident
+    69→DO $$ BEGIN
+    70→  CREATE TYPE severity AS ENUM ('FAIBLE', 'MOYENNE', 'ELEVEE', 'CRITIQUE');
+    71→EXCEPTION
+    72→  WHEN duplicate_object THEN NULL;
+    73→END $$;
+    74→
+    75→COMMENT ON TYPE severity IS 'Niveau de gravité d''un incident : FAIBLE, MOYENNE, ÉLEVÉE ou CRITIQUE';
+    76→
+    77→-- Type énuméré pour le statut d'un incident
+    78→DO $$ BEGIN
+    79→  CREATE TYPE incident_status AS ENUM ('EN_COURS', 'CLOTURE');
+    80→EXCEPTION
+    81→  WHEN duplicate_object THEN NULL;
+    82→END $$;
+    83→
+    84→COMMENT ON TYPE incident_status IS 'Statut de suivi d''un incident : EN_COURS ou CLOTURÉ';
+    85→
+    86→-- Type énuméré pour le type de pièce jointe
+    87→DO $$ BEGIN
+    88→  CREATE TYPE attachment_kind AS ENUM ('PHOTO', 'DOCUMENT');
+    89→EXCEPTION
+    90→  WHEN duplicate_object THEN NULL;
+    91→END $$;
+    92→
+    93→COMMENT ON TYPE attachment_kind IS 'Type de pièce jointe : PHOTO (image) ou DOCUMENT (fichier)';
+    94→
+    95→-- Type énuméré pour le type d'acteur
+    96→DO $$ BEGIN
+    97→  CREATE TYPE actor_type AS ENUM ('INTERNE', 'PARTENAIRE');
+    98→EXCEPTION
+    99→  WHEN duplicate_object THEN NULL;
+   100→END $$;
+   101→
+   102→COMMENT ON TYPE actor_type IS 'Type d''acteur impliqué dans une activité : INTERNE (agent MCNSLP) ou PARTENAIRE (extérieur)';
+   103→
+   104→
+   105→-- ============================================================================
+   106→-- PARTIE 2 : TABLES PRINCIPALES
+   107→-- ============================================================================
+   108→
+   109→-- ----------------------------------------------------------------------------
+   110→-- Table : organizations
+   111→-- Représente une organisation cliente (DR ou DD du MCNSLP)
+   112→-- ----------------------------------------------------------------------------
+   113→CREATE TABLE IF NOT EXISTS organizations (
+   114→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   115→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   116→  updated_at TIMESTAMPTZ,
+   117→  
+   118→  -- Informations identitaires
+   119→  nom TEXT NOT NULL,                          -- Nom de la direction régionale/départementale
+   120→  type_org TEXT NOT NULL CHECK (type_org IN ('DR', 'DD')), -- Direction Régionale ou Départementale
+   121→  region TEXT NOT NULL,                        -- Région administrative
+   122→  departement TEXT,                           -- Département (pour DD)
+   123→  
+   124→  -- Coordonnées
+   125→  telephone TEXT,                             -- Téléphone principal
+   126→  email TEXT,                                 -- Email professionnel
+   127→  
+   128→  -- Branding
+   129→  logo_url TEXT,                              -- URL du logo de l'organisation
+   130→  
+   131→  -- État
+   132→  actif BOOLEAN DEFAULT TRUE,                 -- Organisation active ou désactivée
+   133→  
+   134→  -- Traçabilité
+   135→  created_by UUID REFERENCES auth.users(id)   -- Créateur initial (super admin)
+   136→);
+   137→
+   138→COMMENT ON TABLE organizations IS 'Organisations clientes (DR/DD) du système multi-tenant';
+   139→COMMENT ON COLUMN organizations.type_org IS 'Type : DR = Direction Régionale, DD = Direction Départementale';
+   140→COMMENT ON COLUMN organizations.actif IS 'Permet de désactiver une organisation sans supprimer ses données';
+   141→
+   142→-- Index pour recherches fréquentes
+   143→CREATE INDEX idx_organizations_region ON organizations(region);
+   144→CREATE INDEX idx_organizations_type_org ON organizations(type_org);
+   145→CREATE INDEX idx_organizations_actif ON organizations(actif);
+   146→
+   147→
+   148→-- ----------------------------------------------------------------------------
+   149→-- Table : subscription_plans
+   150→-- Plans d'abonnement disponibles (table globale, non tenant)
+   151→-- ----------------------------------------------------------------------------
+   152→CREATE TABLE IF NOT EXISTS subscription_plans (
+   153→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   154→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   155→  updated_at TIMESTAMPTZ,
+   156→  
+   157→  code TEXT UNIQUE NOT NULL,                  -- Code unique du plan (ex: STARTER, PRO, ENTERPRISE)
+   158→  nom TEXT NOT NULL,                          -- Nom affiché du plan
+   159→  prix_mensuel INTEGER NOT NULL DEFAULT 0,    -- Prix en FCFA par mois
+   160→  max_users INTEGER,                          -- Nombre max d'utilisateurs (NULL = illimité)
+   161→  storage_gb INTEGER NOT NULL DEFAULT 1,      -- Espace stockage en Go
+   162→  features JSONB DEFAULT '{}',                -- Liste des fonctionnalités activées
+   163→  ordre INTEGER NOT NULL DEFAULT 0,           -- Ordre d'affichage
+   164→  actif BOOLEAN DEFAULT TRUE                  -- Plan disponible à la souscription
+   165→);
+   166→
+   167→COMMENT ON TABLE subscription_plans IS 'Catalogue des plans d''abonnement disponibles';
+   168→COMMENT ON COLUMN subscription_plans.features IS 'JSON des fonctionnalités : {"rapports": true, "api": false, ...}';
+   169→
+   170→CREATE INDEX idx_subscription_plans_code ON subscription_plans(code);
+   171→CREATE INDEX idx_subscription_plans_actif ON subscription_plans(actif);
+   172→
+   173→
+   174→-- ----------------------------------------------------------------------------
+   175→-- Table : subscriptions
+   176→-- Abonnements actifs des organisations
+   177→-- ----------------------------------------------------------------------------
+   178→CREATE TABLE IF NOT EXISTS subscriptions (
+   179→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   180→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   181→  updated_at TIMESTAMPTZ,
+   182→  
+   183→  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+   184→  plan_id UUID NOT NULL REFERENCES subscription_plans(id),
+   185→  
+   186→  -- Période
+   187→  date_debut TIMESTAMPTZ NOT NULL,            -- Date de début d'abonnement
+   188→  date_fin TIMESTAMPTZ NOT NULL,              -- Date de fin d'abonnement
+   189→  duree_mois INTEGER NOT NULL,                -- Durée en mois
+   190→  
+   191→  -- Statut et paiement
+   192→  statut subscription_status NOT NULL DEFAULT 'DEMANDE',
+   193→  montant INTEGER,                            -- Montant total payé en FCFA
+   194→  reference_paiement TEXT,                    -- Référence transaction paiement
+   195→  confirme_le TIMESTAMPTZ,                    -- Date de confirmation paiement
+   196→  confirme_par UUID,                          -- Utilisateur qui a confirmé
+   197→  
+   198→  notes TEXT                                  -- Notes internes
+   199→);
+   200→
+   201→COMMENT ON TABLE subscriptions IS 'Abonnements des organisations aux plans';
+   202→COMMENT ON COLUMN subscriptions.statut IS 'Statut calculé ou manuel de l''abonnement';
+   203→
+   204→CREATE INDEX idx_subscriptions_organization_id ON subscriptions(organization_id);
+   205→CREATE INDEX idx_subscriptions_plan_id ON subscriptions(plan_id);
+   206→CREATE INDEX idx_subscriptions_statut ON subscriptions(statut);
+   207→CREATE INDEX idx_subscriptions_date_fin ON subscriptions(date_fin);
+   208→
+   209→
+   210→-- ----------------------------------------------------------------------------
+   211→-- Table : activation_codes
+   212→-- Codes d'activation pour les nouvelles organisations (global)
+   213→-- ----------------------------------------------------------------------------
+   214→CREATE TABLE IF NOT EXISTS activation_codes (
+   215→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   216→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   217→  updated_at TIMESTAMPTZ,
+   218→  
+   219→  code TEXT UNIQUE NOT NULL,                  -- Code unique d'activation
+   220→  organization_id UUID REFERENCES organizations(id), -- Organisation associée après activation
+   221→  plan_id UUID REFERENCES subscription_plans(id),   -- Plan attribué
+   222→  
+   223→  email_proprietaire TEXT NOT NULL,           -- Email du futur propriétaire
+   224→  duree_mois INTEGER NOT NULL DEFAULT 12,     -- Durée offerte en mois
+   225→  expire_le TIMESTAMPTZ NOT NULL,             -- Date d'expiration du code
+   226→  
+   227→  -- Utilisation
+   228→  utilise BOOLEAN DEFAULT FALSE,              -- Code déjà utilisé ?
+   229→  utilise_le TIMESTAMPTZ,                     -- Date d'utilisation
+   230→  cree_par UUID                               -- Admin créateur du code
+   231→);
+   232→
+   233→COMMENT ON TABLE activation_codes IS 'Codes d''activation pour onboarder de nouvelles organisations';
+   234→COMMENT ON COLUMN activation_codes.code IS 'Code à communiquer au nouveau propriétaire (ex: EOSCS-XXXX-XXXX)';
+   235→
+   236→CREATE INDEX idx_activation_codes_code ON activation_codes(code);
+   237→CREATE INDEX idx_activation_codes_utilise ON activation_codes(utilise);
+   238→CREATE INDEX idx_activation_codes_expire_le ON activation_codes(expire_le);
+   239→
+   240→
+   241→-- ----------------------------------------------------------------------------
+   242→-- Table : subscription_requests
+   243→-- Demandes d'abonnement reçues depuis le formulaire public (global)
+   244→-- ----------------------------------------------------------------------------
+   245→CREATE TABLE IF NOT EXISTS subscription_requests (
+   246→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   247→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   248→  updated_at TIMESTAMPTZ,
+   249→  
+   250→  -- Identité demandeur
+   251→  nom TEXT NOT NULL,
+   252→  fonction TEXT NOT NULL,
+   253→  direction TEXT NOT NULL,
+   254→  type_direction TEXT CHECK (type_direction IN ('DR', 'DD')),
+   255→  region TEXT NOT NULL,
+   256→  departement TEXT,
+   257→  telephone TEXT NOT NULL,
+   258→  whatsapp TEXT,
+   259→  email TEXT NOT NULL,
+   260→  
+   261→  -- Besoins
+   262→  taille_equipe INTEGER,                      -- Taille estimée de l'équipe
+   263→  besoin TEXT,                                -- Description des besoins
+   264→  formule_souhaitee TEXT,                     -- Formule préférée
+   265→  
+   266→  -- Traitement
+   267→  statut request_status NOT NULL DEFAULT 'NOUVELLE',
+   268→  traite_par UUID,                            -- Administrateur en charge
+   269→  traite_le TIMESTAMPTZ,                      -- Date de dernier traitement
+   270→  notes_internes TEXT,                        -- Notes admin uniquement
+   271→  historique_statuts JSONB DEFAULT '[]'       -- Historique des changements de statut
+   272→);
+   273→
+   274→COMMENT ON TABLE subscription_requests IS 'Demandes d''abonnement soumises via le formulaire public';
+   275→COMMENT ON COLUMN subscription_requests.historique_statuts IS 'Format : [{"statut": "...", "date": "...", "user": "..."}]';
+   276→
+   277→CREATE INDEX idx_subscription_requests_statut ON subscription_requests(statut);
+   278→CREATE INDEX idx_subscription_requests_email ON subscription_requests(email);
+   279→CREATE INDEX idx_subscription_requests_region ON subscription_requests(region);
+   280→
+   281→
+   282→-- ----------------------------------------------------------------------------
+   283→-- Table : profiles
+   284→-- Profils utilisateurs (liés à auth.users de Supabase Auth)
+   285→-- L'id correspond à l'UUID de l'utilisateur dans auth.users
+   286→-- ----------------------------------------------------------------------------
+   287→CREATE TABLE IF NOT EXISTS profiles (
+   288→  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+   289→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   290→  updated_at TIMESTAMPTZ,
+   291→  
+   292→  nom_complet TEXT,                           -- Nom complet de l'utilisateur
+   293→  telephone TEXT,                             -- Téléphone personnel/professionnel
+   294→  
+   295→  -- Organisation (NULL = super administrateur)
+   296→  organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
+   297→  org_role org_role,                          -- Rôle dans l'organisation
+   298→  is_super_admin BOOLEAN DEFAULT FALSE,       -- Super admin plateforme
+   299→  
+   300→  -- État et avatar
+   301→  actif BOOLEAN DEFAULT TRUE,
+   302→  avatar_url TEXT                             -- URL avatar
+   303→);
+   304→
+   305→COMMENT ON TABLE profiles IS 'Profils utilisateurs étendus (jointure avec auth.users)';
+   306→COMMENT ON COLUMN profiles.id IS 'Correspond à auth.users.id - même UUID';
+   307→COMMENT ON COLUMN profiles.organization_id IS 'NULL pour les super admins';
+   308→COMMENT ON COLUMN profiles.org_role IS 'Rôle dans l''organisation (NULL si super admin sans org)';
+   309→
+   310→CREATE INDEX idx_profiles_organization_id ON profiles(organization_id);
+   311→CREATE INDEX idx_profiles_is_super_admin ON profiles(is_super_admin);
+   312→CREATE INDEX idx_profiles_actif ON profiles(actif);
+   313→
+   314→
+   315→-- ----------------------------------------------------------------------------
+   316→-- Table : regions
+   317→-- Référentiel des régions administratives de Côte d'Ivoire (global)
+   318→-- ----------------------------------------------------------------------------
+   319→CREATE TABLE IF NOT EXISTS regions (
+   320→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   321→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   322→  updated_at TIMESTAMPTZ,
+   323→  
+   324→  nom TEXT UNIQUE NOT NULL,                   -- Nom de la région
+   325→  code TEXT UNIQUE NOT NULL                   -- Code ISO/administratif
+   326→);
+   327→
+   328→COMMENT ON TABLE regions IS 'Référentiel des régions administratives ivoiriennes';
+   329→
+   330→CREATE INDEX idx_regions_nom ON regions(nom);
+   331→CREATE INDEX idx_regions_code ON regions(code);
+   332→
+   333→
+   334→-- ----------------------------------------------------------------------------
+   335→-- Table : departments
+   336→-- Référentiel des départements (global)
+   337→-- ----------------------------------------------------------------------------
+   338→CREATE TABLE IF NOT EXISTS departments (
+   339→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   340→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   341→  updated_at TIMESTAMPTZ,
+   342→  
+   343→  nom TEXT NOT NULL,
+   344→  code TEXT,
+   345→  region_id UUID NOT NULL REFERENCES regions(id) ON DELETE CASCADE
+   346→);
+   347→
+   348→COMMENT ON TABLE departments IS 'Référentiel des départements par région';
+   349→
+   350→CREATE INDEX idx_departments_region_id ON departments(region_id);
+   351→CREATE INDEX idx_departments_nom ON departments(nom);
+   352→
+   353→
+   354→-- ----------------------------------------------------------------------------
+   355→-- Table : structures
+   356→-- Services/structures internes d'une organisation
+   357→-- ----------------------------------------------------------------------------
+   358→CREATE TABLE IF NOT EXISTS structures (
+   359→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   360→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   361→  updated_at TIMESTAMPTZ,
+   362→  
+   363→  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+   364→  nom TEXT NOT NULL,                          -- Nom du service/structure
+   365→  description TEXT                            -- Description optionnelle
+   366→);
+   367→
+   368→COMMENT ON TABLE structures IS 'Services ou structures internes d''une organisation';
+   369→
+   370→CREATE INDEX idx_structures_organization_id ON structures(organization_id);
+   371→
+   372→
+   373→-- ----------------------------------------------------------------------------
+   374→-- Table : activity_categories
+   375→-- Catégories d'activités (référentiel global)
+   376→-- ----------------------------------------------------------------------------
+   377→CREATE TABLE IF NOT EXISTS activity_categories (
+   378→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   379→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   380→  updated_at TIMESTAMPTZ,
+   381→  
+   382→  code TEXT UNIQUE NOT NULL,                  -- Code unique de catégorie
+   383→  nom TEXT NOT NULL,                          -- Nom affiché
+   384→  description TEXT,                           -- Description détaillée
+   385→  couleur TEXT                                -- Couleur d'affichage (hex)
+   386→);
+   387→
+   388→COMMENT ON TABLE activity_categories IS 'Catégories principales d''activités MCNSLP';
+   389→
+   390→CREATE INDEX idx_activity_categories_code ON activity_categories(code);
+   391→
+   392→
+   393→-- ----------------------------------------------------------------------------
+   394→-- Table : activity_types
+   395→-- Types/sous-catégories d'activités
+   396→-- ----------------------------------------------------------------------------
+   397→CREATE TABLE IF NOT EXISTS activity_types (
+   398→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   399→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   400→  updated_at TIMESTAMPTZ,
+   401→  
+   402→  category_id UUID NOT NULL REFERENCES activity_categories(id) ON DELETE CASCADE,
+   403→  nom TEXT NOT NULL                           -- Nom du type d'activité
+   404→);
+   405→
+   406→COMMENT ON TABLE activity_types IS 'Types ou sous-catégories d''activités';
+   407→
+   408→CREATE INDEX idx_activity_types_category_id ON activity_types(category_id);
+   409→
+   410→
+   411→-- ----------------------------------------------------------------------------
+   412→-- Table : annual_plans
+   413→-- Plans annuels d'activités par organisation
+   414→-- ----------------------------------------------------------------------------
+   415→CREATE TABLE IF NOT EXISTS annual_plans (
+   416→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   417→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   418→  updated_at TIMESTAMPTZ,
+   419→  
+   420→  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+   421→  annee INTEGER NOT NULL,                     -- Année du plan
+   422→  titre TEXT,                                 -- Titre du plan
+   423→  statut period_status NOT NULL DEFAULT 'OUVERT'
+   424→);
+   425→
+   426→COMMENT ON TABLE annual_plans IS 'Plans annuels d''activités par organisation';
+   427→
+   428→CREATE INDEX idx_annual_plans_organization_id ON annual_plans(organization_id);
+   429→CREATE INDEX idx_annual_plans_annee ON annual_plans(annee);
+   430→CREATE UNIQUE INDEX idx_annual_plans_org_annee ON annual_plans(organization_id, annee);
+   431→
+   432→
+   433→-- ----------------------------------------------------------------------------
+   434→-- Table : plan_activities
+   435→-- Activités prévues dans un plan annuel
+   436→-- ----------------------------------------------------------------------------
+   437→CREATE TABLE IF NOT EXISTS plan_activities (
+   438→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   439→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   440→  updated_at TIMESTAMPTZ,
+   441→  
+   442→  plan_id UUID NOT NULL REFERENCES annual_plans(id) ON DELETE CASCADE,
+   443→  axe_strategique TEXT,                       -- Axe stratégique
+   444→  objectif TEXT,                              -- Objectif visé
+   445→  activite_prevue TEXT,                       -- Activité prévue
+   446→  indicateur TEXT,                            -- Indicateur de suivi
+   447→  cible TEXT,                                 -- Cible à atteindre
+   448→  responsable TEXT,                           -- Responsable désigné
+   449→  periode_prevue TEXT,                        -- Période prévue
+   450→  budget NUMERIC,                             -- Budget alloué
+   451→  observations TEXT                           -- Observations complémentaires
+   452→);
+   453→
+   454→COMMENT ON TABLE plan_activities IS 'Lignes d''activités dans un plan annuel';
+   455→
+   456→CREATE INDEX idx_plan_activities_plan_id ON plan_activities(plan_id);
+   457→
+   458→
+   459→-- ----------------------------------------------------------------------------
+   460→-- Table : activities
+   461→-- Activités réalisées (table centrale du système)
+   462→-- ----------------------------------------------------------------------------
+   463→CREATE TABLE IF NOT EXISTS activities (
+   464→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   465→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   466→  updated_at TIMESTAMPTZ,
+   467→  
+   468→  -- Organisation et référence
+   469→  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+   470→  reference TEXT UNIQUE NOT NULL,             -- Référence unique auto-générée
+   471→  
+   472→  -- Dates (avec colonnes générées pour agrégation)
+   473→  date_activite DATE NOT NULL,                -- Date de réalisation
+   474→  mois INTEGER GENERATED ALWAYS AS (EXTRACT(MONTH FROM date_activite)::INT) STORED,
+   475→  trimestre INTEGER GENERATED ALWAYS AS (CEIL(EXTRACT(MONTH FROM date_activite)/3.0)::INT) STORED,
+   476→  annee INTEGER GENERATED ALWAYS AS (EXTRACT(YEAR FROM date_activite)::INT) STORED,
+   477→  
+   478→  -- Localisation
+   479→  region TEXT NOT NULL,
+   480→  departement TEXT,
+   481→  sous_prefecture TEXT,
+   482→  
+   483→  -- Classification
+   484→  category_id UUID REFERENCES activity_categories(id),
+   485→  type_id UUID REFERENCES activity_types(id),
+   486→  
+   487→  -- Contenu
+   488→  intitule TEXT NOT NULL,                      -- Titre/intitulé de l'activité
+   489→  description TEXT,                            -- Description détaillée
+   490→  objectif TEXT,                               -- Objectif de l'activité
+   491→  structure_responsable TEXT,                  -- Service/structure responsable
+   492→  responsables TEXT[],                         -- Liste des responsables (noms)
+   493→  
+   494→  -- Résultats et analyse
+   495→  resultats TEXT,                              -- Résultats obtenus
+   496→  difficultes TEXT,                            -- Difficultés rencontrées
+   497→  recommandations TEXT,                        -- Recommandations
+   498→  perspectives TEXT,                           -- Perspectives
+   499→  observations TEXT,                           -- Observations générales
+   500→  
+   501→  -- Workflow validation
+   502→  statut activity_status DEFAULT 'BROUILLON',
+   503→  plan_activity_id UUID,                       -- Lien vers activité planifiée
+   504→  est_supplementaire BOOLEAN DEFAULT FALSE,    -- Hors plan initial
+   505→  
+   506→  -- Traçabilité
+   507→  cree_par UUID,                               -- Créateur de l'activité
+   508→  soumis_le TIMESTAMPTZ,                       -- Date de soumission
+   509→  valide_le TIMESTAMPTZ,                       -- Date de validation
+   510→  valide_par UUID,                             -- Validateur
+   511→  motif_rejet TEXT                             -- Motif de rejet si applicable
+   512→);
+   513→
+   514→COMMENT ON TABLE activities IS 'Table centrale : activités réalisées par les organisations';
+   515→COMMENT ON COLUMN activities.reference IS 'Référence unique formatée (ex: ACT-2024-001)';
+   516→COMMENT ON COLUMN activities.mois IS 'Colonne générée : numéro du mois (1-12)';
+   517→COMMENT ON COLUMN activities.trimestre IS 'Colonne générée : numéro du trimestre (1-4)';
+   518→COMMENT ON COLUMN activities.annee IS 'Colonne générée : année';
+   519→COMMENT ON COLUMN activities.est_supplementaire IS 'Activité non prévue au plan annuel';
+   520→
+   521→-- Index optimisés pour les requêtes métier
+   522→CREATE INDEX idx_activities_organization_id ON activities(organization_id);
+   523→CREATE INDEX idx_activities_date_activite ON activities(date_activite);
+   524→CREATE INDEX idx_activities_mois ON activities(mois);
+   525→CREATE INDEX idx_activities_trimestre ON activities(trimestre);
+   526→CREATE INDEX idx_activities_annee ON activities(annee);
+   527→CREATE INDEX idx_activities_statut ON activities(statut);
+   528→CREATE INDEX idx_activities_category_id ON activities(category_id);
+   529→CREATE INDEX idx_activities_type_id ON activities(type_id);
+   530→CREATE INDEX idx_activities_region ON activities(region);
+   531→CREATE INDEX idx_activities_reference ON activities(reference);
+   532→CREATE INDEX idx_activities_cree_par ON activities(cree_par);
+   533→
+   534→-- Index composite pour les filtres courants
+   535→CREATE INDEX idx_activities_org_annee_trimestre ON activities(organization_id, annee, trimestre);
+   536→CREATE INDEX idx_activities_org_statut ON activities(organization_id, statut);
+   537→
+   538→
+   539→-- ----------------------------------------------------------------------------
+   540→-- Table : activity_actors
+   541→-- Acteurs (internes/partenaires) impliqués dans une activité
+   542→-- ----------------------------------------------------------------------------
+   543→CREATE TABLE IF NOT EXISTS activity_actors (
+   544→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   545→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   546→  updated_at TIMESTAMPTZ,
+   547→  
+   548→  activity_id UUID NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+   549→  acteur TEXT NOT NULL,                       -- Nom de l'acteur
+   550→  type_acteur actor_type NOT NULL,            -- INTERNE ou PARTENAIRE
+   551→  role TEXT                                   -- Rôle dans l'activité
+   552→);
+   553→
+   554→COMMENT ON TABLE activity_actors IS 'Acteurs impliqués dans chaque activité';
+   555→
+   556→CREATE INDEX idx_activity_actors_activity_id ON activity_actors(activity_id);
+   557→CREATE INDEX idx_activity_actors_type_acteur ON activity_actors(type_acteur);
+   558→
+   559→
+   560→-- ----------------------------------------------------------------------------
+   561→-- Table : beneficiaries
+   562→-- Bénéficiaires d'une activité (démographie)
+   563→-- ----------------------------------------------------------------------------
+   564→CREATE TABLE IF NOT EXISTS beneficiaries (
+   565→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   566→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   567→  updated_at TIMESTAMPTZ,
+   568→  
+   569→  activity_id UUID NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+   570→  
+   571→  -- Démographie
+   572→  hommes INTEGER DEFAULT 0,                   -- Nombre d'hommes
+   573→  femmes INTEGER DEFAULT 0,                   -- Nombre de femmes
+   574→  enfants INTEGER DEFAULT 0,                  -- Nombre d'enfants (<18 ans)
+   575→  adultes INTEGER DEFAULT 0,                  -- Nombre d'adultes
+   576→  personnes_agees INTEGER DEFAULT 0,          -- Nombre de personnes âgées (>60 ans)
+   577→  vulnerables INTEGER DEFAULT 0,              -- Personnes vulnérables
+   578→  total INTEGER DEFAULT 0                     -- Total bénéficiaires
+   579→);
+   580→
+   581→COMMENT ON TABLE beneficiaries IS 'Démographie des bénéficiaires d''une activité';
+   582→COMMENT ON COLUMN beneficiaries.total IS 'Total calculé (doit être >= somme catégories)';
+   583→
+   584→CREATE INDEX idx_beneficiaries_activity_id ON beneficiaries(activity_id);
+   585→
+   586→-- Contrainte de cohérence sur les totaux
+   587→ALTER TABLE beneficiaries 
+   588→ADD CONSTRAINT check_beneficiaires_total 
+   589→CHECK (total >= hommes + femmes);
+   590→
+   591→
+   592→-- ----------------------------------------------------------------------------
+   593→-- Table : indicators
+   594→-- Indicateurs de suivi (globaux ou spécifiques à une organisation)
+   595→-- ----------------------------------------------------------------------------
+   596→CREATE TABLE IF NOT EXISTS indicators (
+   597→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   598→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   599→  updated_at TIMESTAMPTZ,
+   600→  
+   601→  nom TEXT NOT NULL,                          -- Nom de l'indicateur
+   602→  unite TEXT,                                 -- Unité de mesure
+   603→  kind indicator_kind NOT NULL,               -- Quantitatif ou qualitatif
+   604→  axe TEXT,                                   -- Axe stratégique
+   605→  category_id UUID REFERENCES activity_categories(id), -- Catégorie associée (optionnel)
+   606→  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE -- NULL = indicateur global
+   607→);
+   608→
+   609→COMMENT ON TABLE indicators IS 'Indicateurs de suivi (globaux ou personnalisés)';
+   610→COMMENT ON COLUMN indicators.organization_id IS 'NULL = indicateur global disponible pour toutes les organisations';
+   611→
+   612→CREATE INDEX idx_indicators_organization_id ON indicators(organization_id);
+   613→CREATE INDEX idx_indicators_category_id ON indicators(category_id);
+   614→CREATE INDEX idx_indicators_kind ON indicators(kind);
+   615→
+   616→
+   617→-- ----------------------------------------------------------------------------
+   618→-- Table : indicator_values
+   619→-- Valeurs d'indicateurs pour une activité
+   620→-- ----------------------------------------------------------------------------
+   621→CREATE TABLE IF NOT EXISTS indicator_values (
+   622→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   623→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   624→  updated_at TIMESTAMPTZ,
+   625→  
+   626→  activity_id UUID NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+   627→  indicator_id UUID NOT NULL REFERENCES indicators(id) ON DELETE CASCADE,
+   628→  
+   629→  valeur_numerique NUMERIC,                    -- Valeur quantitative
+   630→  valeur_texte TEXT                           -- Valeur qualitative
+   631→);
+   632→
+   633→COMMENT ON TABLE indicator_values IS 'Valeurs mesurées d''indicateurs par activité';
+   634→COMMENT ON COLUMN indicator_values.valeur_numerique IS 'Pour indicateurs quantitatifs';
+   635→COMMENT ON COLUMN indicator_values.valeur_texte IS 'Pour indicateurs qualitatifs';
+   636→
+   637→CREATE INDEX idx_indicator_values_activity_id ON indicator_values(activity_id);
+   638→CREATE INDEX idx_indicator_values_indicator_id ON indicator_values(indicator_id);
+   639→
+   640→-- Unicité : une seule valeur par couple activité/indicateur
+   641→CREATE UNIQUE INDEX idx_indicator_values_unique ON indicator_values(activity_id, indicator_id);
+   642→
+   643→
+   644→-- ----------------------------------------------------------------------------
+   645→-- Table : incident_types
+   646→-- Types d'incidents (référentiel global)
+   647→-- ----------------------------------------------------------------------------
+   648→CREATE TABLE IF NOT EXISTS incident_types (
+   649→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   650→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   651→  updated_at TIMESTAMPTZ,
+   652→  
+   653→  nom TEXT UNIQUE NOT NULL,                   -- Nom du type d'incident
+   654→  description TEXT                            -- Description détaillée
+   655→);
+   656→
+   657→COMMENT ON TABLE incident_types IS 'Typologie des incidents/sinistres';
+   658→
+   659→CREATE INDEX idx_incident_types_nom ON incident_types(nom);
+   660→
+   661→
+   662→-- ----------------------------------------------------------------------------
+   663→-- Table : incidents
+   664→-- Incidents/sinistres déclarés par les organisations
+   665→-- ----------------------------------------------------------------------------
+   666→CREATE TABLE IF NOT EXISTS incidents (
+   667→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   668→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   669→  updated_at TIMESTAMPTZ,
+   670→  
+   671→  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+   672→  
+   673→  -- Informations générales
+   674→  date DATE NOT NULL,                         -- Date de l'incident
+   675→  lieu TEXT NOT NULL,                         -- Lieu de l'incident
+   676→  region TEXT NOT NULL,
+   677→  departement TEXT,
+   678→  
+   679→  -- Classification
+   680→  nature TEXT NOT NULL,                       -- Nature de l'incident
+   681→  type_id UUID REFERENCES incident_types(id), -- Type prédéfini
+   682→  gravite severity NOT NULL DEFAULT 'MOYENNE',
+   683→  
+   684→  -- Impact humain
+   685→  victimes INTEGER DEFAULT 0,                 -- Nombre de victimes
+   686→  deces INTEGER DEFAULT 0,                    -- Nombre de décès
+   687→  
+   688→  -- Gestion
+   689→  actions_entreprises TEXT,                   -- Actions menées
+   690→  acteurs TEXT[],                             -- Acteurs intervenants
+   691→  statut incident_status DEFAULT 'EN_COURS'
+   692→);
+   693→
+   694→COMMENT ON TABLE incidents IS 'Déclaration d''incidents/sinistres';
+   695→
+   696→CREATE INDEX idx_incidents_organization_id ON incidents(organization_id);
+   697→CREATE INDEX idx_incidents_date ON incidents(date);
+   698→CREATE INDEX idx_incidents_gravite ON incidents(gravite);
+   699→CREATE INDEX idx_incidents_statut ON incidents(statut);
+   700→CREATE INDEX idx_incidents_region ON incidents(region);
+   701→CREATE INDEX idx_incidents_type_id ON incidents(type_id);
+   702→
+   703→
+   704→-- ----------------------------------------------------------------------------
+   705→-- Table : attachments
+   706→-- Pièces jointes (photos et documents)
+   707→-- ----------------------------------------------------------------------------
+   708→CREATE TABLE IF NOT EXISTS attachments (
+   709→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   710→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   711→  updated_at TIMESTAMPTZ,
+   712→  
+   713→  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+   714→  activity_id UUID REFERENCES activities(id) ON DELETE SET NULL,  -- Liée à une activité (optionnel)
+   715→  incident_id UUID REFERENCES incidents(id) ON DELETE SET NULL,   -- Ou liée à un incident (optionnel)
+   716→  
+   717→  kind attachment_kind NOT NULL,              -- PHOTO ou DOCUMENT
+   718→  storage_path TEXT NOT NULL,                 -- Chemin dans Supabase Storage
+   719→  nom_fichier TEXT NOT NULL,                  -- Nom original du fichier
+   720→  mime TEXT NOT NULL,                         -- Type MIME
+   721→  taille INTEGER NOT NULL,                    -- Taille en octets
+   722→  
+   723→  -- Métadonnées
+   724→  legende TEXT,                               -- Légende/crédit photo
+   725→  date_prise DATE,                            -- Date de prise (pour photos)
+   726→  lieu_prise TEXT,                            -- Lieu de prise
+   727→  description TEXT,                           -- Description
+   728→  selection_presentation BOOLEAN DEFAULT FALSE -- Sélectionnée pour présentation/rapport
+   729→);
+   730→
+   731→COMMENT ON TABLE attachments IS 'Pièces jointes (photos et documents) liées aux activités/incidents';
+   732→COMMENT ON COLUMN attachments.storage_path IS 'Chemin dans le bucket Storage';
+   733→COMMENT ON COLUMN attachments.selection_presentation IS 'Marquée pour inclusion automatique dans rapports';
+   734→
+   735→CREATE INDEX idx_attachments_organization_id ON attachments(organization_id);
+   736→CREATE INDEX idx_attachments_activity_id ON attachments(activity_id);
+   737→CREATE INDEX idx_attachments_incident_id ON attachments(incident_id);
+   738→CREATE INDEX idx_attachments_kind ON attachments(kind);
+   739→CREATE INDEX idx_attachments_selection_presentation ON attachments(selection_presentation);
+   740→
+   741→
+   742→-- ----------------------------------------------------------------------------
+   743→-- Table : periods
+   744→-- Périodes de déclaration (trimestres gérés par organisation)
+   745→-- ----------------------------------------------------------------------------
+   746→CREATE TABLE IF NOT EXISTS periods (
+   747→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   748→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   749→  updated_at TIMESTAMPTZ,
+   750→  
+   751→  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+   752→  annee INTEGER NOT NULL,
+   753→  trimestre INTEGER NOT NULL CHECK (trimestre BETWEEN 1 AND 4),
+   754→  statut period_status NOT NULL DEFAULT 'OUVERT',
+   755→  
+   756→  -- Cloture/Réouverture
+   757→  cloture_le TIMESTAMPTZ,
+   758→  cloture_par UUID,
+   759→  rouverte_le TIMESTAMPTZ,
+   760→  rouverte_par UUID,
+   761→  motif_reouverture TEXT
+   762→);
+   763→
+   764→COMMENT ON TABLE periods IS 'Périodes de déclaration (gestion ouverture/cloture trimestres)';
+   765→COMMENT ON COLUMN periods.statut IS 'OUVERT = saisie possible, CLOTURE = verrouillé';
+   766→
+   767→CREATE INDEX idx_periods_organization_id ON periods(organization_id);
+   768→CREATE INDEX idx_periods_annee ON periods(annee);
+   769→CREATE INDEX idx_periods_trimestre ON periods(trimestre);
+   770→CREATE INDEX idx_periods_statut ON periods(statut);
+   771→CREATE UNIQUE INDEX idx_periods_org_annee_trimestre ON periods(organization_id, annee, trimestre);
+   772→
+   773→
+   774→-- ----------------------------------------------------------------------------
+   775→-- Table : reports
+   776→-- Rapports générés (mensuels, trimestriels, annuels)
+   777→-- ----------------------------------------------------------------------------
+   778→CREATE TABLE IF NOT EXISTS reports (
+   779→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   780→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   781→  updated_at TIMESTAMPTZ,
+   782→  
+   783→  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+   784→  type_rapport TEXT NOT NULL CHECK (type_rapport IN ('MENSUEL', 'TRIMESTRIEL', 'ANNUEL')),
+   785→  annee INTEGER NOT NULL,
+   786→  periode INTEGER NOT NULL,                    -- Mois (1-12) ou Trimestre (1-4) selon type
+   787→  statut TEXT NOT NULL DEFAULT 'BROUILLON' CHECK (statut IN ('BROUILLON', 'FINAL')),
+   788→  titre TEXT                                  -- Titre personnalisé du rapport
+   789→);
+   790→
+   791→COMMENT ON TABLE reports IS 'Rapports générés (métadonnées, fichiers dans report_versions)';
+   792→COMMENT ON COLUMN reports.periode IS 'Mois pour MENSUEL, Trimestre pour TRIMESTRIEL/ANNUEL';
+   793→
+   794→CREATE INDEX idx_reports_organization_id ON reports(organization_id);
+   795→CREATE INDEX idx_reports_type_rapport ON reports(type_rapport);
+   796→CREATE INDEX idx_reports_annee ON reports(annee);
+   797→CREATE INDEX idx_reports_periode ON reports(periode);
+   798→CREATE INDEX idx_reports_statut ON reports(statut);
+   799→CREATE UNIQUE INDEX idx_reports_org_type_annee_periode ON reports(organization_id, type_rapport, annee, periode);
+   800→
+   801→
+   802→-- ----------------------------------------------------------------------------
+   803→-- Table : report_versions
+   804→-- Versions de fichiers de rapports générés
+   805→-- ----------------------------------------------------------------------------
+   806→CREATE TABLE IF NOT EXISTS report_versions (
+   807→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   808→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   809→  updated_at TIMESTAMPTZ,
+   810→  
+   811→  report_id UUID NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+   812→  version INTEGER NOT NULL DEFAULT 1,          -- Numéro de version
+   813→  format TEXT NOT NULL CHECK (format IN ('DOCX', 'PPTX')), -- Format de sortie
+   814→  storage_path TEXT NOT NULL,                  -- Chemin vers le fichier généré
+   815→  genere_par UUID,                             -- Utilisateur ayant demandé la génération
+   816→  parametres JSONB DEFAULT '{}'               -- Paramètres utilisés pour cette version
+   817→);
+   818→
+   819→COMMENT ON TABLE report_versions IS 'Fichiers de rapports générés (plusieurs versions possibles)';
+   820→COMMENT ON COLUMN report_versions.parametres IS 'Configuration utilisée : template, sections incluses, etc.';
+   821→
+   822→CREATE INDEX idx_report_versions_report_id ON report_versions(report_id);
+   823→CREATE INDEX idx_report_versions_format ON report_versions(format);
+   824→
+   825→
+   826→-- ----------------------------------------------------------------------------
+   827→-- Table : notifications
+   828→-- Notifications utilisateurs
+   829→-- ----------------------------------------------------------------------------
+   830→CREATE TABLE IF NOT EXISTS notifications (
+   831→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   832→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   833→  updated_at TIMESTAMPTZ,
+   834→  
+   835→  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+   836→  user_id UUID,                                -- Destinataire spécifique (NULL = tous membres org)
+   837→  type TEXT NOT NULL,                          -- Type de notification
+   838→  titre TEXT NOT NULL,                         -- Titre court
+   839→  message TEXT NOT NULL,                       -- Message détaillé
+   840→  lien TEXT,                                   -- Lien action (optionnel)
+   841→  lue BOOLEAN DEFAULT FALSE                    -- Statut lecture
+   842→);
+   843→
+   844→COMMENT ON TABLE notifications IS 'Notifications destinées aux utilisateurs';
+   845→COMMENT ON COLUMN notifications.user_id IS 'NULL = notification pour tous les membres de l''organisation';
+   846→
+   847→CREATE INDEX idx_notifications_organization_id ON notifications(organization_id);
+   848→CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+   849→CREATE INDEX idx_notifications_lue ON notifications(lue);
+   850→CREATE INDEX idx_notifications_created_at ON notifications(created_at);
+   851→
+   852→
+   853→-- ----------------------------------------------------------------------------
+   854→-- Table : audit_logs
+   855→-- Journal d'audit des actions sensibles
+   856→-- ----------------------------------------------------------------------------
+   857→CREATE TABLE IF NOT EXISTS audit_logs (
+   858→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   859→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   860→  
+   861→  organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
+   862→  user_id UUID NOT NULL,                       -- Auteur de l'action
+   863→  action TEXT NOT NULL,                        -- Action effectuée (INSERT, UPDATE, DELETE, etc.)
+   864→  objet_type TEXT NOT NULL,                    -- Type d'objet modifié
+   865→  objet_id UUID NOT NULL,                      -- ID de l'objet
+   866→  ancienne_valeur JSONB,                       -- Valeur avant modification
+   867→  nouvelle_valeur JSONB,                       -- Valeur après modification
+   868→  
+   869→  -- Contexte technique
+   870→  ip TEXT,                                     -- IP de l'utilisateur
+   871→  user_agent TEXT                              -- User agent navigateur
+   872→);
+   873→
+   874→COMMENT ON TABLE audit_logs IS 'Journal d''audit traçant les modifications sensibles';
+   875→COMMENT ON COLUMN audit_logs.ancienne_valeur IS 'Snapshot de l''objet avant modification (JSON)';
+   876→COMMENT ON COLUMN audit_logs.nouvelle_valeur IS 'Snapshot de l''objet après modification (JSON)';
+   877→
+   878→CREATE INDEX idx_audit_logs_organization_id ON audit_logs(organization_id);
+   879→CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
+   880→CREATE INDEX idx_audit_logs_objet_type ON audit_logs(objet_type);
+   881→CREATE INDEX idx_audit_logs_objet_id ON audit_logs(objet_id);
+   882→CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+   883→CREATE INDEX idx_audit_logs_action ON audit_logs(action);
+   884→
+   885→
+   886→-- ----------------------------------------------------------------------------
+   887→-- Table : admin_settings
+   888→-- Configuration globale de la plateforme (singleton)
+   889→-- ----------------------------------------------------------------------------
+   890→CREATE TABLE IF NOT EXISTS admin_settings (
+   891→  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   892→  created_at TIMESTAMPTZ DEFAULT NOW(),
+   893→  updated_at TIMESTAMPTZ,
+   894→  
+   895→  whatsapp TEXT,                               -- Numéro WhatsApp contact support
+   896→  email TEXT,                                  -- Email contact support
+   897→  textes JSONB DEFAULT '{}'                    -- Textes configurables (mentions légales, etc.)
+   898→);
+   899→
+   900→COMMENT ON TABLE admin_settings IS 'Paramètres globaux de la plateforme (une seule ligne)';
+   901→
+   902→-- Insertion de la ligne initiale si inexistante
+   903→INSERT INTO admin_settings (id, whatsapp, email, textes)
+   904→VALUES (gen_random_uuid(), NULL, NULL, '{}')
+   905→ON CONFLICT DO NOTHING;
+   906→
+   907→
+   908→-- ============================================================================
+   909→-- PARTIE 3 : FONCTIONS SQL HELPER
+   910→-- ============================================================================
+   911→
+   912→-- ----------------------------------------------------------------------------
+   913→-- Fonction : current_org_id()
+   914→-- Retourne l'organisation_id de l'utilisateur connecté
+   915→-- Security Definer pour accès cross-schema (auth -> public)
+   916→-- ----------------------------------------------------------------------------
+   917→CREATE OR REPLACE FUNCTION current_org_id()
+   918→RETURNS uuid
+   919→LANGUAGE sql
+   920→STABLE SECURITY DEFINER
+   921→AS $$
+   922→  SELECT organization_id FROM public.profiles WHERE id = auth.uid();
+   923→$$;
+   924→
+   925→COMMENT ON FUNCTION current_org_id() IS 'Retourne l''ID organisation de l''utilisateur connecté';
+   926→
+   927→
+   928→-- ----------------------------------------------------------------------------
+   929→-- Fonction : current_org_role()
+   930→-- Retourne le rôle de l'utilisateur dans son organisation
+   931→-- ----------------------------------------------------------------------------
+   932→CREATE OR REPLACE FUNCTION current_org_role()
+   933→RETURNS org_role
+   934→LANGUAGE sql
+   935→STABLE SECURITY DEFINER
+   936→AS $$
+   937→  SELECT org_role FROM public.profiles WHERE id = auth.uid();
+   938→$$;
+   939→
+   940→COMMENT ON FUNCTION current_org_role() IS 'Retourne le rôle (PROPRIETAIRE/AGENT/LECTEUR) de l''utilisateur connecté';
+   941→
+   942→
+   943→-- ----------------------------------------------------------------------------
+   944→-- Fonction : is_super_admin()
+   945→-- Vérifie si l'utilisateur est super administrateur
+   946→-- ----------------------------------------------------------------------------
+   947→CREATE OR REPLACE FUNCTION is_super_admin()
+   948→RETURNS boolean
+   949→LANGUAGE sql
+   950→STABLE SECURITY DEFINER
+   951→AS $$
+   952→  SELECT COALESCE(
+   953→    (SELECT is_super_admin FROM public.profiles WHERE id = auth.uid()),
+   954→    false
+   955→  );
+   956→$$;
+   957→
+   958→COMMENT ON FUNCTION is_super_admin() IS 'Vérifie si l''utilisateur est super administrateur de la plateforme';
+   959→
+   960→
+   961→-- ----------------------------------------------------------------------------
+   962→-- Fonction : compute_subscription_status()
+   963→-- Calcule le statut effectif d'un abonnement en fonction des dates
+   964→-- ----------------------------------------------------------------------------
+   965→CREATE OR REPLACE FUNCTION compute_subscription_status(subs subscriptions)
+   966→RETURNS subscription_status
+   967→LANGUAGE sql
+   968→STABLE
+   969→AS $$
+   970→  SELECT CASE
+   971→    WHEN subs.statut IN ('RESILIE', 'SUSPENDU') THEN subs.statut
+   972→    WHEN subs.date_fin <= NOW() THEN 'EXPIRE'::subscription_status
+   973→    WHEN subs.date_fin <= NOW() + INTERVAL '30 days' THEN 'EXPIRANT_BIENTOT'::subscription_status
+   974→    ELSE subs.statut
+   975→  END;
+   976→$$;
+   977→
+   978→COMMENT ON FUNCTION compute_subscription_status(subscriptions) IS 'Calcule le statut effectif d''un abonnement (gère expiration automatique)';
+   979→
+   980→
+   981→-- ----------------------------------------------------------------------------
+   982→-- Fonction : update_updated_at_column()
+   983→-- Trigger générique pour mettre à jour le champ updated_at
+   984→-- ----------------------------------------------------------------------------
+   985→CREATE OR REPLACE FUNCTION update_updated_at_column()
+   986→RETURNS TRIGGER
+   987→LANGUAGE plpgsql
+   988→AS $$
+   989→BEGIN
+   990→  NEW.updated_at = NOW();
+   991→  RETURN NEW;
+   992→END;
+   993→$$;
+   994→
+   995→COMMENT ON FUNCTION update_updated_at_column() IS 'Trigger : met à jour automaticement updated_at à chaque modification';
+   996→
+   997→
+   998→-- ----------------------------------------------------------------------------
+   999→-- Fonction : handle_new_user()
+  1000→-- Trigger appelé lors de la création d'un utilisateur dans auth.users
+  1001→-- Crée automatiquement le profil associé
+  1002→-- ----------------------------------------------------------------------------
+  1003→CREATE OR REPLACE FUNCTION handle_new_user()
+  1004→RETURNS TRIGGER
+  1005→LANGUAGE plpgsql
+  1006→SECURITY DEFINER
+  1007→AS $$
+  1008→BEGIN
+  1009→  INSERT INTO public.profiles (id, nom_complet)
+  1010→  VALUES (
+  1011→    NEW.id,
+  1012→    COALESCE(NEW.raw_user_meta_data->>'nom_complet', split_part(NEW.email, '@', 1))
+  1013→  );
+  1014→  RETURN NEW;
+  1015→END;
+  1016→$$;
+  1017→
+  1018→COMMENT ON FUNCTION handle_new_user() IS 'Trigger post-insert auth.users : crée le profil utilisateur automatiquement';
+  1019→
+  1020→
+  1021→-- ----------------------------------------------------------------------------
+  1022→-- Fonction : audit_trigger_function()
+  1023→-- Trigger générique d'audit qui logue les modifications dans audit_logs
+  1024→-- ----------------------------------------------------------------------------
+  1025→CREATE OR REPLACE FUNCTION audit_trigger_function()
+  1026→RETURNS TRIGGER
+  1027→LANGUAGE plpgsql
+  1028→SECURITY DEFINER
+  1029→AS $$
+  1030→DECLARE
+  1031→  v_old_json JSONB;
+  1032→  v_new_json JSONB;
+  1033→  v_user_id UUID;
+  1034→  v_org_id UUID;
+  1035→BEGIN
+  1036→  -- Récupération infos utilisateur
+  1037→  v_user_id := COALESCE(auth.uid(), '00000000-0000-0000-0000-000000000000'::uuid);
+  1038→  
+  1039→  -- Tentative récupération organisation (peut échouer si pas de profil)
+  1040→  BEGIN
+  1041→    SELECT organization_id INTO v_org_id FROM public.profiles WHERE id = v_user_id;
+  1042→  EXCEPTION WHEN OTHERS THEN
+  1043→    v_org_id := NULL;
+  1044→  END;
+  1045→  
+  1046→  -- Construction des snapshots
+  1047→  IF TG_OP = 'DELETE' THEN
+  1048→    v_old_json := to_jsonb(OLD);
+  1049→    v_new_json := NULL;
+  1050→  ELSIF TG_OP = 'INSERT' THEN
+  1051→    v_old_json := NULL;
+  1052→    v_new_json := to_jsonb(NEW);
+  1053→  ELSIF TG_OP = 'UPDATE' THEN
+  1054→    v_old_json := to_jsonb(OLD);
+  1055→    v_new_json := to_jsonb(NEW);
+  1056→  END IF;
+  1057→  
+  1058→  -- Insertion dans le journal d'audit
+  1059→  INSERT INTO public.audit_logs (
+  1060→    organization_id,
+  1061→    user_id,
+  1062→    action,
+  1063→    objet_type,
+  1064→    objet_id,
+  1065→    ancienne_valeur,
+  1066→    nouvelle_valeur
+  1067→  ) VALUES (
+  1068→    v_org_id,
+  1069→    v_user_id,
+  1070→    TG_OP,
+  1071→    TG_TABLE_NAME,
+  1072→    COALESCE(NEW.id, OLD.id),
+  1073→    v_old_json,
+  1074→    v_new_json
+  1075→  );
+  1076→  
+  1077→  -- Pour UPDATE/DELETE, on retourne la ligne originale/modifiée
+  1078→  IF TG_OP = 'DELETE' THEN
+  1079→    RETURN OLD;
+  1080→  ELSE
+  1081→    RETURN NEW;
+  1082→  END IF;
+  1083→END;
+  1084→$$;
+  1085→
+  1086→COMMENT ON FUNCTION audit_trigger_function() IS 'Trigger d''audit : enregistre toutes les modifications dans audit_logs';
+  1087→
+  1088→
+  1089→-- ============================================================================
+  1090→-- PARTIE 4 : TRIGGERS AUTOMATIQUES
+  1091→-- ============================================================================
+  1092→
+  1093→-- ----------------------------------------------------------------------------
+  1094→-- Trigger : updated_at automatique sur toutes les tables
+  1095→-- ----------------------------------------------------------------------------
+  1096→
+  1097→-- Organizations
+  1098→DROP TRIGGER IF EXISTS set_updated_at_organizations ON organizations;
+  1099→CREATE TRIGGER set_updated_at_organizations
+  1100→  BEFORE INSERT OR UPDATE ON organizations
+  1101→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1102→
+  1103→-- Subscription plans
+  1104→DROP TRIGGER IF EXISTS set_updated_at_subscription_plans ON subscription_plans;
+  1105→CREATE TRIGGER set_updated_at_subscription_plans
+  1106→  BEFORE INSERT OR UPDATE ON subscription_plans
+  1107→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1108→
+  1109→-- Subscriptions
+  1110→DROP TRIGGER IF EXISTS set_updated_at_subscriptions ON subscriptions;
+  1111→CREATE TRigger set_updated_at_subscriptions
+  1112→  BEFORE INSERT OR UPDATE ON subscriptions
+  1113→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1114→
+  1115→-- Activation codes
+  1116→DROP TRIGGER IF EXISTS set_updated_at_activation_codes ON activation_codes;
+  1117→CREATE TRIGGER set_updated_at_activation_codes
+  1118→  BEFORE INSERT OR UPDATE ON activation_codes
+  1119→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1120→
+  1121→-- Subscription requests
+  1122→DROP TRIGGER IF EXISTS set_updated_at_subscription_requests ON subscription_requests;
+  1123→CREATE TRIGGER set_updated_at_subscription_requests
+  1124→  BEFORE INSERT OR UPDATE ON subscription_requests
+  1125→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1126→
+  1127→-- Profiles
+  1128→DROP TRIGGER IF EXISTS set_updated_at_profiles ON profiles;
+  1129→CREATE TRIGGER set_updated_at_profiles
+  1130→  BEFORE INSERT OR UPDATE ON profiles
+  1131→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1132→
+  1133→-- Regions
+  1134→DROP TRIGGER IF EXISTS set_updated_at_regions ON regions;
+  1135→CREATE TRIGGER set_updated_at_regions
+  1136→  BEFORE INSERT OR UPDATE ON regions
+  1137→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1138→
+  1139→-- Departments
+  1140→DROP TRIGGER IF EXISTS set_updated_at_departments ON departments;
+  1141→CREATE TRIGGER set_updated_at_departments
+  1142→  BEFORE INSERT OR UPDATE ON departments
+  1143→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1144→
+  1145→-- Structures
+  1146→DROP TRIGGER IF EXISTS set_updated_at_structures ON structures;
+  1147→CREATE TRIGGER set_updated_at_structures
+  1148→  BEFORE INSERT OR UPDATE ON structures
+  1149→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1150→
+  1151→-- Activity categories
+  1152→DROP TRIGGER IF EXISTS set_updated_at_activity_categories ON activity_categories;
+  1153→CREATE TRIGGER set_updated_at_activity_categories
+  1154→  BEFORE INSERT OR UPDATE ON activity_categories
+  1155→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1156→
+  1157→-- Activity types
+  1158→DROP TRIGGER IF EXISTS set_updated_at_activity_types ON activity_types;
+  1159→CREATE TRIGGER set_updated_at_activity_types
+  1160→  BEFORE INSERT OR UPDATE ON activity_types
+  1161→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1162→
+  1163→-- Annual plans
+  1164→DROP TRIGGER IF EXISTS set_updated_at_annual_plans ON annual_plans;
+  1165→CREATE TRIGGER set_updated_at_annual_plans
+  1166→  BEFORE INSERT OR UPDATE ON annual_plans
+  1167→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1168→
+  1169→-- Plan activities
+  1170→DROP TRIGGER IF EXISTS set_updated_at_plan_activities ON plan_activities;
+  1171→CREATE TRIGGER set_updated_at_plan_activities
+  1172→  BEFORE INSERT OR UPDATE ON plan_activities
+  1173→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1174→
+  1175→-- Activities
+  1176→DROP TRIGGER IF EXISTS set_updated_at_activities ON activities;
+  1177→CREATE TRIGGER set_updated_at_activities
+  1178→  BEFORE INSERT OR UPDATE ON activities
+  1179→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1180→
+  1181→-- Activity actors
+  1182→DROP TRIGGER IF EXISTS set_updated_at_activity_actors ON activity_actors;
+  1183→CREATE TRIGGER set_updated_at_activity_actors
+  1184→  BEFORE INSERT OR UPDATE ON activity_actors
+  1185→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1186→
+  1187→-- Beneficiaries
+  1188→DROP TRIGGER IF EXISTS set_updated_at_beneficiaries ON beneficiaries;
+  1189→CREATE TRIGGER set_updated_at_beneficiaries
+  1190→  BEFORE INSERT OR UPDATE ON beneficiaries
+  1191→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1192→
+  1193→-- Indicators
+  1194→DROP TRIGGER IF EXISTS set_updated_at_indicators ON indicators;
+  1195→CREATE TRIGGER set_updated_at_indicators
+  1196→  BEFORE INSERT OR UPDATE ON indicators
+  1197→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1198→
+  1199→-- Indicator values
+  1200→DROP TRIGGER IF EXISTS set_updated_at_indicator_values ON indicator_values;
+  1201→CREATE TRIGGER set_updated_at_indicator_values
+  1202→  BEFORE INSERT OR UPDATE ON indicator_values
+  1203→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1204→
+  1205→-- Incident types
+  1206→DROP TRIGGER IF EXISTS set_updated_at_incident_types ON incident_types;
+  1207→CREATE TRIGGER set_updated_at_incident_types
+  1208→  BEFORE INSERT OR UPDATE ON incident_types
+  1209→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1210→
+  1211→-- Incidents
+  1212→DROP TRIGGER IF EXISTS set_updated_at_incidents ON incidents;
+  1213→CREATE TRIGGER set_updated_at_incidents
+  1214→  BEFORE INSERT OR UPDATE ON incidents
+  1215→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1216→
+  1217→-- Attachments
+  1218→DROP TRIGGER IF EXISTS set_updated_at_attachments ON attachments;
+  1219→CREATE TRIGGER set_updated_at_attachments
+  1220→  BEFORE INSERT OR UPDATE ON attachments
+  1221→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1222→
+  1223→-- Periods
+  1224→DROP TRIGGER IF EXISTS set_updated_at_periods ON periods;
+  1225→CREATE TRIGGER set_updated_at_periods
+  1226→  BEFORE INSERT OR UPDATE ON periods
+  1227→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1228→
+  1229→-- Reports
+  1230→DROP TRIGGER IF EXISTS set_updated_at_reports ON reports;
+  1231→CREATE TRIGGER set_updated_at_reports
+  1232→  BEFORE INSERT OR UPDATE ON reports
+  1233→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1234→
+  1235→-- Report versions
+  1236→DROP TRIGGER IF EXISTS set_updated_at_report_versions ON report_versions;
+  1237→CREATE TRIGGER set_updated_at_report_versions
+  1238→  BEFORE INSERT OR UPDATE ON report_versions
+  1239→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1240→
+  1241→-- Notifications
+  1242→DROP TRIGGER IF EXISTS set_updated_at_notifications ON notifications;
+  1243→CREATE TRIGGER set_updated_at_notifications
+  1244→  BEFORE INSERT OR UPDATE ON notifications
+  1245→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1246→
+  1247→-- Admin settings
+  1248→DROP TRIGGER IF EXISTS set_updated_at_admin_settings ON admin_settings;
+  1249→CREATE TRIGGER set_updated_at_admin_settings
+  1250→  BEFORE INSERT OR UPDATE ON admin_settings
+  1251→  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  1252→
+  1253→
+  1254→-- ----------------------------------------------------------------------------
+  1255→-- Trigger : handle_new_user sur auth.users
+  1256→-- Crée automatiquement le profil quand un utilisateur s'inscrit
+  1257→-- ----------------------------------------------------------------------------
+  1258→DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+  1259→CREATE TRIGGER on_auth_user_created
+  1260→  AFTER INSERT ON auth.users
+  1261→  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+  1262→
+  1263→
+  1264→-- ============================================================================
+  1265→-- PARTIE 5 : TRIGGERS D'AUDIT
+  1266→-- Tables auditées : modifications loguées dans audit_logs
+  1267→-- ============================================================================
+  1268→
+  1269→-- Audit des activités (table principale)
+  1270→DROP TRIGGER IF EXISTS audit_activities ON activities;
+  1271→CREATE TRIGGER audit_activities
+  1272→  AFTER UPDATE ON activities
+  1273→  FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+  1274→
+  1275→-- Audit des abonnements
+  1276→DROP TRIGGER IF EXISTS audit_subscriptions ON subscriptions;
+  1277→CREATE TRIGGER audit_subscriptions
+  1278→  AFTER INSERT OR UPDATE OR DELETE ON subscriptions
+  1279→  FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+  1280→
+  1281→-- Audit des organisations
+  1282→DROP TRIGGER IF EXISTS audit_organizations ON organizations;
+  1283→CREATE TRIGGER audit_organizations
+  1284→  AFTER INSERT OR UPDATE OR DELETE ON organizations
+  1285→  FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+  1286→
+  1287→-- Audit des profils
+  1288→DROP TRIGGER IF EXISTS audit_profiles ON profiles;
+  1289→CREATE TRIGGER audit_profiles
+  1290→  AFTER INSERT OR UPDATE OR DELETE ON profiles
+  1291→  FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+  1292→
+  1293→-- Audit des périodes (cloture/réouverture)
+  1294→DROP TRIGGER IF EXISTS audit_periods ON periods;
+  1295→CREATE TRIGGER audit_periods
+  1296→  AFTER INSERT OR UPDATE OR DELETE ON periods
+  1297→  FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+  1298→
+  1299→-- Audit des incidents
+  1300→DROP TRIGGER IF EXISTS audit_incidents ON incidents;
+  1301→CREATE TRIGGER audit_incidents
+  1302→  AFTER INSERT OR UPDATE ON incidents
+  1303→  FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
+  1304→
+  1305→
+  1306→-- ============================================================================
+  1307→-- PARTIE 6 : ROW LEVEL SECURITY (RLS)
+  1308→-- Activation et politiques par table
+  1309→-- ============================================================================
+  1310→
+  1311→-- ----------------------------------------------------------------------------
+  1312→-- Table : organizations
+  1313→-- ----------------------------------------------------------------------------
+  1314→ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+  1315→
+  1316→-- Les super admins voient tout, les autres voient leur organisation
+  1317→CREATE POLICY "select_organizations" ON organizations
+  1318→  FOR SELECT USING (
+  1319→    is_super_admin() OR id = current_org_id()
+  1320→  );
+  1321→
+  1322→-- Seuls les super admins peuvent créer des organisations
+  1323→CREATE POLICY "insert_organizations" ON organizations
+  1324→  FOR INSERT WITH CHECK (
+  1325→    is_super_admin()
+  1326→  );
+  1327→
+  1328→-- Seuls les super admins peuvent modifier
+  1329→CREATE POLICY "update_organizations" ON organizations
+  1330→  FOR UPDATE USING (
+  1331→    is_super_admin()
+  1332→  )
+  1333→  WITH CHECK (
+  1334→    is_super_admin()
+  1335→  );
+  1336→
+  1337→-- Seuls les super admins peuvent supprimer
+  1338→CREATE POLICY "delete_organizations" ON organizations
+  1339→  FOR DELETE USING (
+  1340→    is_super_admin()
+  1341→  );
+  1342→
+  1343→
+  1344→-- ----------------------------------------------------------------------------
+  1345→-- Table : subscriptions
+  1346→-- ----------------------------------------------------------------------------
+  1347→ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+  1348→
+  1349→CREATE POLICY "select_subscriptions" ON subscriptions
+  1350→  FOR SELECT USING (
+  1351→    is_super_admin() OR organization_id = current_org_id()
+  1352→  );
+  1353→
+  1354→CREATE POLICY "insert_subscriptions" ON subscriptions
+  1355→  FOR INSERT WITH CHECK (
+  1356→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1357→  );
+  1358→
+  1359→CREATE POLICY "update_subscriptions" ON subscriptions
+  1360→  FOR UPDATE USING (
+  1361→    is_super_admin() OR organization_id = current_org_id()
+  1362→  )
+  1363→  WITH CHECK (
+  1364→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1365→  );
+  1366→
+  1367→CREATE POLICY "delete_subscriptions" ON subscriptions
+  1368→  FOR DELETE USING (
+  1369→    is_super_admin() OR current_org_role() = 'PROPRIETAIRE'
+  1370→  );
+  1371→
+  1372→
+  1373→-- ----------------------------------------------------------------------------
+  1374→-- Table : subscription_plans (globale, lecture pour tous authentifiés)
+  1375→-- ----------------------------------------------------------------------------
+  1376→ALTER TABLE subscription_plans ENABLE ROW LEVEL SECURITY;
+  1377→
+  1378→CREATE POLICY "select_subscription_plans" ON subscription_plans
+  1379→  FOR SELECT USING (auth.uid() IS NOT NULL);
+  1380→
+  1381→CREATE POLICY "insert_subscription_plans" ON subscription_plans
+  1382→  FOR INSERT WITH CHECK (is_super_admin());
+  1383→
+  1384→CREATE POLICY "update_subscription_plans" ON subscription_plans
+  1385→  FOR UPDATE USING (is_super_admin())
+  1386→  WITH CHECK (is_super_admin());
+  1387→
+  1388→CREATE POLICY "delete_subscription_plans" ON subscription_plans
+  1389→  FOR DELETE USING (is_super_admin());
+  1390→
+  1391→
+  1392→-- ----------------------------------------------------------------------------
+  1393→-- Table : activation_codes (globale)
+  1394→-- ----------------------------------------------------------------------------
+  1395→ALTER TABLE activation_codes ENABLE ROW LEVEL SECURITY;
+  1396→
+  1397→-- Lecture : super admin ou code non utilisé visible publiquement (limité)
+  1398→CREATE POLICY "select_activation_codes" ON activation_codes
+  1399→  FOR SELECT USING (
+  1400→    is_super_admin() OR 
+  1401→    NOT utilise
+  1402→  );
+  1403→
+  1404→-- Écriture réservée aux super admins
+  1405→CREATE POLICY "insert_activation_codes" ON activation_codes
+  1406→  FOR INSERT WITH CHECK (is_super_admin());
+  1407→
+  1408→CREATE POLICY "update_activation_codes" ON activation_codes
+  1409→  FOR UPDATE USING (is_super_admin())
+  1410→  WITH CHECK (is_super_admin());
+  1411→
+  1412→CREATE POLICY "delete_activation_codes" ON activation_codes
+  1413→  FOR DELETE USING (is_super_admin());
+  1414→
+  1415→
+  1416→-- ----------------------------------------------------------------------------
+  1417→-- Table : subscription_requests (formulaire public)
+  1418→-- ----------------------------------------------------------------------------
+  1419→ALTER TABLE subscription_requests ENABLE ROW LEVEL SECURITY;
+  1420→
+  1421→-- Insertion publique (anon) pour le formulaire de demande
+  1422→CREATE POLICY "insert_subscription_requests_public" ON subscription_requests
+  1423→  FOR INSERT WITH CHECK (true);
+  1424→
+  1425→-- Lecture/Modification réservée aux super admins
+  1426→CREATE POLICY "select_subscription_requests" ON subscription_requests
+  1427→  FOR SELECT USING (is_super_admin());
+  1428→
+  1429→CREATE POLICY "update_subscription_requests" ON subscription_requests
+  1430→  FOR UPDATE USING (is_super_admin())
+  1431→  WITH CHECK (is_super_admin());
+  1432→
+  1433→CREATE POLICY "delete_subscription_requests" ON subscription_requests
+  1434→  FOR DELETE USING (is_super_admin());
+  1435→
+  1436→
+  1437→-- ----------------------------------------------------------------------------
+  1438→-- Table : profiles
+  1439→-- ----------------------------------------------------------------------------
+  1440→ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+  1441→
+  1442→-- Voir son propre profil ou super admin voit tout
+  1443→CREATE POLICY "select_profiles" ON profiles
+  1444→  FOR SELECT USING (
+  1445→    is_super_admin() OR id = auth.uid()
+  1446→  );
+  1447→
+  1448→-- Seuls super admins peuvent créer des profils (normalement via trigger)
+  1449→CREATE POLICY "insert_profiles" ON profiles
+  1450→  FOR INSERT WITH CHECK (
+  1451→    is_super_admin() OR id = auth.uid()
+  1452→  );
+  1453→
+  1454→-- Modifier son propre profil
+  1455→CREATE POLICY "update_profiles" ON profiles
+  1456→  FOR UPDATE USING (
+  1457→    is_super_admin() OR id = auth.uid()
+  1458→  )
+  1459→  WITH CHECK (
+  1460→    is_super_admin() OR id = auth.uid()
+  1461→  );
+  1462→
+  1463→-- Suppression réservée aux super admins
+  1464→CREATE POLICY "delete_profiles" ON profiles
+  1465→  FOR DELETE USING (is_super_admin());
+  1466→
+  1467→
+  1468→-- ----------------------------------------------------------------------------
+  1469→-- Table : regions (référentiel global)
+  1470→-- ----------------------------------------------------------------------------
+  1471→ALTER TABLE regions ENABLE ROW LEVEL SECURITY;
+  1472→
+  1473→CREATE POLICY "select_regions" ON regions
+  1474→  FOR SELECT USING (auth.uid() IS NOT NULL);
+  1475→
+  1476→CREATE POLICY "insert_regions" ON regions
+  1477→  FOR INSERT WITH CHECK (is_super_admin());
+  1478→
+  1479→CREATE POLICY "update_regions" ON regions
+  1480→  FOR UPDATE USING (is_super_admin())
+  1481→  WITH CHECK (is_super_admin());
+  1482→
+  1483→CREATE POLICY "delete_regions" ON regions
+  1484→  FOR DELETE USING (is_super_admin());
+  1485→
+  1486→
+  1487→-- ----------------------------------------------------------------------------
+  1488→-- Table : departments (référentiel global)
+  1489→-- ----------------------------------------------------------------------------
+  1490→ALTER TABLE departments ENABLE ROW LEVEL SECURITY;
+  1491→
+  1492→CREATE POLICY "select_departments" ON departments
+  1493→  FOR SELECT USING (auth.uid() IS NOT NULL);
+  1494→
+  1495→CREATE POLICY "insert_departments" ON departments
+  1496→  FOR INSERT WITH CHECK (is_super_admin());
+  1497→
+  1498→CREATE POLICY "update_departments" ON departments
+  1499→  FOR UPDATE USING (is_super_admin())
+  1500→  WITH CHECK (is_super_admin());
+  1501→
+  1502→CREATE POLICY "delete_departments" ON departments
+  1503→  FOR DELETE USING (is_super_admin());
+  1504→
+  1505→
+  1506→-- ----------------------------------------------------------------------------
+  1507→-- Table : structures (par organisation)
+  1508→-- ----------------------------------------------------------------------------
+  1509→ALTER TABLE structures ENABLE ROW LEVEL SECURITY;
+  1510→
+  1511→CREATE POLICY "select_structures" ON structures
+  1512→  FOR SELECT USING (
+  1513→    is_super_admin() OR organization_id = current_org_id()
+  1514→  );
+  1515→
+  1516→CREATE POLICY "insert_structures" ON structures
+  1517→  FOR INSERT WITH CHECK (
+  1518→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1519→  );
+  1520→
+  1521→CREATE POLICY "update_structures" ON structures
+  1522→  FOR UPDATE USING (
+  1523→    is_super_admin() OR organization_id = current_org_id()
+  1524→  )
+  1525→  WITH CHECK (
+  1526→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1527→  );
+  1528→
+  1529→CREATE POLICY "delete_structures" ON structures
+  1530→  FOR DELETE USING (
+  1531→    is_super_admin() OR current_org_role() = 'PROPRIETAIRE'
+  1532→  );
+  1533→
+  1534→
+  1535→-- ----------------------------------------------------------------------------
+  1536→-- Table : activity_categories (référentiel global)
+  1537→-- ----------------------------------------------------------------------------
+  1538→ALTER TABLE activity_categories ENABLE ROW LEVEL SECURITY;
+  1539→
+  1540→CREATE POLICY "select_activity_categories" ON activity_categories
+  1541→  FOR SELECT USING (auth.uid() IS NOT NULL);
+  1542→
+  1543→CREATE POLICY "insert_activity_categories" ON activity_categories
+  1544→  FOR INSERT WITH CHECK (is_super_admin());
+  1545→
+  1546→CREATE POLICY "update_activity_categories" ON activity_categories
+  1547→  FOR UPDATE USING (is_super_admin())
+  1548→  WITH CHECK (is_super_admin());
+  1549→
+  1550→CREATE POLICY "delete_activity_categories" ON activity_categories
+  1551→  FOR DELETE USING (is_super_admin());
+  1552→
+  1553→
+  1554→-- ----------------------------------------------------------------------------
+  1555→-- Table : activity_types (référentiel global)
+  1556→-- ----------------------------------------------------------------------------
+  1557→ALTER TABLE activity_types ENABLE ROW LEVEL SECURITY;
+  1558→
+  1559→CREATE POLICY "select_activity_types" ON activity_types
+  1560→  FOR SELECT USING (auth.uid() IS NOT NULL);
+  1561→
+  1562→CREATE POLICY "insert_activity_types" ON activity_types
+  1563→  FOR INSERT WITH CHECK (is_super_admin());
+  1564→
+  1565→CREATE POLICY "update_activity_types" ON activity_types
+  1566→  FOR UPDATE USING (is_super_admin())
+  1567→  WITH CHECK (is_super_admin());
+  1568→
+  1569→CREATE POLICY "delete_activity_types" ON activity_types
+  1570→  FOR DELETE USING (is_super_admin());
+  1571→
+  1572→
+  1573→-- ----------------------------------------------------------------------------
+  1574→-- Table : annual_plans (par organisation)
+  1575→-- ----------------------------------------------------------------------------
+  1576→ALTER TABLE annual_plans ENABLE ROW LEVEL SECURITY;
+  1577→
+  1578→CREATE POLICY "select_annual_plans" ON annual_plans
+  1579→  FOR SELECT USING (
+  1580→    is_super_admin() OR organization_id = current_org_id()
+  1581→  );
+  1582→
+  1583→CREATE POLICY "insert_annual_plans" ON annual_plans
+  1584→  FOR INSERT WITH CHECK (
+  1585→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1586→  );
+  1587→
+  1588→CREATE POLICY "update_annual_plans" ON annual_plans
+  1589→  FOR UPDATE USING (
+  1590→    is_super_admin() OR organization_id = current_org_id()
+  1591→  )
+  1592→  WITH CHECK (
+  1593→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1594→  );
+  1595→
+  1596→CREATE POLICY "delete_annual_plans" ON annual_plans
+  1597→  FOR DELETE USING (
+  1598→    is_super_admin() OR current_org_role() = 'PROPRIETAIRE'
+  1599→  );
+  1600→
+  1601→
+  1602→-- ----------------------------------------------------------------------------
+  1603→-- Table : plan_activities (via plan parent)
+  1604→-- ----------------------------------------------------------------------------
+  1605→ALTER TABLE plan_activities ENABLE ROW LEVEL SECURITY;
+  1606→
+  1607→CREATE POLICY "select_plan_activities" ON plan_activities
+  1608→  FOR SELECT USING (
+  1609→    is_super_admin() OR plan_id IN (SELECT id FROM annual_plans WHERE organization_id = current_org_id())
+  1610→  );
+  1611→
+  1612→CREATE POLICY "insert_plan_activities" ON plan_activities
+  1613→  FOR INSERT WITH CHECK (
+  1614→    is_super_admin() OR (plan_id IN (SELECT id FROM annual_plans WHERE organization_id = current_org_id()) AND current_org_role() != 'LECTEUR')
+  1615→  );
+  1616→
+  1617→CREATE POLICY "update_plan_activities" ON plan_activities
+  1618→  FOR UPDATE USING (
+  1619→    is_super_admin() OR plan_id IN (SELECT id FROM annual_plans WHERE organization_id = current_org_id())
+  1620→  )
+  1621→  WITH CHECK (
+  1622→    is_super_admin() OR (plan_id IN (SELECT id FROM annual_plans WHERE organization_id = current_org_id()) AND current_org_role() != 'LECTEUR')
+  1623→  );
+  1624→
+  1625→CREATE POLICY "delete_plan_activities" ON plan_activities
+  1626→  FOR DELETE USING (
+  1627→    is_super_admin() OR current_org_role() = 'PROPRIETAIRE'
+  1628→  );
+  1629→
+  1630→
+  1631→-- ----------------------------------------------------------------------------
+  1632→-- Table : activities (table principale - par organisation)
+  1633→-- ----------------------------------------------------------------------------
+  1634→ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
+  1635→
+  1636→CREATE POLICY "select_activities" ON activities
+  1637→  FOR SELECT USING (
+  1638→    is_super_admin() OR organization_id = current_org_id()
+  1639→  );
+  1640→
+  1641→CREATE POLICY "insert_activities" ON activities
+  1642→  FOR INSERT WITH CHECK (
+  1643→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1644→  );
+  1645→
+  1646→CREATE POLICY "update_activities" ON activities
+  1647→  FOR UPDATE USING (
+  1648→    is_super_admin() OR organization_id = current_org_id()
+  1649→  )
+  1650→  WITH CHECK (
+  1651→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1652→  );
+  1653→
+  1654→CREATE POLICY "delete_activities" ON activities
+  1655→  FOR DELETE USING (
+  1656→    is_super_admin() OR current_org_role() = 'PROPRIETAIRE'
+  1657→  );
+  1658→
+  1659→
+  1660→-- ----------------------------------------------------------------------------
+  1661→-- Table : activity_actors (via activité parente)
+  1662→-- ----------------------------------------------------------------------------
+  1663→ALTER TABLE activity_actors ENABLE ROW LEVEL SECURITY;
+  1664→
+  1665→CREATE POLICY "select_activity_actors" ON activity_actors
+  1666→  FOR SELECT USING (
+  1667→    is_super_admin() OR activity_id IN (SELECT id FROM activities WHERE organization_id = current_org_id())
+  1668→  );
+  1669→
+  1670→CREATE POLICY "insert_activity_actors" ON activity_actors
+  1671→  FOR INSERT WITH CHECK (
+  1672→    is_super_admin() OR (activity_id IN (SELECT id FROM activities WHERE organization_id = current_org_id()) AND current_org_role() != 'LECTEUR')
+  1673→  );
+  1674→
+  1675→CREATE POLICY "update_activity_actors" ON activity_actors
+  1676→  FOR UPDATE USING (
+  1677→    is_super_admin() OR activity_id IN (SELECT id FROM activities WHERE organization_id = current_org_id())
+  1678→  )
+  1679→  WITH CHECK (
+  1680→    is_super_admin() OR (activity_id IN (SELECT id FROM activities WHERE organization_id = current_org_id()) AND current_org_role() != 'LECTEUR')
+  1681→  );
+  1682→
+  1683→CREATE POLICY "delete_activity_actors" ON activity_actors
+  1684→  FOR DELETE USING (
+  1685→    is_super_admin() OR current_org_role() = 'PROPRIETAIRE'
+  1686→  );
+  1687→
+  1688→
+  1689→-- ----------------------------------------------------------------------------
+  1690→-- Table : beneficiaries (via activité parente)
+  1691→-- ----------------------------------------------------------------------------
+  1692→ALTER TABLE beneficiaries ENABLE ROW LEVEL SECURITY;
+  1693→
+  1694→CREATE POLICY "select_beneficiaries" ON beneficiaries
+  1695→  FOR SELECT USING (
+  1696→    is_super_admin() OR activity_id IN (SELECT id FROM activities WHERE organization_id = current_org_id())
+  1697→  );
+  1698→
+  1699→CREATE POLICY "insert_beneficiaries" ON beneficiaries
+  1700→  FOR INSERT WITH CHECK (
+  1701→    is_super_admin() OR (activity_id IN (SELECT id FROM activities WHERE organization_id = current_org_id()) AND current_org_role() != 'LECTEUR')
+  1702→  );
+  1703→
+  1704→CREATE POLICY "update_beneficiaries" ON beneficiaries
+  1705→  FOR UPDATE USING (
+  1706→    is_super_admin() OR activity_id IN (SELECT id FROM activities WHERE organization_id = current_org_id())
+  1707→  )
+  1708→  WITH CHECK (
+  1709→    is_super_admin() OR (activity_id IN (SELECT id FROM activities WHERE organization_id = current_org_id()) AND current_org_role() != 'LECTEUR')
+  1710→  );
+  1711→
+  1712→CREATE POLICY "delete_beneficiaries" ON beneficiaries
+  1713→  FOR DELETE USING (
+  1714→    is_super_admin() OR current_org_role() = 'PROPRIETAIRE'
+  1715→  );
+  1716→
+  1717→
+  1718→-- ----------------------------------------------------------------------------
+  1719→-- Table : indicators (global + par organisation)
+  1720→-- ----------------------------------------------------------------------------
+  1721→ALTER TABLE indicators ENABLE ROW LEVEL SECURITY;
+  1722→
+  1723→CREATE POLICY "select_indicators" ON indicators
+  1724→  FOR SELECT USING (
+  1725→    is_super_admin() OR organization_id IS NULL OR organization_id = current_org_id()
+  1726→  );
+  1727→
+  1728→CREATE POLICY "insert_indicators" ON indicators
+  1729→  FOR INSERT WITH CHECK (
+  1730→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1731→  );
+  1732→
+  1733→CREATE POLICY "update_indicators" ON indicators
+  1734→  FOR UPDATE USING (
+  1735→    is_super_admin() OR organization_id IS NULL OR organization_id = current_org_id()
+  1736→  )
+  1737→  WITH CHECK (
+  1738→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1739→  );
+  1740→
+  1741→CREATE POLICY "delete_indicators" ON indicators
+  1742→  FOR DELETE USING (
+  1743→    is_super_admin() OR current_org_role() = 'PROPRIETAIRE'
+  1744→  );
+  1745→
+  1746→
+  1747→-- ----------------------------------------------------------------------------
+  1748→-- Table : indicator_values (via activité parente)
+  1749→-- ----------------------------------------------------------------------------
+  1750→ALTER TABLE indicator_values ENABLE ROW LEVEL SECURITY;
+  1751→
+  1752→CREATE POLICY "select_indicator_values" ON indicator_values
+  1753→  FOR SELECT USING (
+  1754→    is_super_admin() OR activity_id IN (SELECT id FROM activities WHERE organization_id = current_org_id())
+  1755→  );
+  1756→
+  1757→CREATE POLICY "insert_indicator_values" ON indicator_values
+  1758→  FOR INSERT WITH CHECK (
+  1759→    is_super_admin() OR (activity_id IN (SELECT id FROM activities WHERE organization_id = current_org_id()) AND current_org_role() != 'LECTEUR')
+  1760→  );
+  1761→
+  1762→CREATE POLICY "update_indicator_values" ON indicator_values
+  1763→  FOR UPDATE USING (
+  1764→    is_super_admin() OR activity_id IN (SELECT id FROM activities WHERE organization_id = current_org_id())
+  1765→  )
+  1766→  WITH CHECK (
+  1767→    is_super_admin() OR (activity_id IN (SELECT id FROM activities WHERE organization_id = current_org_id()) AND current_org_role() != 'LECTEUR')
+  1768→  );
+  1769→
+  1770→CREATE POLICY "delete_indicator_values" ON indicator_values
+  1771→  FOR DELETE USING (
+  1772→    is_super_admin() OR current_org_role() = 'PROPRIETAIRE'
+  1773→  );
+  1774→
+  1775→
+  1776→-- ----------------------------------------------------------------------------
+  1777→-- Table : incident_types (référentiel global)
+  1778→-- ----------------------------------------------------------------------------
+  1779→ALTER TABLE incident_types ENABLE ROW LEVEL SECURITY;
+  1780→
+  1781→CREATE POLICY "select_incident_types" ON incident_types
+  1782→  FOR SELECT USING (auth.uid() IS NOT NULL);
+  1783→
+  1784→CREATE POLICY "insert_incident_types" ON incident_types
+  1785→  FOR INSERT WITH CHECK (is_super_admin());
+  1786→
+  1787→CREATE POLICY "update_incident_types" ON incident_types
+  1788→  FOR UPDATE USING (is_super_admin())
+  1789→  WITH CHECK (is_super_admin());
+  1790→
+  1791→CREATE POLICY "delete_incident_types" ON incident_types
+  1792→  FOR DELETE USING (is_super_admin());
+  1793→
+  1794→
+  1795→-- ----------------------------------------------------------------------------
+  1796→-- Table : incidents (par organisation)
+  1797→-- ----------------------------------------------------------------------------
+  1798→ALTER TABLE incidents ENABLE ROW LEVEL SECURITY;
+  1799→
+  1800→CREATE POLICY "select_incidents" ON incidents
+  1801→  FOR SELECT USING (
+  1802→    is_super_admin() OR organization_id = current_org_id()
+  1803→  );
+  1804→
+  1805→CREATE POLICY "insert_incidents" ON incidents
+  1806→  FOR INSERT WITH CHECK (
+  1807→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1808→  );
+  1809→
+  1810→CREATE POLICY "update_incidents" ON incidents
+  1811→  FOR UPDATE USING (
+  1812→    is_super_admin() OR organization_id = current_org_id()
+  1813→  )
+  1814→  WITH CHECK (
+  1815→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1816→  );
+  1817→
+  1818→CREATE POLICY "delete_incidents" ON incidents
+  1819→  FOR DELETE USING (
+  1820→    is_super_admin() OR current_org_role() = 'PROPRIETAIRE'
+  1821→  );
+  1822→
+  1823→
+  1824→-- ----------------------------------------------------------------------------
+  1825→-- Table : attachments (par organisation)
+  1826→-- ----------------------------------------------------------------------------
+  1827→ALTER TABLE attachments ENABLE ROW LEVEL SECURITY;
+  1828→
+  1829→CREATE POLICY "select_attachments" ON attachments
+  1830→  FOR SELECT USING (
+  1831→    is_super_admin() OR organization_id = current_org_id()
+  1832→  );
+  1833→
+  1834→CREATE POLICY "insert_attachments" ON attachments
+  1835→  FOR INSERT WITH CHECK (
+  1836→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1837→  );
+  1838→
+  1839→CREATE POLICY "update_attachments" ON attachments
+  1840→  FOR UPDATE USING (
+  1841→    is_super_admin() OR organization_id = current_org_id()
+  1842→  )
+  1843→  WITH CHECK (
+  1844→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1845→  );
+  1846→
+  1847→CREATE POLICY "delete_attachments" ON attachments
+  1848→  FOR DELETE USING (
+  1849→    is_super_admin() OR current_org_role() = 'PROPRIETAIRE'
+  1850→  );
+  1851→
+  1852→
+  1853→-- ----------------------------------------------------------------------------
+  1854→-- Table : periods (par organisation)
+  1855→-- ----------------------------------------------------------------------------
+  1856→ALTER TABLE periods ENABLE ROW LEVEL SECURITY;
+  1857→
+  1858→CREATE POLICY "select_periods" ON periods
+  1859→  FOR SELECT USING (
+  1860→    is_super_admin() OR organization_id = current_org_id()
+  1861→  );
+  1862→
+  1863→CREATE POLICY "insert_periods" ON periods
+  1864→  FOR INSERT WITH CHECK (
+  1865→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() = 'PROPRIETAIRE')
+  1866→  );
+  1867→
+  1868→CREATE POLICY "update_periods" ON periods
+  1869→  FOR UPDATE USING (
+  1870→    is_super_admin() OR organization_id = current_org_id()
+  1871→  )
+  1872→  WITH CHECK (
+  1873→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() = 'PROPRIETAIRE')
+  1874→  );
+  1875→
+  1876→CREATE POLICY "delete_periods" ON periods
+  1877→  FOR DELETE USING (
+  1878→    is_super_admin()
+  1879→  );
+  1880→
+  1881→
+  1882→-- ----------------------------------------------------------------------------
+  1883→-- Table : reports (par organisation)
+  1884→-- ----------------------------------------------------------------------------
+  1885→ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+  1886→
+  1887→CREATE POLICY "select_reports" ON reports
+  1888→  FOR SELECT USING (
+  1889→    is_super_admin() OR organization_id = current_org_id()
+  1890→  );
+  1891→
+  1892→CREATE POLICY "insert_reports" ON reports
+  1893→  FOR INSERT WITH CHECK (
+  1894→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1895→  );
+  1896→
+  1897→CREATE POLICY "update_reports" ON reports
+  1898→  FOR UPDATE USING (
+  1899→    is_super_admin() OR organization_id = current_org_id()
+  1900→  )
+  1901→  WITH CHECK (
+  1902→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1903→  );
+  1904→
+  1905→CREATE POLICY "delete_reports" ON reports
+  1906→  FOR DELETE USING (
+  1907→    is_super_admin() OR current_org_role() = 'PROPRIETAIRE'
+  1908→  );
+  1909→
+  1910→
+  1911→-- ----------------------------------------------------------------------------
+  1912→-- Table : report_versions (via rapport parent)
+  1913→-- ----------------------------------------------------------------------------
+  1914→ALTER TABLE report_versions ENABLE ROW LEVEL SECURITY;
+  1915→
+  1916→CREATE POLICY "select_report_versions" ON report_versions
+  1917→  FOR SELECT USING (
+  1918→    is_super_admin() OR report_id IN (SELECT id FROM reports WHERE organization_id = current_org_id())
+  1919→  );
+  1920→
+  1921→CREATE POLICY "insert_report_versions" ON report_versions
+  1922→  FOR INSERT WITH CHECK (
+  1923→    is_super_admin() OR (report_id IN (SELECT id FROM reports WHERE organization_id = current_org_id()) AND current_org_role() != 'LECTEUR')
+  1924→  );
+  1925→
+  1926→CREATE POLICY "update_report_versions" ON report_versions
+  1927→  FOR UPDATE USING (
+  1928→    is_super_admin() OR report_id IN (SELECT id FROM reports WHERE organization_id = current_org_id())
+  1929→  )
+  1930→  WITH CHECK (
+  1931→    is_super_admin() OR (report_id IN (SELECT id FROM reports WHERE organization_id = current_org_id()) AND current_org_role() != 'LECTEUR')
+  1932→  );
+  1933→
+  1934→CREATE POLICY "delete_report_versions" ON report_versions
+  1935→  FOR DELETE USING (
+  1936→    is_super_admin() OR current_org_role() = 'PROPRIETAIRE'
+  1937→  );
+  1938→
+  1939→
+  1940→-- ----------------------------------------------------------------------------
+  1941→-- Table : notifications (par organisation)
+  1942→-- ----------------------------------------------------------------------------
+  1943→ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+  1944→
+  1945→CREATE POLICY "select_notifications" ON notifications
+  1946→  FOR SELECT USING (
+  1947→    is_super_admin() OR organization_id = current_org_id()
+  1948→  );
+  1949→
+  1950→CREATE POLICY "insert_notifications" ON notifications
+  1951→  FOR INSERT WITH CHECK (
+  1952→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() != 'LECTEUR')
+  1953→  );
+  1954→
+  1955→CREATE POLICY "update_notifications" ON notifications
+  1956→  FOR UPDATE USING (
+  1957→    is_super_admin() OR organization_id = current_org_id()
+  1958→  )
+  1959→  WITH CHECK (
+  1960→    is_super_admin() OR organization_id = current_org_id()
+  1961→  );
+  1962→
+  1963→CREATE POLICY "delete_notifications" ON notifications
+  1964→  FOR DELETE USING (
+  1965→    is_super_admin()
+  1966→  );
+  1967→
+  1968→
+  1969→-- ----------------------------------------------------------------------------
+  1970→-- Table : audit_logs (lecture restreinte, insertion via trigger)
+  1971→-- ----------------------------------------------------------------------------
+  1972→ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+  1973→
+  1974→-- Lecture : super admins + propriétaires de leur org
+  1975→CREATE POLICY "select_audit_logs" ON audit_logs
+  1976→  FOR SELECT USING (
+  1977→    is_super_admin() OR (organization_id = current_org_id() AND current_org_role() = 'PROPRIETAIRE')
+  1978→  );
+  1979→
+  1980→-- Insertion via trigger uniquement (pas de politique INSERT publique)
+  1981→CREATE POLICY "insert_audit_logs" ON audit_logs
+  1982→  FOR INSERT WITH CHECK (true);  -- Le trigger a les droits SECURITY DEFINER
+  1983→
+  1984→-- Suppression réservée aux super admins
+  1985→CREATE POLICY "delete_audit_logs" ON audit_logs
+  1986→  FOR DELETE USING (is_super_admin());
+  1987→
+  1988→
+  1989→-- ----------------------------------------------------------------------------
+  1990→-- Table : admin_settings (globale, singleton)
+  1991→-- ----------------------------------------------------------------------------
+  1992→ALTER TABLE admin_settings ENABLE ROW LEVEL SECURITY;
+  1993→
+  1994→CREATE POLICY "select_admin_settings" ON admin_settings
+  1995→  FOR SELECT USING (auth.uid() IS NOT NULL);  -- Tous les authentifiés voient les settings
+  1996→
+  1997→CREATE POLICY "update_admin_settings" ON admin_settings
+  1998→  FOR UPDATE USING (is_super_admin())
+  1999→  WITH CHECK (is_super_admin());
+  2000→
+
+[showing lines 1-2000 of 2473; use offset=2001 with limit to continue reading]

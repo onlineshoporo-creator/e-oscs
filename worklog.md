@@ -1214,3 +1214,23 @@ Stage Summary:
 - ✅ **Utilitaires date centralisés** dans src/lib/utils.ts
 - 📊 **Stats projet :** 160+ fichiers TS/TSX, 58 routes, design cohérent e-OSCS
 - Projet e-OSCS **quasi complet** - Prêt pour tests E2E + déploiement
+
+---
+Task ID: Super-Admin-Setup
+Agent: Main Agent (Full-stack)
+Task: Configuration du compte Super Admin avec identifiants par défaut
+
+Work Log:
+- Créé API endpoint POST/GET /api/setup/super-admin pour initialiser le super admin
+- Configuré les identifiants: email=omouitsi@gmail.com, password=Ogou1987
+- Créé page d'installation /setup avec interface visuelle pour initialiser le super admin
+- Mis à jour supabase/seed.sql avec documentation des identifiants (section 8)
+- L'API vérifie si le super admin existe avant de le créer (idempotent)
+- Le profil est créé avec is_super_admin=true et actif=true
+
+Stage Summary:
+- API endpoint /api/setup/super-admin créé (POST pour créer, GET pour vérifier)
+- Page d'installation /setup créée avec UI moderne e-OSCS
+- Identifiants configurés: omouitsi@gmail.com / Ogou1987
+- Lint passé sans erreur
+- Prêt pour l'initialisation via la page /setup ou l'API

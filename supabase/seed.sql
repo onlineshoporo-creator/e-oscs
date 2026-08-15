@@ -333,7 +333,23 @@ ON CONFLICT DO NOTHING;
 
 
 -- ============================================================================
--- 8. DONNÉES DÉMO (SEED_DEMO)
+-- 8. SUPER ADMIN PAR DÉFAUT
+-- ============================================================================
+-- NOTE: Le Super Admin est créé via l'API /api/setup/super-admin
+-- car Supabase Auth nécessite le SDK pour créer des utilisateurs avec mot de passe.
+--
+-- Identifiants du Super Admin:
+--   Email:    omouitsi@gmail.com
+--   Mot de passe: Ogou1987
+--   Rôle:    Super Administrateur (is_super_admin = true)
+--
+-- Pour initialiser: curl -X POST /api/setup/super-admin
+-- Pour vérifier:     GET /api/setup/super-admin
+-- ============================================================================
+
+
+-- ============================================================================
+-- 9. DONNÉES DÉMO (SEED_DEMO)
 -- Activation conditionnelle via variable ou toujours présent
 -- ============================================================================
 
