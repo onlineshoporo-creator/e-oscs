@@ -1276,7 +1276,7 @@ export function PremiumLandingContent() {
             <h2 className="landing-heading text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-4">
               Rejoignez la transformation digitale du MCNSLP
             </h2>
-            <p class="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
+            <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
               Plus de 12 directions utilisent déjà e-OSCS au quotidien. La prochaine pourrait être la vôtre.
             </p>
             <a
