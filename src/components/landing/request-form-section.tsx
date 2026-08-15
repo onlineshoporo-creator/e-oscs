@@ -13,10 +13,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Send, CheckCircle2, Loader2 } from "lucide-react";
+import { useNotification } from "@/hooks/use-notification";
 
 export function RequestFormSection() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const { success: showSuccess, error: showError } = useNotification();
   const [formData, setFormData] = useState({
     nom: "",
     fonction: "",
@@ -33,13 +35,41 @@ export function RequestFormSection() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation basique
+    if (!formData.nom.trim() || !formData.email.trim() || !formData.telephone.trim()) {
+      showError("Formulaire incomplet", "Veuillez remplir tous les champs obligatoires.");
+      return;
+    }
+    
     setIsSubmitting(true);
 
-    // Simuler l'envoi du formulaire
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      // Simuler l'envoi du formulaire
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    setIsSubmitting(false);
-    setIsSuccess(true);
+      // Afficher la notification de succès
+      showSuccess(
+        "Demande envoyée avec succès !",
+        "Notre équipe vous contactera sous 24h pour finaliser votre inscription.",
+        { duration: 6000 }
+      );
+
+      setIsSubmitting(false);
+      setIsSuccess(true);
+    } catch (err) {
+      showError(
+        "Erreur lors de l'envoi",
+        "Une erreur est survenue. Veuillez réessayer ou nous contacter directement.",
+        {
+          action: {
+            label: "Réessayer",
+            onClick: () => handleSubmit(e),
+          },
+        }
+      );
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (

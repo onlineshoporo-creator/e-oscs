@@ -42,7 +42,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
-import { useToast } from '@/hooks/use-toast'
+import { useNotification } from '@/hooks/use-notification'
 
 // Types pour le formulaire
 interface ActivityFormData {
@@ -136,7 +136,7 @@ const initialFormData: ActivityFormData = {
 
 export default function NouvelleActivitePage() {
   const router = useRouter()
-  const { toast } = useToast()
+  const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
   
   // États du formulaire
   const [currentStep, setCurrentStep] = useState(1)
@@ -402,18 +402,24 @@ export default function NouvelleActivitePage() {
       // Nettoyer le brouillon
       localStorage.removeItem('activity_draft')
       
-      toast({
-        title: 'Activité soumise avec succès ! 🎉',
-        description: 'Votre activité a été envoyée pour validation.',
-      })
+      showSuccess(
+        'Activité soumise avec succès !',
+        'Votre activité a été envoyée pour validation. Vous serez notifié dès qu\'elle sera approuvée.',
+        { duration: 6000 }
+      )
       
       router.push('/agent/soumises')
     } catch (error) {
-      toast({
-        title: 'Erreur lors de la soumission',
-        description: 'Une erreur est survenue. Veuillez réessayer.',
-        variant: 'destructive',
-      })
+      showError(
+        'Erreur lors de la soumission',
+        'Une erreur est survenue. Veuillez réessayer ou contacter le support technique.',
+        {
+          action: {
+            label: 'Réessayer',
+            onClick: () => handleSubmit(),
+          },
+        }
+      )
     } finally {
       setIsSubmitting(false)
     }

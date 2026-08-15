@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { AuthCard, AuthLink } from './auth-card'
 import { signInAction } from '@/lib/actions/auth'
-import { toast } from 'sonner'
+import { useNotification } from '@/hooks/use-notification'
 
 /**
  * Formulaire de connexion
@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { success: showSuccess, error: showError } = useNotification()
   
   // États du formulaire
   const [email, setEmail] = useState('')
@@ -42,11 +43,11 @@ export function LoginForm() {
     
     // Validation client
     if (!email.trim()) {
-      toast.error('Veuillez entrer votre email.')
+      showError('Champ requis', 'Veuillez entrer votre email.')
       return
     }
     if (!password) {
-      toast.error('Veuillez entrer votre mot de passe.')
+      showError('Champ requis', 'Veuillez entrer votre mot de passe.')
       return
     }
 
@@ -54,12 +55,21 @@ export function LoginForm() {
       const result = await signInAction(email, password)
       
       if (result.success) {
-        toast.success(result.message || 'Connexion réussie !')
+        showSuccess(
+          'Connexion réussie !',
+          'Bienvenue sur e-OSCS. Redirection en cours...',
+          { duration: 3000 }
+        )
         // Rediriger vers la page demandée ou le dashboard
-        router.push(redirectTo)
-        router.refresh()
+        setTimeout(() => {
+          router.push(redirectTo)
+          router.refresh()
+        }, 500)
       } else {
-        toast.error(result.error || 'Erreur de connexion.')
+        showError(
+          'Échec de la connexion',
+          result.error || 'Email ou mot de passe incorrect. Veuillez réessayer.'
+        )
       }
     })
   }

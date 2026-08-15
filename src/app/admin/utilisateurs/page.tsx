@@ -65,7 +65,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { toast } from 'sonner'
+import { useNotification } from '@/hooks/use-notification'
 import { InviteUserDialog } from '@/components/admin/invite-user-dialog'
 import { EditUserDialog } from '@/components/admin/edit-user-dialog'
 import { UserProfileDialog } from '@/components/admin/user-profile-dialog'
@@ -143,6 +143,9 @@ function getInitials(nom: string): string {
 }
 
 export default function UtilisateursPage() {
+  // Notifications
+  const { success: showSuccess, error: showError, info: showInfo } = useNotification()
+  
   // États
   const [users, setUsers] = useState<UserProfile[]>([])
   const [stats, setStats] = useState<UserStats>({ total: 0, superAdmins: 0, actifs: 0, inactifs: 0 })
@@ -199,7 +202,7 @@ export default function UtilisateursPage() {
       }
     } catch (error) {
       console.error('Erreur lors du chargement:', error)
-      toast.error('Erreur lors du chargement des utilisateurs')
+      showError('Erreur de chargement', 'Impossible de charger la liste des utilisateurs.')
     } finally {
       setLoading(false)
     }
@@ -219,14 +222,14 @@ export default function UtilisateursPage() {
       })
 
       if (res.ok) {
-        toast.success('Statut mis à jour avec succès')
+        showSuccess('Statut mis à jour', 'Le statut de l\'utilisateur a été modifié avec succès.')
         fetchData()
       } else {
         const data = await res.json()
-        toast.error(data.error || 'Erreur lors de la mise à jour')
+        showError('Erreur de mise à jour', data.error || 'Impossible de modifier le statut.')
       }
     } catch {
-      toast.error('Erreur lors de la mise à jour')
+      showError('Erreur technique', 'Une erreur est survenue. Veuillez réessayer.')
     }
     setConfirmToggleId(null)
   }
@@ -241,13 +244,13 @@ export default function UtilisateursPage() {
       })
 
       if (res.ok) {
-        toast.success(`Email de réinitialisation envoyé à ${user.email || user.nom_complet}`)
+        showSuccess('Email envoyé', `Un email de réinitialisation a été envoyé à ${user.email || user.nom_complet}`)
       } else {
         const data = await res.json()
-        toast.error(data.error || "Erreur lors de l'envoi")
+        showError("Erreur d'envoi", data.error || "Impossible d'envoyer l'email.")
       }
     } catch {
-      toast.error("Erreur lors de l'envoi")
+      showError('Erreur technique', "Une erreur est survenue lors de l'envoi.")
     }
   }
 

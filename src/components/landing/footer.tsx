@@ -20,6 +20,7 @@ const footerLinks = {
   ],
   legal: [
     { name: "À propos", href: "/a-propos" },
+    { name: "Nouveautés & Changelog", href: "/changelog" },
     { name: "Conditions d'utilisation", href: "/conditions" },
     { name: "Politique de confidentialité", href: "/confidentialite" },
   ],
