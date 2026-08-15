@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide - Initialisation Super Admin e-OSCS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #F77F00 0%, #E85D04 100%);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(247, 127, 0, 0.3);
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .credentials-card {
+            background: linear-gradient(135deg, #009E60 0%, #007A4A 100%);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 15px 35px rgba(0, 158, 96, 0.3);
+        }
+        
+        .credentials-card h2 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .cred-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.15);
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .cred-label {
+            font-weight: 600;
+            opacity: 0.9;
+        }
+        
+        .cred-value {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2em;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+        }
+        
+        .steps {
+            counter-reset: step-counter;
+        }
+        
+        .step {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 25px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .step:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .step::before {
+            counter-increment: step-counter;
+            content: counter(step-counter);
+            position: absolute;
+            top: -15px;
+            left: 30px;
+            width: 40px;
+            height: 40px;
+            background: #F77F00;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .step h3 {
+            margin-left: 50px;
+            margin-bottom: 15px;
+            color: #F77F00;
+            font-size: 1.3em;
+        }
+        
+        .step-content {
+            margin-left: 50px;
+        }
+        
+        .step p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+        
+        .code-block {
+            background: #0F172A;
+            border: 1px solid rgba(247, 127, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        .code-block code {
+            color: #F77F00;
+        }
+        
+        .highlight {
+            background: rgba(247, 127, 0, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #F77F00;
+        }
+        
+        .success-box {
+            background: rgba(0, 158, 96, 0.2);
+            border: 2px solid #009E60;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .success-box h3 {
+            color: #009E60;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        .btn-preview {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #F77F00 0%, #E85D04 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-preview:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(247, 127, 0, 0.4);
+        }
+        
+        .warning {
+            background: rgba(234, 179, 8, 0.2);
+            border: 1px solid rgba(234, 179, 8, 0.5);
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin: 15px 0;
+            display: flex;
+            gap: 15px;
+            align-items: start;
+        }
+        
+        .warning-icon {
+            font-size: 1.5em;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            opacity: 0.6;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.8em; }
+            .cred-row { flex-direction: column; gap: 10px; text-align: center; }
+            .step { padding: 25px 20px; }
+            .step::before { left: 15px; }
+            .step h3, .step-content { margin-left: 0; padding-top: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛡️ Guide Initialisation</h1>
+            <p>Super Administrateur e-OSCS</p>
+        </header>
+        
+        <div class="credentials-card">
+            <h2>🔑 Vos Identifiants Super Admin</h2>
+            <div class="cred-row">
+                <span class="cred-label">Email :</span>
+                <span class="cred-value">omouitsi@gmail.com</span>
+            </div>
+            <div class="cred-row">
+                <span class="cred-label">Mot de passe :</span>
+                <span class="cred-value">Ogou1987</span>
+            </div>
+        </div>
+        
+        <div class="steps">
+            <div class="step">
+                <h3>Ouvrir la page d'installation</h3>
+                <div class="step-content">
+                    <p>Dans votre navigateur, accédez à la page d'installation du Super Admin :</p>
+                    <div class="code-block">
+                        <code>/setup</code>
+                    </div>
+                    <p>Cette page est spécialement conçue pour l'initialisation initiale du système.</p>
+                    
+                    <div class="warning">
+                        <span class="warning-icon">⚠️</span>
+                        <span><strong>Important :</strong> Cette page nécessite que le serveur de développement soit en cours d'exécution (<code>bun run dev</code>)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <h3>Identifier le statut actuel</h3>
+                <div class="step-content">
+                    <p>La page affiche automatiquement le statut du Super Admin :</p>
+                    <ul style="margin-left: 20px; margin-top: 10px; line-height: 2;">
+                        <li>🟡 <strong>Super Admin non initialisé</strong> → Le bouton d'initialisation est visible</li>
+                        <li>🟢 <strong>Super Admin configuré</strong> → Le compte existe déjà</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="step">
+                <h3>Cliquer sur "Initialiser le Super Admin"</h3>
+                <div class="step-content">
+                    <p>Si le Super Admin n'existe pas encore, vous verrez un bouton orange :</p>
+                    <div style="text-align: center; margin: 20px 0;">
+                        <div style="display: inline-block; background: linear-gradient(135deg, #F77F00, #E85D04); padding: 15px 35px; border-radius: 12px; font-weight: bold; color: white;">
+                            👤 Initialiser le Super Admin
+                        </div>
+                    </div>
+                    <p>Cliquez sur ce bouton pour créer le compte.</p>
+                </div>
+            </div>
+            
+            <div class="step">
+                <h3>Attendre la confirmation</h3>
+                <div class="step-content">
+                    <p>Pendant la création, un spinner d'chargement s'affiche :</p>
+                    <div style="text-align: center; margin: 20px 0; color: #F77F00;">
+                        ⏳ Création en cours...
+                    </div>
+                    <p>Une fois terminé, un message de succès apparaît avec les informations du compte créé.</p>
+                </div>
+            </div>
+            
+            <div class="step">
+                <h3>Aller à la page de connexion</h3>
+                <div class="step-content">
+                    <p>Après la création réussie, cliquez sur le bouton :</p>
+                    <div style="text-align: center; margin: 20px 0;">
+                        <div style="display: inline-block; background: #334155; padding: 15px 35px; border-radius: 12px; font-weight: bold; color: white;">
+                            → Aller à la page de connexion
+                        </div>
+                    </div>
+                    <p>Vous serez redirigé vers la page <span class="highlight">/connexion</span></p>
+                </div>
+            </div>
+            
+            <div class="step">
+                <h3>Se connecter avec vos identifiants</h3>
+                <div class="step-content">
+                    <p>Sur la page de connexion, entrez :</p>
+                    <div class="code-block">
+                        <div style="margin-bottom: 10px;">
+                            <strong>Email :</strong> omouitsi@gmail.com
+                        </div>
+                        <div>
+                            <strong>Mot de passe :</strong> Ogou1987
+                        </div>
+                    </div>
+                    <p>Cliquez sur <strong>"Se connecter"</strong> pour accéder au tableau de bord Admin.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="success-box">
+            <h3>✅ Initialisation Terminée !</h3>
+            <p>Félicitations ! Votre compte Super Admin est maintenant prêt.</p>
+            <p>Vous avez accès à toutes les fonctionnalités administratives de e-OSCS.</p>
+            <br>
+            <a href="/setup" class="btn-preview">
+                🚀 Accéder à /setup
+            </a>
+        </div>
+        
+        <footer>
+            <p>e-OSCS © 2025 - SaaS Multi-Tenant pour MCNSLP Côte d'Ivoire</p>
+        </footer>
+    </div>
+</body>
+</html>
