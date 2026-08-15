@@ -70,6 +70,7 @@ function AnimatedCounter({
 }) {
   const [count, setCount] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const [shouldAnimate, setShouldAnimate] = useState(true);
   const ref = useRef<HTMLSpanElement>(null);
   const numericTarget = typeof target === 'string' ? parseInt(target) || 0 : target;
 
@@ -77,6 +78,11 @@ function AnimatedCounter({
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && !isVisible) {
+          // Vérifier prefersReducedMotion avant de définir isVisible
+          const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          if (prefersReducedMotion) {
+            setShouldAnimate(false);
+          }
           setIsVisible(true);
         }
       },
@@ -92,9 +98,10 @@ function AnimatedCounter({
 
   useEffect(() => {
     if (!isVisible) return;
-
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) {
+    
+    // Si pas d'animation, définir directement la valeur cible
+    if (!shouldAnimate) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCount(numericTarget);
       return;
     }
@@ -114,7 +121,7 @@ function AnimatedCounter({
     };
 
     requestAnimationFrame(step);
-  }, [isVisible, numericTarget, duration]);
+  }, [isVisible, numericTarget, duration, shouldAnimate]);
 
   return (
     <span ref={ref} className={className}>
@@ -706,11 +713,15 @@ export function PremiumLandingContent() {
             aria-label="Navigation principale"
           >
             <div className="flex items-center justify-between h-16 md:h-20">
-              {/* Logo e-OSCS avec couleurs distinctes et hover effect */}
-              <a href="/" className="flex items-center gap-2 group nav-link" aria-label="e-OSCS - Accueil">
-                <span className="text-2xl font-extrabold text-[#009E60] group-hover:scale-110 transition-transform">e</span>
-                <span className="text-xl font-bold text-[#0F172A]">-</span>
-                <span className="text-2xl font-extrabold text-[#F77F00] group-hover:scale-110 transition-transform">OSCS</span>
+              {/* Logo e-OSCS officiel avec image */}
+              <a href="/" className="flex items-center group nav-link" aria-label="e-OSCS - Accueil">
+                <div className="relative flex items-center">
+                  <img
+                    src="/logo-eoscs.png"
+                    alt="e-OSCS Logo"
+                    className="h-10 w-auto object-contain group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
               </a>
 
               {/* Navigation desktop avec underline animé */}
@@ -731,7 +742,7 @@ export function PremiumLandingContent() {
                   </a>
                 ))}
                 <a
-                  href="#demande"
+                  href="/connexion"
                   className="cta-glow magnetic-btn inline-flex items-center px-5 py-2.5 text-sm font-semibold text-white bg-[#F77F00] rounded-xl shadow-lg shadow-orange-500/20 hover:bg-[#E67300] transition-all"
                 >
                   Demander un accès
@@ -785,7 +796,7 @@ export function PremiumLandingContent() {
                     </a>
                   ))}
                   <a
-                    href="#demande"
+                    href="/connexion"
                     className="mt-3 mx-2 inline-flex items-center justify-center px-6 py-4 text-base font-semibold text-white bg-gradient-to-r from-[#F77F00] to-[#E67300] rounded-xl shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 transition-all"
                   >
                     Demander un accès
@@ -858,7 +869,7 @@ export function PremiumLandingContent() {
                 {/* CTAs principaux avec glow effect */}
                 <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start pt-4">
                   <a
-                    href="#demande"
+                    href="/connexion"
                     className="cta-glow magnetic-btn inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-[#F77F00] to-[#E67300] rounded-2xl shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-300 group"
                   >
                     Demander mon espace
@@ -1772,7 +1783,7 @@ export function PremiumLandingContent() {
 
                     {/* CTA */}
                     <a
-                      href="#demande"
+                      href="/connexion"
                       className={`block w-full text-center py-3.5 px-6 rounded-xl font-semibold transition-all duration-300 magnetic-btn ${
                         plan.popular
                           ? "cta-glow bg-[#F77F00] text-white hover:bg-[#E67300] shadow-lg shadow-orange-500/20"
@@ -2004,7 +2015,7 @@ export function PremiumLandingContent() {
               Plus de 12 directions utilisent déjà e-OSCS au quotidien. La prochaine pourrait être la vôtre.
             </p>
             <a
-              href="#demande"
+              href="/connexion"
               className="cta-glow magnetic-btn inline-flex items-center px-8 py-4 bg-white text-[#F77F00] font-semibold rounded-2xl shadow-xl hover:bg-slate-50 hover:shadow-2xl transition-all duration-300 text-lg group"
             >
               Demander mon accès maintenant

@@ -2,12 +2,13 @@
  * Composant AuthCard e-OSCS
  * 
  * Card wrapper commune pour tous les formulaires d'authentification.
- * Affiche le logo e-OSCS et enveloppe le contenu dans une card stylisée.
+ * Affiche le logo e-OSCS officiel et enveloppe le contenu dans une card stylisée.
  */
 
 'use client'
 
 import React from 'react'
+import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 
 /**
@@ -24,16 +25,31 @@ interface AuthCardProps {
   footer?: React.ReactNode
   /** Classe CSS additionnelle */
   className?: string
+  /** Cacher le logo (pour les vues alternatives) */
+  hideLogo?: boolean
 }
 
 /**
- * Logo e-OSCS - Carré dégradé orange-vert avec "e"
+ * Logo e-OSCS officiel - Image avec décoration
  */
 function EoscsLogo() {
   return (
     <div className="flex justify-center mb-6">
-      <div className="relative w-16 h-16 bg-gradient-brand rounded-xl flex items-center justify-center shadow-lg">
-        <span className="text-3xl font-bold text-white">e</span>
+      <div className="relative group">
+        {/* Anneau de décoration animée */}
+        <div className="absolute -inset-2 bg-gradient-to-br from-[#F77F00] via-transparent to-[#009E60] rounded-2xl opacity-20 group-hover:opacity-30 blur transition-opacity duration-500" />
+        
+        {/* Container du logo */}
+        <div className="relative bg-white rounded-2xl p-3 shadow-lg border border-gray-100">
+          <Image
+            src="/logo-eoscs.png"
+            alt="e-OSCS Logo - MCNSLP Côte d'Ivoire"
+            width={120}
+            height={80}
+            className="h-16 w-auto object-contain"
+            priority
+          />
+        </div>
       </div>
     </div>
   )
@@ -44,15 +60,19 @@ export function AuthCard({
   title, 
   description, 
   footer,
-  className = '' 
+  className = '',
+  hideLogo = false
 }: AuthCardProps) {
   return (
     <div className={`w-full max-w-md mx-auto ${className}`}>
-      {/* Logo e-OSCS */}
-      <EoscsLogo />
+      {/* Logo e-OSCS (sauf si caché) */}
+      {!hideLogo && <EoscsLogo />}
       
       {/* Card principale */}
-      <Card className="border-0 shadow-xl bg-white/95 backdrop-blur-sm">
+      <Card className="border-0 shadow-xl bg-white/95 backdrop-blur-sm overflow-hidden">
+        {/* Liseré tricolore CI en haut */}
+        <div className="h-1.5 bg-gradient-to-r from-[#F77F00] via-white to-[#009E60]" />
+        
         <CardContent className="p-8">
           {/* Titre optionnel */}
           {title && (
