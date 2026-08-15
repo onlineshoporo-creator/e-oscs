@@ -1,7 +1,9 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Bell, Search, User, LogOut, Settings } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Bell, Search, User, LogOut, Settings, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -19,13 +21,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { createClient } from '@/lib/supabase/client'
 
 interface HeaderProps {
   user?: {
+    id: string
     name: string
     email: string
     role: string
     avatar?: string
+    organization?: string | null
+    organizationId?: string | null
   }
 }
 
@@ -55,7 +61,34 @@ const notifications = [
 
 export function Header({ user }: HeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const router = useRouter()
+  const supabase = createClient()
+  
   const unreadCount = notifications.filter(n => n.unread).length
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await supabase.auth.signOut()
+      router.push('/connexion')
+      router.refresh()
+    } catch (error) {
+      console.error('Erreur de déconnexion:', error)
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
+
+  // Générer les initiales pour l'avatar fallback
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-white border-b border-slate-200 px-4 lg:px-6 flex items-center justify-between gap-4">
@@ -157,30 +190,53 @@ export function Header({ user }: HeaderProps) {
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user?.avatar} alt={user?.name} />
                 <AvatarFallback className="bg-orange-100 text-orange-700 text-sm font-medium">
-                  {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                  {getInitials(user?.name || 'U')}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden md:flex flex-col items-start">
                 <span className="text-sm font-medium text-slate-700">{user?.name || 'Utilisateur'}</span>
-                <span className="text-xs text-slate-500">{user?.role || 'Admin'}</span>
+                {user?.organization && (
+                  <span className="text-xs text-slate-500 flex items-center gap-1">
+                    <Building2 className="w-3 h-3" />
+                    {user.organization}
+                  </span>
+                )}
               </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium">{user?.name || 'Utilisateur'}</p>
+                <p className="text-xs text-slate-500">{user?.email}</p>
+                {user?.organization && (
+                  <Badge variant="secondary" className="w-fit text-xs mt-1">
+                    {user.role}
+                  </Badge>
+                )}
+              </div>
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              Profil
+            <DropdownMenuItem asChild>
+              <Link href="/app/settings" className="flex items-center">
+                <User className="mr-2 h-4 w-4" />
+                Mon profil
+              </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              Paramètres
+            <DropdownMenuItem asChild>
+              <Link href="/app/settings" className="flex items-center">
+                <Settings className="mr-2 h-4 w-4" />
+                Paramètres
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600 focus:text-red-600">
+            <DropdownMenuItem 
+              className="text-red-600 focus:text-red-600"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+            >
               <LogOut className="mr-2 h-4 w-4" />
-              Déconnexion
+              {isLoggingOut ? 'Déconnexion...' : 'Déconnexion'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

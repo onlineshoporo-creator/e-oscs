@@ -12,7 +12,8 @@ import {
   DollarSign,
   FileText,
   AlertTriangle,
-  Clock
+  Clock,
+  MessageSquare
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -38,23 +39,34 @@ import {
 
 interface PanneauDecisionProps {
   activite: Activite | null
-  onDecision: (activiteId: string, decision: 'valide' | 'rejete', motif?: string) => void
+  onValider: (activiteId: string, motif?: string) => void
+  onRejeter: (activiteId: string, motif?: string) => void
+  onDemandeCorrection?: (activiteId: string, motif?: string) => void
   isLoading?: boolean
 }
 
-export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDecisionProps) {
+export function PanneauDecision({ 
+  activite, 
+  onValider, 
+  onRejeter, 
+  onDemandeCorrection,
+  isLoading 
+}: PanneauDecisionProps) {
   const [motifRejet, setMotifRejet] = useState('')
-  const [dialogOpen, setDialogOpen] = useState<'valide' | 'rejete' | null>(null)
+  const [motifCorrection, setMotifCorrection] = useState('')
+  const [dialogOpen, setDialogOpen] = useState<'valide' | 'rejete' | 'correction' | null>(null)
   const [showDetails, setShowDetails] = useState(false)
 
   if (!activite) {
     return (
-      <div className="h-full flex items-center justify-center bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+      <div className="h-full flex items-center justify-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
         <div className="text-center p-6">
-          <Eye className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="font-medium text-slate-600">Sélectionnez une activité</h3>
-          <p className="text-sm text-slate-400 mt-1">
-            Cliquez sur une activité pour voir ses détails et la valider
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+            <Eye className="w-8 h-8 text-slate-300" />
+          </div>
+          <h3 className="font-semibold text-slate-600 text-lg">Sélectionnez une activité</h3>
+          <p className="text-sm text-slate-400 mt-2 max-w-xs mx-auto">
+            Cliquez sur une activité dans la liste pour voir ses détails et prendre une décision
           </p>
         </div>
       </div>
@@ -64,25 +76,36 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
   const indicateurs = getIndicateursByActivite(activite.id)
   const statutConfig = STATUT_CONFIG[activite.statut]
 
-  const handleConfirm = () => {
-    if (dialogOpen === 'rejete') {
-      onDecision(activite.id, 'rejete', motifRejet)
+  const handleConfirmValider = () => {
+    onValider(activite.id)
+    setDialogOpen(null)
+  }
+
+  const handleConfirmRejeter = () => {
+    if (motifRejet.trim()) {
+      onRejeter(activite.id, motifRejet)
       setMotifRejet('')
-    } else if (dialogOpen === 'valide') {
-      onDecision(activite.id, 'valide')
+    }
+    setDialogOpen(null)
+  }
+
+  const handleConfirmCorrection = () => {
+    if (motifCorrection.trim() && onDemandeCorrection) {
+      onDemandeCorrection(activite.id, motifCorrection)
+      setMotifCorrection('')
     }
     setDialogOpen(null)
   }
 
   return (
-    <div className="space-y-4 h-full overflow-y-auto">
+    <div className="space-y-4 h-full overflow-y-auto custom-scrollbar">
       {/* En-tête activité */}
-      <Card className="border-orange-200">
+      <Card className="border-orange-200 shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <Badge variant="secondary" className={`${statutConfig?.color} mb-2`}>
-                {statutConfig?.label}
+              <Badge variant="secondary" className={`${statutConfig?.color || 'bg-slate-100'} mb-2`}>
+                {statutConfig?.label || activite.statut}
               </Badge>
               <CardTitle className="text-lg leading-tight">{activite.nom}</CardTitle>
               <p className="text-sm text-slate-500 mt-1 line-clamp-2">
@@ -96,7 +119,7 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2 text-slate-600">
               <Calendar className="w-4 h-4 text-slate-400" />
-              <span>{new Date(activite.dateActivite).toLocaleDateString('fr-FR', { 
+              <span className="truncate">{new Date(activite.dateActivite).toLocaleDateString('fr-FR', { 
                 day: 'numeric', 
                 month: 'long', 
                 year: 'numeric' 
@@ -126,14 +149,14 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
                 </span>
                 <span className="font-semibold text-slate-900">{activite.progression}%</span>
               </div>
-              <Progress value={activite.progression} className="h-2" />
+              <Progress value={activite.progression} className="h-2.5 [&>div]:rounded-full" />
             </div>
           )}
         </CardContent>
       </Card>
 
       {/* Budget */}
-      <Card>
+      <Card className="border-slate-200 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-green-600" />
@@ -165,7 +188,7 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
             </div>
             <Progress 
               value={(activite.budgetDepense / activite.budgetAlloue) * 100} 
-              className="h-2" 
+              className="h-2.5 [&>div]:rounded-full" 
             />
           </div>
         </CardContent>
@@ -173,7 +196,7 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
 
       {/* Indicateurs */}
       {indicateurs.length > 0 && (
-        <Card>
+        <Card className="border-slate-200 shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
@@ -184,6 +207,7 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
                 variant="ghost" 
                 size="sm" 
                 onClick={() => setShowDetails(!showDetails)}
+                className="text-xs"
               >
                 {showDetails ? 'Réduire' : 'Voir tout'}
               </Button>
@@ -208,11 +232,11 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
       )}
 
       {/* Responsable */}
-      <Card>
+      <Card className="border-slate-200 shadow-sm">
         <CardContent className="pt-4">
-          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-              <Users className="w-5 h-5 text-orange-600" />
+          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-medium">
+              {activite.responsable.split(' ').map(n => n[0]).join('')}
             </div>
             <div>
               <p className="text-sm font-medium text-slate-900">{activite.responsable}</p>
@@ -223,7 +247,7 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
       </Card>
 
       {/* Actions de décision */}
-      <Card className="border-blue-200 bg-blue-50/30">
+      <Card className="border-blue-200 bg-gradient-to-br from-blue-50/50 to-white shadow-md">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-blue-600" />
@@ -236,23 +260,30 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
               Après vérification des informations ci-dessus, prenez votre décision :
             </p>
             
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2.5">
               {/* Bouton Valider */}
               <Dialog open={dialogOpen === 'valide'} onOpenChange={(open) => setDialogOpen(open ? 'valide' : null)}>
                 <DialogTrigger asChild>
                   <Button 
-                    className="gap-2 bg-green-600 hover:bg-green-700 w-full"
+                    className="gap-2 w-full bg-green-600 hover:bg-green-700 shadow-sm shadow-green-200"
                     disabled={isLoading}
                   >
                     <CheckCircle2 className="w-5 h-5" />
-                    Valider
+                    Valider l&apos;activité
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Confirmer la validation</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      Confirmer la validation
+                    </DialogTitle>
                     <DialogDescription>
                       Êtes-vous sûr de vouloir valider l&apos;activité &quot;{activite.nom}&quot; ?
+                      <br />
+                      <span className="text-slate-500 mt-2 block text-xs">
+                        Cette action rendra l&apos;activité visible et pourra être exécutée.
+                      </span>
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
@@ -260,7 +291,7 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
                       Annuler
                     </Button>
                     <Button 
-                      onClick={handleConfirm}
+                      onClick={handleConfirmValider}
                       className="bg-green-600 hover:bg-green-700"
                       disabled={isLoading}
                     >
@@ -269,6 +300,52 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+
+              {/* Bouton Demander correction */}
+              {onDemandeCorrection && (
+                <Dialog open={dialogOpen === 'correction'} onOpenChange={(open) => setDialogOpen(open ? 'correction' : null)}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full gap-2 border-amber-300 text-amber-700 hover:bg-amber-50"
+                      disabled={isLoading}
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      Demander des corrections
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <MessageSquare className="w-5 h-5 text-amber-600" />
+                        Demander des corrections
+                      </DialogTitle>
+                      <DialogDescription>
+                        Décrivez les corrections nécessaires pour l&apos;activité &quot;{activite.nom}&quot;
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Textarea
+                      placeholder="Décrivez les corrections demandées..."
+                      value={motifCorrection}
+                      onChange={(e) => setMotifCorrection(e.target.value)}
+                      rows={4}
+                      className="mt-3"
+                    />
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setDialogOpen(null)}>
+                        Annuler
+                      </Button>
+                      <Button 
+                        onClick={handleConfirmCorrection}
+                        className="bg-amber-600 hover:bg-amber-700"
+                        disabled={isLoading || !motifCorrection.trim()}
+                      >
+                        Envoyer la demande
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
 
               {/* Bouton Rejeter */}
               <Dialog open={dialogOpen === 'rejete'} onOpenChange={(open) => setDialogOpen(open ? 'rejete' : null)}>
@@ -279,12 +356,15 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
                     disabled={isLoading}
                   >
                     <XCircle className="w-5 h-5" />
-                    Rejeter
+                    Rejeter l&apos;activité
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Rejeter l&apos;activité</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                      <XCircle className="w-5 h-5 text-red-600" />
+                      Rejeter l&apos;activité
+                    </DialogTitle>
                     <DialogDescription>
                       Veuillez indiquer le motif du rejet de l&apos;activité &quot;{activite.nom}&quot;
                     </DialogDescription>
@@ -294,6 +374,7 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
                     value={motifRejet}
                     onChange={(e) => setMotifRejet(e.target.value)}
                     rows={4}
+                    className="mt-3"
                   />
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setDialogOpen(null)}>
@@ -301,7 +382,7 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
                     </Button>
                     <Button 
                       variant="destructive"
-                      onClick={handleConfirm}
+                      onClick={handleConfirmRejeter}
                       disabled={isLoading || !motifRejet.trim()}
                     >
                       Confirmer le rejet
@@ -310,16 +391,6 @@ export function PanneauDecision({ activite, onDecision, isLoading }: PanneauDeci
                 </DialogContent>
               </Dialog>
             </div>
-
-            {/* Bouton vérification */}
-            <Button 
-              variant="outline" 
-              className="w-full gap-2"
-              disabled={isLoading}
-            >
-              <Clock className="w-4 h-4" />
-              Demander des modifications
-            </Button>
           </div>
         </CardContent>
       </Card>

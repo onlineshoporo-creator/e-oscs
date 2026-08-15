@@ -1,3 +1,13 @@
+/**
+ * Client Supabase Server (Server-side / Route Handlers)
+ * 
+ * Utilisé dans :
+ * - Server Components
+ * - Server Actions
+ * - Route Handlers (API)
+ * - Cookies handling
+ */
+
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
