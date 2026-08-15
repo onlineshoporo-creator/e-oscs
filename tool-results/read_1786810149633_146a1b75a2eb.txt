@@ -1,0 +1,502 @@
+   501→            <div className="text-center max-w-3xl mx-auto mb-16 animate-on-scroll">
+   502→              <span className="inline-block text-sm font-semibold text-[#F77F00] uppercase tracking-wide mb-4">
+   503→                La réalité terrain
+   504→              </span>
+   505→              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
+   506→                Vous reconnaissez ces situations ?
+   507→              </h2>
+   508→              <p className="landing-body text-lg text-slate-600">
+   509→                Chaque trimestre, les mêmes difficultés se répètent dans les directions régionales et départementales.
+   510→              </p>
+   511→            </div>
+   512→
+   513→            {/* Grille 3 problèmes */}
+   514→            <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+   515→              {[
+   516→                {
+   517→                  icon: (
+   518→                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+   519→                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.217.38 2.846 1.835 2.592L4.5 18.75m0 0V12m0 3.75H18M3.697 16.296 6.09 13.88m2.914 2.914 2.81-2.81M12 12h6.75m-6.75 0 2.81 2.81M18.75 12v6m0-3.75h.008v.008H18.75Z" />
+   520→                    </svg>
+   521→                  ),
+   522→                  title: "Perte de données entre Word et Excel",
+   523→                  description: "Les activités saisies dans un fichier Excel finissent mal copiées-collées dans le rapport Word. Résultat : incohérences, chiffres qui ne correspondent pas, heures perdues à tout vérifier.",
+   524→                  stat: "73% des agents",
+   525→                  highlight: true,
+   526→                },
+   527→                {
+   528→                  icon: (
+   529→                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+   530→                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 9a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+   531→                    </svg>
+   532→                  ),
+   533→                  title: "Rush de dernière minute avant échéance",
+   534→                  description: "La semaine précédant la remise du rapport trimestriel, c'est la course : reconstituer les activités oubliées, retrouver les preuves photos, demander les validations en urgence.",
+   535→                  stat: "-48h de stress",
+   536→                  highlight: false,
+   537→                },
+   538→                {
+   539→                  icon: (
+   540→                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+   541→                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+   542→                    </svg>
+   543→                  ),
+   544→                  title: "Consolidation impossible au niveau central",
+   545→                  description: "Le ministère reçoit 36 formats différents des 36 directions. Consolider tout ça demande des semaines de travail manuel, quand ce n'est pas tout simplement impossible.",
+   546→                  stat: "36 formats différents",
+   547→                  highlight: false,
+   548→                },
+   549→              ].map((problem, index) => (
+   550→                <div
+   551→                  key={index}
+   552→                  className={`group relative p-6 lg:p-8 rounded-2xl border transition-all duration-300 animate-on-scroll delay-${index + 1} ${
+   553→                    problem.highlight
+   554→                      ? "bg-gradient-to-br from-[#FFF7ED] to-[#FFFBF5] border-[#FED7AA] shadow-lg shadow-orange-500/5"
+   555→                      : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-lg"
+   556→                  }`}
+   557→                >
+   558→                  {/* Icône */}
+   559→                  <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl mb-5 ${
+   560→                    problem.highlight ? "bg-[#F77F00]/10 text-[#F77F00]" : "bg-slate-100 text-slate-600 group-hover:bg-[#F77F00]/10 group-hover:text-[#F77F00] transition-colors"
+   561→                  }`}>
+   562→                    {problem.icon}
+   563→                  </div>
+   564→
+   565→                  {/* Stat en badge */}
+   566→                  <div className="inline-block mb-3">
+   567→                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+   568→                      problem.highlight ? "bg-[#F77F00]/10 text-[#F77F00]" : "bg-slate-100 text-slate-600"
+   569→                    }`}>
+   570→                      {problem.stat}
+   571→                    </span>
+   572→                  </div>
+   573→
+   574→                  {/* Titre */}
+   575→                  <h3 className="landing-heading text-lg lg:text-xl font-bold text-[#0F172A] mb-3">
+   576→                    {problem.title}
+   577→                  </h3>
+   578→
+   579→                  {/* Description */}
+   580→                  <p className="landing-body text-sm lg:text-base text-slate-600 leading-relaxed">
+   581→                    {problem.description}
+   582→                  </p>
+   583→                </div>
+   584→              ))}
+   585→            </div>
+   586→          </div>
+   587→        </section>
+   588→
+   589→        {/* ===== 4. SECTION FONCTIONNALITÉS CLÉS ===== */}
+   590→        <section id="fonctionnalites" className="py-20 lg:py-28 bg-[#FFFBF5] african-pattern" aria-label="Fonctionnalités">
+   591→          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   592→            {/* En-tête section */}
+   593→            <div className="text-center max-w-3xl mx-auto mb-16 animate-on-scroll">
+   594→              <span className="inline-block text-sm font-semibold text-[#009E60] uppercase tracking-wide mb-4">
+   595→                Fonctionnalités clés
+   596→              </span>
+   597→              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
+   598→                Tout ce qu'il vous faut, rien de superflu
+   599→              </h2>
+   600→              <p className="landing-body text-lg text-slate-600">
+   601→                Quatre piliers technologiques conçus spécifiquement pour les réalités du MCNSLP ivoirien.
+   602→              </p>
+   603→            </div>
+   604→
+   605→            {/* Grille 4 fonctionnalités avec SVG inline */}
+   606→            <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
+   607→              {[
+   608→                {
+   609→                  svg: (
+   610→                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-16 h-16">
+   611→                      <rect x="8" y="12" width="48" height="40" rx="4" stroke="#F77F00" strokeWidth="2.5" fill="#FFF7ED"/>
+   612→                      <line x1="8" y1="22" x2="56" y2="22" stroke="#F77F00" strokeWidth="2.5"/>
+   613→                      <circle cx="16" cy="17" r="2" fill="#F77F00"/>
+   614→                      <circle cx="22" cy="17" r="2" fill="#F77F00"/>
+   615→                      <circle cx="28" cy="17" r="2" fill="#F77F00"/>
+   616→                      <rect x="14" y="28" width="20" height="3" rx="1.5" fill="#FED7AA"/>
+   617→                      <rect x="14" y="35" width="36" height="2" rx="1" fill="#E2E8F0"/>
+   618→                      <rect x="14" y="41" width="30" height="2" rx="1" fill="#E2E8F0"/>
+   619→                      <rect x="14" y="47" width="34" height="2" rx="1" fill="#E2E8F0"/>
+   620→                      <path d="M42 32l4 4 8-8" stroke="#009E60" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+   621→                    </svg>
+   622→                  ),
+   623→                  title: "Saisie unique, restitution multiple",
+   624→                  description: "Vous saisissez une activité UNE seule fois avec photos, localisation et indicateurs. Le système génère automatiquement : fiches d'activité, tableaux de bord trimestriels, rapports consolidés au format institutionnel.",
+   625→                  badge: "Gain de temps",
+   626→                  color: "orange",
+   627→                },
+   628→                {
+   629→                  svg: (
+   630→                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-16 h-16">
+   631→                      <rect x="12" y="8" width="40" height="48" rx="4" stroke="#009E60" strokeWidth="2.5" fill="#ECFDF5"/>
+   632→                      <path d="M20 20h24M20 28h24M20 36h16" stroke="#009E60" strokeWidth="2" strokeLinecap="round"/>
+   633→                      <rect x="28" y="44" width="16" height="6" rx="3" fill="#009E60"/>
+   634→                      <circle cx="46" cy="47" r="6" stroke="#F77F00" strokeWidth="2" fill="#FFF7ED"/>
+   635→                      <path d="M44 47l2 2 4-4" stroke="#F77F00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+   636→                    </svg>
+   637→                  ),
+   638→                  title: "Circuit de validation intégré",
+   639→                  description: "Chaque activité suit un circuit de validation clair : agent → chef de service → directeur régional → direction centrale. Notifications automatiques à chaque étape, historique complet des validations.",
+   640→                  badge: "Traçabilité totale",
+   641→                  color: "green",
+   642→                },
+   643→                {
+   644→                  svg: (
+   645→                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-16 h-16">
+   646→                      <rect x="8" y="16" width="48" height="32" rx="4" stroke="#2563EB" strokeWidth="2.5" fill="#EFF6FF"/>
+   647→                      <path d="M8 26h48" stroke="#2563EB" strokeWidth="2.5"/>
+   648→                      <bar x="14" y="32" width="8" height="12" rx="1" fill="#93C5FD"/>
+   649→                      <rect x="14" y="34" width="8" height="10" rx="1" fill="#3B82F6"/>
+   650→                      <rect x="26" y="36" width="8" height="8" rx="1" fill="#60A5FA"/>
+   651→                      <rect x="38" y="30" width="8" height="14" rx="1" fill="#2563EB"/>
+   652→                      <circle cx="18" cy="20" r="2" fill="#2563EB"/>
+   653→                      <circle cx="32" cy="20" r="2" fill="#2563EB"/>
+   654→                      <circle cx="46" cy="20" r="2" fill="#2563EB"/>
+   655→                    </svg>
+   656→                  ),
+   657→                  title: "Tableaux de bord & indicateurs en temps réel",
+   658→                  description: "Visualisez instantanément l'avancement de votre direction : taux de réalisation du plan annuel, couverture géographique, répartition par type d'activité, comparaison inter-périodes.",
+   659→                  badge: "Visibilité 360°",
+   660→                  color: "blue",
+   661→                },
+   662→                {
+   663→                  svg: (
+   664→                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-16 h-16">
+   665→                      <path d="M12 52V20a8 8 0 0 1 8-8h24a8 8 0 0 1 8 8v32" stroke="#0F172A" strokeWidth="2.5" fill="#F8FAFC"/>
+   666→                      <rect x="18" y="24" width="28" height="6" rx="2" fill="#F77F00"/>
+   667→                      <rect x="18" y="34" width="20" height="4" rx="1" fill="#E2E8F0"/>
+   668→                      <rect x="18" y="42" width="24" height="4" rx="1" fill="#E2E8F0"/>
+   669→                      <circle cx="48" cy="44" r="8" stroke="#009E60" strokeWidth="2.5" fill="#ECFDF5"/>
+   670→                      <path d="M45 44l2 2 4-4" stroke="#009E60" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+   671→                    </svg>
+   672→                  ),
+   673→                  title: "Rapports prêts à présenter en 1 clic",
+   674→                  description: "Générez votre rapport trimestriel ou annuel en un clic : mise en page professionnelle, graphiques intégrés, données consolidées, format PDF conforme aux standards ministériels.",
+   675→                  badge: "Export PDF/Excel",
+   676→                  color: "slate",
+   677→                },
+   678→              ].map((feature, index) => (
+   679→                <div
+   680→                  key={index}
+   681→                  className="group bg-white rounded-2xl p-6 lg:p-8 border border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-300 animate-on-scroll delay-(index % 2) + 1"
+   682→                >
+   683→                  <div className="flex items-start gap-5">
+   684→                    {/* SVG Icon */}
+   685→                    <div className="flex-shrink-0 mt-1">
+   686→                      {feature.svg}
+   687→                    </div>
+   688→
+   689→                    {/* Contenu */}
+   690→                    <div className="flex-1">
+   691→                      {/* Badge */}
+   692→                      <span className={`inline-block text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full mb-3 ${
+   693→                        feature.color === 'orange' ? 'bg-orange-100 text-orange-700' :
+   694→                        feature.color === 'green' ? 'bg-green-100 text-green-700' :
+   695→                        feature.color === 'blue' ? 'bg-blue-100 text-blue-700' :
+   696→                        'bg-slate-100 text-slate-700'
+   697→                      }`}>
+   698→                        {feature.badge}
+   699→                      </span>
+   700→
+   701→                      {/* Titre */}
+   702→                      <h3 className="landing-heading text-lg lg:text-xl font-bold text-[#0F172A] mb-3">
+   703→                        {feature.title}
+   704→                      </h3>
+   705→
+   706→                      {/* Description */}
+   707→                      <p className="landing-body text-sm lg:text-base text-slate-600 leading-relaxed">
+   708→                        {feature.description}
+   709→                      </p>
+   710→                    </div>
+   711→                  </div>
+   712→                </div>
+   713→              ))}
+   714→            </div>
+   715→          </div>
+   716→        </section>
+   717→
+   718→        {/* ===== 5. SECTION COMMENT ÇA MARCHE ===== */}
+   719→        <section id="comment-ca-marche" className="py-20 lg:py-28 bg-white relative overflow-hidden" aria-label="Fonctionnement">
+   720→          {/* Ligne de progression verticale */}
+   721→          <div className="absolute left-1/2 top-0 bottom-0 w-0.5 hidden lg:block">
+   722→            <div className="progress-line absolute inset-0 w-full" />
+   723→          </div>
+   724→
+   725→          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   726→            {/* En-tête section */}
+   727→            <div className="text-center max-w-3xl mx-auto mb-20 animate-on-scroll">
+   728→              <span className="inline-block text-sm font-semibold text-[#F77F00] uppercase tracking-wide mb-4">
+   729→                Mode d'emploi
+   730→              </span>
+   731→              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
+   732→                Trois étapes, et vous êtes opérationnel
+   733→              </h2>
+   734→              <p className="landing-body text-lg text-slate-600">
+   735→                Pas de formation complexe, pas de migration de données. Vous commencez à saisir vos activités dès le premier jour.
+   736→              </p>
+   737→            </div>
+   738→
+   739→            {/* Timeline 3 étapes */}
+   740→            <div className="space-y-12 lg:space-y-0 lg:relative">
+   741→              {/* Étape 01 */}
+   742→              <div className="lg:flex items-center gap-12 animate-on-scroll">
+   743→                <div className="lg:w-1/2 lg:text-right lg:pr-12">
+   744→                  <div className="bg-gradient-to-br from-[#FFF7ED] to-white rounded-2xl p-6 lg:p-8 border border-[#FED7AA]">
+   745→                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#F77F00] text-white text-xl font-bold mb-4">
+   746→                      01
+   747→                    </div>
+   748→                    <h3 className="landing-heading text-xl lg:text-2xl font-bold text-[#0F172A] mb-3">
+   749→                      On crée votre espace direction
+   750→                    </h3>
+   751→                    <p className="landing-body text-slate-600 mb-4">
+   752→                      À partir de votre demande validée par la direction centrale, nous provisionnez votre espace personnalisé en moins de 24h. Import de votre plan annuel si disponible.
+   753→                    </p>
+   754→                    <ul className="space-y-2 text-sm text-slate-600">
+   755→                      {["Création comptes agents", "Configuration structure", "Import plan annuel"].map((item) => (
+   756→                        <li key={item} className="flex items-center gap-2 lg:justify-end">
+   757→                          <span>{item}</span>
+   758→                          <svg className="w-4 h-4 text-[#009E60] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+   759→                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+   760→                          </svg>
+   761→                        </li>
+   762→                      ))}
+   763→                    </ul>
+   764→                  </div>
+   765→                </div>
+   766→                {/* Point timeline (desktop only) */}
+   767→                <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-[#F77F00] text-white items-center justify-center text-lg font-bold shadow-lg shadow-orange-500/30 z-10" style={{ top: '60px' }}>
+   768→                  01
+   769→                </div>
+   770→                <div className="lg:w-1/2 hidden lg:block" />
+   771→              </div>
+   772→
+   773→              {/* Étape 02 */}
+   774→              <div className="lg:flex items-center gap-12 mt-12 lg:mt-0 animate-on-scroll delay-1">
+   775→                <div className="hidden lg:block lg:w-1/2" />
+   776→                {/* Point timeline (desktop only) */}
+   777→                <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-[#009E60] text-white items-center justify-center text-lg font-bold shadow-lg shadow-green-500/30 z-10" style={{ top: '280px' }}>
+   778→                  02
+   779→                </div>
+   780→                <div className="lg:w-1/2 lg:pl-12">
+   781→                  <div className="bg-gradient-to-br from-[#ECFDF5] to-white rounded-2xl p-6 lg:p-8 border border [#BBF7D0]">
+   782→                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#009E60] text-white text-xl font-bold mb-4">
+   783→                      02
+   784→                    </div>
+   785→                    <h3 className="landing-heading text-xl lg:text-2xl font-bold text-[#0F172A] mb-3">
+   786→                      Vous saisissez vos activités au fil de l'eau
+   787→                    </h3>
+   788→                    <p className="landing-body text-slate-600 mb-4">
+   789→                      Après chaque mission, atelier ou réunion, vous la saisissez en 3 minutes : titre, date, lieu, photos, nombre de bénéficiaires. Fini l'accumulation de paperasse.
+   790→                    </p>
+   791→                    <ul className="space-y-2 text-sm text-slate-600">
+   792→                      {["Formulaire guidé mobile-friendly", "Upload photos depuis smartphone", "Géolocalisation automatique"].map((item) => (
+   793→                        <li key={item} className="flex items-center gap-2">
+   794→                          <svg className="w-4 h-4 text-[#009E60] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+   795→                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+   796→                          </svg>
+   797→                          <span>{item}</span>
+   798→                        </li>
+   799→                      ))}
+   800→                    </ul>
+   801→                  </div>
+   802→                </div>
+   803→              </div>
+   804→
+   805→              {/* Étape 03 */}
+   806→              <div className="lg:flex items-center gap-12 mt-12 lg:mt-0 animate-on-scroll delay-2">
+   807→                <div className="lg:w-1/2 lg:text-right lg:pr-12">
+   808→                  <div className="bg-gradient-to-br from-[#EFF6FF] to-white rounded-2xl p-6 lg:p-8 border border-[#BFDBFE]">
+   809→                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#2563EB] text-white text-xl font-bold mb-4">
+   810→                      03
+   811→                    </div>
+   812→                    <h3 className="landing-heading text-xl lg:text-2xl font-bold text-[#0F172A] mb-3">
+   813→                      Les rapports se génèrent tout seuls
+   814→                    </h3>
+   815→                    <p className="landing-body text-slate-600 mb-4">
+   816→                      À chaque échéance trimestrielle, cliquez sur « Générer le rapport » : toutes vos activités validées sont automatiquement consolidées, mises en forme et prêtes à envoyer.
+   817→                    </p>
+   818→                    <ul className="space-y-2 text-sm text-slate-600">
+   819→                      {["Rapport PDF professionnel", "Données consolidées", "Envoi direct au MCNSLP"].map((item) => (
+   820→                        <li key={item} className="flex items-center gap-2 lg:justify-end">
+   821→                          <span>{item}</span>
+   822→                          <svg className="w-4 h-4 text-[#009E60] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+   823→                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+   824→                          </svg>
+   825→                        </li>
+   826→                      ))}
+   827→                    </ul>
+   828→                  </div>
+   829→                </div>
+   830→                {/* Point timeline (desktop only) */}
+   831→                <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-[#0F172A] text-white items-center justify-center text-lg font-bold shadow-lg z-10" style={{ top: '500px' }}>
+   832→                  03
+   833→                </div>
+   834→                <div className="lg:w-1/2 hidden lg:block" />
+   835→              </div>
+   836→            </div>
+   837→          </div>
+   838→        </section>
+   839→
+   840→        {/* ===== 6. SECTION TÉMOIGNAGES ===== */}
+   841→        <section id="temoignages" className="py-20 lg:py-28 bg-[#0F172A] relative overflow-hidden" aria-label="Témoignages">
+   842→          {/* Motif subtil overlay */}
+   843→          <div className="absolute inset-0 african-pattern opacity-30" />
+   844→
+   845→          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   846→            {/* En-tête section */}
+   847→            <div className="text-center max-w-3xl mx-auto mb-16 animate-on-scroll">
+   848→              <span className="inline-block text-sm font-semibold text-[#F77F00] uppercase tracking-wide mb-4">
+   849→                Témoignages
+   850→              </span>
+   851→              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-white mb-6 leading-tight">
+   852→                Ils ont dit adieu aux rapports de dernière minute
+   853→              </h2>
+   854→              <p className="text-lg text-slate-400">
+   855→                Découvrez comment e-OSCS a transformé le quotidien de professionnels comme vous.
+   856→              </p>
+   857→            </div>
+   858→
+   859→            {/* Grille 3 témoignages */}
+   860→            <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+   861→              {[
+   862→                {
+   863→                  quote: "Avant e-OSCS, je passais mes deux dernières semaines de chaque trimestre à reconstituer mes activités dans Excel. Maintenant, je saisis au fil de l'eau et mon rapport trimestriel est prêt en 10 minutes. C'est une autre vie.",
+   864→                  name: "Aminata K.",
+   865→                  role: "Chef de Service, DR Bouaké",
+   866→                  location: "Bouaké",
+   867→                  avatar: "AK",
+   868→                  stats: { activities: "127", timeSaved: "15j/an" },
+   869→                },
+   870→                {
+   871→                  quote: "La consolidation des rapports de nos 8 départements était un cauchemar. Avec e-OSCS, j'ai une vue en temps réel de tout le territoire et le rapport consolidé se génère seul. Mes collègues des autres directions sont jaloux.",
+   872→                  name: "Koné S.",
+   873→                  role: "Directeur Régional, Korhogo",
+   874→                  location: "Korhogo",
+   875→                  avatar: "KS",
+   876→                  stats: { departments: "8", reports: "100%" },
+   877→                },
+   878→                {
+   879→                  quote: "J'étais réticente au début parce que je ne suis pas très technology. Mais l'interface est tellement simple que je l'ai adoptée en une demi-journée. Maintenant, je forme moi-même les nouveaux agents.",
+   880→                  name: "Adjoua M.",
+   881→                  role: "Charge d'Activités, San-Pédro",
+   882→                  location: "San-Pédro",
+   883→                  avatar: "AM",
+   884→                  stats: { training: "12 agents", adoption: "2 jours" },
+   885→                },
+   886→              ].map((testimonial, index) => (
+   887→                <div
+   888→                  key={index}
+   889→                  className="group bg-white/5 backdrop-blur-sm rounded-2xl p-6 lg:p-8 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-300 animate-on-scroll delay-index + 1"
+   890→                >
+   891→                  {/* Quote icon */}
+   892→                  <svg className="w-10 h-10 text-[#F77F00]/30 mb-5" fill="currentColor" viewBox="0 0 24 24">
+   893→                    <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
+   894→                  </svg>
+   895→
+   896→                  {/* Citation */}
+   897→                  <blockquote className="landing-body text-sm lg:text-base text-slate-300 leading-relaxed mb-6">
+   898→                    "{testimonial.quote}"
+   899→                  </blockquote>
+   900→
+   901→                  {/* Stats mini */}
+   902→                  <div className="flex items-center gap-4 mb-6 pb-6 border-b border-white/10">
+   903→                    {Object.entries(testimonial.stats).map(([key, value]) => (
+   904→                      <div key={key} className="text-center">
+   905→                        <div className="text-lg font-bold text-[#F77F00]">{value}</div>
+   906→                        <div className="text-[10px] text-slate-500 uppercase tracking-wide">
+   907→                          {key === 'activities' ? 'Activités' : key === 'timeSaved' ? 'Temps gagné' : key === 'departments' ? 'Départements' : key === 'reports' ? 'Taux rapport' : key === 'training' ? 'Formés' : 'Adoption'}
+   908→                        </div>
+   909→                      </div>
+   910→                    ))}
+   911→                  </div>
+   912→
+   913→                  {/* Auteur */}
+   914→                  <div className="flex items-center gap-3">
+   915→                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#F77F00] to-[#009E60] flex items-center justify-center text-white font-bold text-sm">
+   916→                      {testimonial.avatar}
+   917→                    </div>
+   918→                    <div>
+   919→                      <div className="font-semibold text-white text-sm">{testimonial.name}</div>
+   920→                      <div className="text-xs text-slate-400">{testimonial.role}</div>
+   921→                      <div className="text-[10px] text-[#F77F00]">📍 {testimonial.location}</div>
+   922→                    </div>
+   923→                  </div>
+   924→                </div>
+   925→              ))}
+   926→            </div>
+   927→          </div>
+   928→        </section>
+   929→
+   930→        {/* ===== 7. SECTION TARIFICATION ===== */}
+   931→        <section id="tarifs" className="py-20 lg:py-28 bg-white" aria-label="Tarification">
+   932→          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   933→            {/* En-tête section */}
+   934→            <div className="text-center max-w-3xl mx-auto mb-16 animate-on-scroll">
+   935→              <span className="inline-block text-sm font-semibold text-[#009E60] uppercase tracking-wide mb-4">
+   936→                Tarification transparente
+   937→              </span>
+   938→              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
+   939→                Un investissement mesurable pour votre direction
+   940→              </h2>
+   941→              <p className="landing-body text-lg text-slate-600">
+   942→                Des tarifs adaptés aux réalités budgétaires des services publics ivoiriens. Pas de frais cachés, pas de surprise.
+   943→              </p>
+   944→            </div>
+   945→
+   946→            {/* Toggle Annuel/Mensuel (optionnel visuel) */}
+   947→            <div className="flex items-center justify-center gap-4 mb-12 animate-on-scroll">
+   948→              <span className="text-sm font-medium text-slate-600">Facturation mensuelle</span>
+   949→              <div className="relative inline-flex items-center">
+   950→                <span className="text-sm font-semibold text-[#009E60] mr-2">✓</span>
+   951→                <span className="text-sm font-medium text-slate-800">Paiement FCFA</span>
+   952→              </div>
+   953→            </div>
+   954→
+   955→            {/* Grille 3 plans */}
+   956→            <div className="grid md:grid-cols-3 gap-6 lg:gap-8 items-start">
+   957→              {[
+   958→                {
+   959→                  name: "Essentiel",
+   960→                  price: "10 000",
+   961→                  currency: "FCFA/mois",
+   962→                  description: "Pour les départements qui débutent leur transformation numérique",
+   963→                  features: [
+   964→                    "Jusqu'à 5 utilisateurs",
+   965→                    "Saisie d'activités illimitée",
+   966→                    "Rapports trimestriels automatiques",
+   967→                    "Stockage photos (2 Go)",
+   968→                    "Support par email",
+   969→                  ],
+   970→                  limitations: [
+   971→                    "Pas de validation multi-niveaux",
+   972→                    "Pas de tableau de bord avancé",
+   973→                  ],
+   974→                  popular: false,
+   975→                  cta: "Commencer l'essai",
+   976→                  color: "slate",
+   977→                },
+   978→                {
+   979→                  name: "Professionnel",
+   980→                  price: "15 000",
+   981→                  currency: "FCFA/mois",
+   982→                  description: "Pour les directions régionales qui veulent maîtriser leur reporting",
+   983→                  features: [
+   984→                    "Jusqu'à 20 utilisateurs",
+   985→                    "Tout le plan Essentiel, plus :",
+   986→                    "Circuit de validation multi-niveaux",
+   987→                    "Tableaux de bord & indicateurs",
+   988→                    "Export PDF/Excel avancé",
+   989→                    "Stockage photos (10 Go)",
+   990→                    "Support prioritaire",
+   991→                    "Formation incluse",
+   992→                  ],
+   993→                  limitations: [],
+   994→                  popular: true,
+   995→                  cta: "Demander ce plan",
+   996→                  color: "orange",
+   997→                },
+   998→                {
+   999→                  name: "Institutionnel",
+  1000→                  price: "25 000",
+
+[showing lines 501-1000 of 1395; use offset=1001 with limit to continue reading]

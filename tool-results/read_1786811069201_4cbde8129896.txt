@@ -1,0 +1,896 @@
+     1→'use client'
+     2→
+     3→import React, { useState } from 'react'
+     4→import { useRouter } from 'next/navigation'
+     5→import Link from 'next/link'
+     6→import {
+     7→  Info,
+     8→  FileText,
+     9→  Users,
+    10→  Image,
+    11→  CheckCircle2,
+    12→  ChevronRight,
+    13→  ChevronLeft,
+    14→  Save,
+    15→  Send,
+    16→  AlertCircle,
+    17→  Upload,
+    18→  X,
+    19→  Calendar as CalendarIcon,
+    20→  MapPin,
+    21→  Target,
+    22→  Award,
+    23→} from 'lucide-react'
+    24→import { Button } from '@/components/ui/button'
+    25→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+    26→import { Input } from '@/components/ui/input'
+    27→import { Textarea } from '@/components/ui/textarea'
+    28→import { Label } from '@/components/ui/label'
+    29→import {
+    30→  Select,
+    31→  SelectContent,
+    32→  SelectItem,
+    33→  SelectTrigger,
+    34→  SelectValue,
+    35→} from '@/components/ui/select'
+    36→import { Badge } from '@/components/ui/badge'
+    37→import { Separator } from '@/components/ui/separator'
+    38→
+    39→// Types pour le formulaire
+    40→interface ActivityFormData {
+    41→  // Étape 1: Informations générales
+    42→  intitule: string
+    43→  dateActivite: string
+    44→  lieu: string
+    45→  typeActivite: string
+    46→  
+    47→  // Étape 2: Description
+    48→  objectif: string
+    49→  description: string
+    50→  resultats: string
+    51→  
+    52→  // Étape 3: Bénéficiaires
+    53→  totalBeneficiaires: string
+    54→  hommes: string
+    55→  femmes: string
+    56→  enfants: string
+    57→  personnesHandicapees: string
+    58→  
+    59→  // Étape 4: Documents (simulé)
+    60→  documents: File[]
+    61→}
+    62→
+    63→// Configuration des étapes
+    64→const steps = [
+    65→  {
+    66→    id: 1,
+    67→    title: 'Informations',
+    68→    description: 'Détails de base',
+    69→    icon: Info,
+    70→  },
+    71→  {
+    72→    id: 2,
+    73→    title: 'Description',
+    74→    description: 'Objectifs et résultats',
+    75→    icon: FileText,
+    76→  },
+    77→  {
+    78→    id: 3,
+    79→    title: 'Bénéficiaires',
+    80→    description: 'Public concerné',
+    81→    icon: Users,
+    82→  },
+    83→  {
+    84→    id: 4,
+    85→    title: 'Documents',
+    86→    description: 'Photos et pièces',
+    87→    icon: Image,
+    88→  },
+    89→]
+    90→
+    91→// Types d'activité disponibles
+    92→const typesActivite = [
+    93→  { value: 'SENSIBILISATION', label: 'Sensibilisation' },
+    94→  { value: 'FORMATION', label: 'Formation' },
+    95→  { value: 'DISTRIBUTION', label: 'Distribution' },
+    96→  { value: 'VISITE', label: 'Visite' },
+    97→  { value: 'REUNION', label: 'Réunion' },
+    98→  { value: 'ATELIER', label: 'Atelier' },
+    99→  { value: 'CAMPAGNE', label: 'Campagne' },
+   100→  { value: 'AUTRE', label: 'Autre' },
+   101→]
+   102→
+   103→// Formulaire initial vide
+   104→const initialFormData: ActivityFormData = {
+   105→  intitule: '',
+   106→  dateActivite: '',
+   107→  lieu: '',
+   108→  typeActivite: '',
+   109→  objectif: '',
+   110→  description: '',
+   111→  resultats: '',
+   112→  totalBeneficiaires: '',
+   113→  hommes: '',
+   114→  femmes: '',
+   115→  enfants: '',
+   116→  personnesHandicapees: '',
+   117→  documents: [],
+   118→}
+   119→
+   120→export default function NouvelleActivitePage() {
+   121→  const router = useRouter()
+   122→  const [currentStep, setCurrentStep] = useState(1)
+   123→  const [formData, setFormData] = useState<ActivityFormData>(initialFormData)
+   124→  const [errors, setErrors] = useState<Record<string, string>>({})
+   125→  const [isSubmitting, setIsSubmitting] = useState(false)
+   126→  const [isSavingDraft, setIsSavingDraft] = useState(false)
+   127→  const [showSummary, setShowSummary] = useState(false)
+   128→
+   129→  // Validation par étape
+   130→  const validateStep = (step: number): boolean => {
+   131→    const newErrors: Record<string, string> = {}
+   132→
+   133→    switch (step) {
+   134→      case 1:
+   135→        if (!formData.intitule.trim()) newErrors.intitule = "L'intitulé est obligatoire"
+   136→        if (!formData.dateActivite) newErrors.dateActivite = 'La date est obligatoire'
+   137→        if (!formData.lieu.trim()) newErrors.lieu = 'Le lieu est obligatoire'
+   138→        if (!formData.typeActivite) newErrors.typeActivite = 'Le type d\'activité est obligatoire'
+   139→        break
+   140→      case 2:
+   141→        if (!formData.objectif.trim()) newErrors.objectif = "L'objectif est obligatoire"
+   142→        if (!formData.description.trim()) newErrors.description = 'La description est obligatoire'
+   143→        break
+   144→      case 3:
+   145→        if (!formData.totalBeneficiaires) newErrors.totalBeneficiaires = 'Le nombre de bénéficiaires est obligatoire'
+   146→        break
+   147→      case 4:
+   148→        // Les documents sont optionnels
+   149→        break
+   150→    }
+   151→
+   152→    setErrors(newErrors)
+   153→    return Object.keys(newErrors).length === 0
+   154→  }
+   155→
+   156→  // Navigation entre étapes
+   157→  const nextStep = () => {
+   158→    if (validateStep(currentStep)) {
+   159→      if (currentStep < steps.length) {
+   160→        setCurrentStep(currentStep + 1)
+   161→      }
+   162→    }
+   163→  }
+   164→
+   165→  const prevStep = () => {
+   166→    if (currentStep > 1) {
+   167→      setCurrentStep(currentStep - 1)
+   168→    }
+   169→    setShowSummary(false)
+   170→  }
+   171→
+   172→  // Mise à jour du formulaire
+   173→  const updateField = (field: keyof ActivityFormData, value: string | File[]) => {
+   174→    setFormData(prev => ({ ...prev, [field]: value }))
+   175→    // Effacer l'erreur quand l'utilisateur modifie le champ
+   176→    if (errors[field]) {
+   177→      setErrors(prev => ({ ...prev, [field]: '' }))
+   178→    }
+   179→  }
+   180→
+   181→  // Gestion des fichiers uploadés
+   182→  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+   183→    const files = Array.from(e.target.files || [])
+   184→    setFormData(prev => ({
+   185→      ...prev,
+   186→      documents: [...prev.documents, ...files]
+   187→    }))
+   188→  }
+   189→
+   190→  const removeDocument = (index: number) => {
+   191→    setFormData(prev => ({
+   192→      ...prev,
+   193→      documents: prev.documents.filter((_, i) => i !== index)
+   194→    }))
+   195→  }
+   196→
+   197→  // Sauvegarder brouillon
+   198→  const saveDraft = async () => {
+   199→    setIsSavingDraft(true)
+   200→    try {
+   201→      // Simuler la sauvegarde - en production, appel API
+   202→      await new Promise(resolve => setTimeout(resolve, 1000))
+   203→      
+   204→      alert('✅ Brouillon sauvegardé avec succès !')
+   205→      router.push('/agent/brouillons')
+   206→    } catch (error) {
+   207→      alert('❌ Erreur lors de la sauvegarde du brouillon.')
+   208→    } finally {
+   209→      setIsSavingDraft(false)
+   210→    }
+   211→  }
+   212→
+   213→  // Soumettre l'activité
+   214→  const submitActivity = async () => {
+   215→    if (!validateStep(currentStep)) return
+   216→    
+   217→    setIsSubmitting(true)
+   218→    try {
+   219→      // Simuler la soumission - en production, appel API
+   220→      await new Promise(resolve => setTimeout(resolve, 1500))
+   221→      
+   222→      alert('🎉 Activité soumise avec succès ! Elle sera examinée par votre responsable.')
+   223→      router.push('/agent/soumises')
+   224→    } catch (error) {
+   225→      alert('❌ Erreur lors de la soumission de l\'activité.')
+   226→    } finally {
+   227→      setIsSubmitting(false)
+   228→    }
+   229→  }
+   230→
+   231→  // Afficher le résumé avant soumission
+   232→  const showFinalSummary = () => {
+   233→    if (validateStep(4)) {
+   234→      setShowSummary(true)
+   235→    }
+   236→  }
+   237→
+   238→  return (
+   239→    <div className="max-w-4xl mx-auto">
+   240→      {/* En-tête */}
+   241→      <div className="mb-6">
+   242→        <Link 
+   243→          href="/agent" 
+   244→          className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1 mb-3 inline-block"
+   245→        >
+   246→          ← Retour à l'accueil
+   247→        </Link>
+   248→        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">
+   249→          Nouvelle activité
+   250→        </h1>
+   251→        <p className="text-slate-500 mt-1">
+   252→          Remplissez ce formulaire étape par étape pour déclarer une activité.
+   253→        </p>
+   254→      </div>
+   255→
+   256→      {/* Stepper visuel */}
+   257→      <Card className="mb-6 border-slate-200 overflow-hidden">
+   258→        <CardContent className="p-4 lg:p-6">
+   259→          <div className="flex items-center justify-between">
+   260→            {steps.map((step, index) => (
+   261→              <React.Fragment key={step.id}>
+   262→                {/* Step item */}
+   263→                <div className="flex items-center">
+   264→                  <button
+   265→                    onClick={() => {
+   266→                      if (step.id <= currentStep || validateStep(currentStep)) {
+   267→                        setCurrentStep(step.id)
+   268→                        setShowSummary(false)
+   269→                      }
+   270→                    }}
+   271→                    className={`flex items-center gap-2 lg:gap-3 ${
+   272→                  step.id <= currentStep ? 'cursor-pointer' : 'cursor-default'
+   273→                }`}
+   274→                  >
+   275→                    <div className={`
+   276→                    w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all duration-300
+   277→                    ${currentStep === step.id 
+   278→                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30 scale-110' 
+   279→                      : step.id < currentStep 
+   280→                        ? 'bg-green-500 text-white' 
+   281→                        : 'bg-slate-100 text-slate-400'
+   282→                    }
+   283→                  `}>
+   284→                      {step.id < currentStep ? (
+   285→                        <CheckCircle2 className="w-5 h-5" />
+   286→                      ) : (
+   287→                        step.id
+   288→                      )}
+   289→                    </div>
+   290→                    
+   291→                    {/* Labels visibles sur desktop uniquement */}
+   292→                    <div className="hidden sm:block text-left">
+   293→                      <p className={`text-sm font-medium ${
+   294→                        currentStep === step.id ? 'text-orange-600' : 'text-slate-700'
+   295→                      }`}>
+   296→                        {step.title}
+   297→                      </p>
+   298→                      <p className="text-xs text-slate-400 hidden lg:block">
+   299→                        {step.description}
+   300→                      </p>
+   301→                    </div>
+   302→                  </button>
+   303→                </div>
+   304→
+   305→                {/* Connector line */}
+   306→                {index < steps.length - 1 && (
+   307→                  <div className={`hidden sm:block flex-1 h-0.5 mx-2 lg:mx-4 ${
+   308→                    step.id < currentStep ? 'bg-green-500' : 'bg-slate-200'
+   309→                  }`} />
+   310→                )}
+   311→              </React.Fragment>
+   312→            ))}
+   313→          </div>
+   314→        </CardContent>
+   315→      </Card>
+   316→
+   317→      {/* Contenu du formulaire selon l'étape */}
+   318→      {!showSummary ? (
+   319→        <Card className="border-slate-200">
+   320→          <CardHeader className="pb-4">
+   321→            <CardTitle className="flex items-center gap-3 text-xl">
+   322→              {React.createElement(steps[currentStep - 1].icon, { 
+   323→                className: 'w-6 h-6 text-orange-500' 
+   324→              })}
+   325→              Étape {currentStep} : {steps[currentStep - 1].title}
+   326→            </CardTitle>
+   327→            <CardDescription>{steps[currentStep - 1].description}</CardDescription>
+   328→          </CardHeader>
+   329→          
+   330→          <CardContent className="space-y-6">
+   331→            {/* ÉTAPE 1: Informations générales */}
+   332→            {currentStep === 1 && (
+   333→              <>
+   334→                <div className="space-y-2">
+   335→                  <Label htmlFor="intitule" className="text-base font-medium">
+   336→                    Intitulé de l'activité <span className="text-red-500">*</span>
+   337→                  </Label>
+   338→                  <Input
+   339→                    id="intitule"
+   340→                    placeholder="Ex: Sensibilisation sur l'hygiène communautaire"
+   341→                    value={formData.intitule}
+   342→                    onChange={(e) => updateField('intitule', e.target.value)}
+   343→                    className={`h-12 text-base ${errors.intitule ? 'border-red-300 bg-red-50' : ''}`}
+   344→                  />
+   345→                  {errors.intitule && (
+   346→                    <p className="text-sm text-red-500 flex items-center gap-1">
+   347→                      <AlertCircle className="w-4 h-4" />
+   348→                      {errors.intitule}
+   349→                    </p>
+   350→                  )}
+   351→                </div>
+   352→
+   353→                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   354→                  <div className="space-y-2">
+   355→                    <Label htmlFor="dateActivite" className="text-base font-medium">
+   356→                      Date de l'activité <span className="text-red-500">*</span>
+   357→                    </Label>
+   358→                    <Input
+   359→                      id="dateActivite"
+   360→                      type="date"
+   361→                      value={formData.dateActivite}
+   362→                      onChange={(e) => updateField('dateActivite', e.target.value)}
+   363→                      className={`h-12 text-base ${errors.dateActivite ? 'border-red-300 bg-red-50' : ''}`}
+   364→                    />
+   365→                    {errors.dateActivite && (
+   366→                      <p className="text-sm text-red-500 flex items-center gap-1">
+   367→                        <AlertCircle className="w-4 h-4" />
+   368→                        {errors.dateActivite}
+   369→                      </p>
+   370→                    )}
+   371→                  </div>
+   372→
+   373→                  <div className="space-y-2">
+   374→                    <Label htmlFor="typeActivite" className="text-base font-medium">
+   375→                      Type d'activité <span className="text-red-500">*</span>
+   376→                    </Label>
+   377→                    <Select
+   378→                      value={formData.typeActivite}
+   379→                      onValueChange={(value) => updateField('typeActivite', value)}
+   380→                    >
+   381→                      <SelectTrigger className={`h-12 text-base ${errors.typeActivite ? 'border-red-300 bg-red-50' : ''}`}>
+   382→                        <SelectValue placeholder="Sélectionner un type" />
+   383→                      </SelectTrigger>
+   384→                      <SelectContent>
+   385→                        {typesActivite.map((type) => (
+   386→                          <SelectItem key={type.value} value={type.value}>
+   387→                            {type.label}
+   388→                          </SelectItem>
+   389→                        ))}
+   390→                      </SelectContent>
+   391→                    </Select>
+   392→                    {errors.typeActivite && (
+   393→                      <p className="text-sm text-red-500 flex items-center gap-1">
+   394→                        <AlertCircle className="w-4 h-4" />
+   395→                        {errors.typeActivite}
+   396→                      </p>
+   397→                    )}
+   398→                  </div>
+   399→                </div>
+   400→
+   401→                <div className="space-y-2">
+   402→                  <Label htmlFor="lieu" className="text-base font-medium">
+   403→                    Lieu de l'activité <span className="text-red-500">*</span>
+   404→                  </Label>
+   405→                  <div className="relative">
+   406→                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+   407→                    <Input
+   408→                      id="lieu"
+   409→                      placeholder="Ex: Abidjan, Yopougon - Quartier Rouge"
+   410→                      value={formData.lieu}
+   411→                      onChange={(e) => updateField('lieu', e.target.value)}
+   412→                      className={`h-12 pl-11 text-base ${errors.lieu ? 'border-red-300 bg-red-50' : ''}`}
+   413→                    />
+   414→                  </div>
+   415→                  {errors.lieu && (
+   416→                    <p className="text-sm text-red-500 flex items-center gap-1">
+   417→                      <AlertCircle className="w-4 h-4" />
+   418→                      {errors.lieu}
+   419→                    </p>
+   420→                  )}
+   421→                </div>
+   422→              </>
+   423→            )}
+   424→
+   425→            {/* ÉTAPE 2: Description */}
+   426→            {currentStep === 2 && (
+   427→              <>
+   428→                <div className="space-y-2">
+   429→                  <Label htmlFor="objectif" className="text-base font-medium">
+   430→                    Objectif de l'activité <span className="text-red-500">*</span>
+   431→                  </Label>
+   432→                  <div className="relative">
+   433→                    <Target className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+   434→                    <Textarea
+   435→                      id="objectif"
+   436→                      placeholder="Décrivez l'objectif principal de cette activité..."
+   437→                      value={formData.objectif}
+   438→                      onChange={(e) => updateField('objectif', e.target.value)}
+   439→                      rows={3}
+   440→                      className={`pl-11 text-base resize-none ${errors.objectif ? 'border-red-300 bg-red-50' : ''}`}
+   441→                    />
+   442→                  </div>
+   443→                  {errors.objectif && (
+   444→                    <p className="text-sm text-red-500 flex items-center gap-1">
+   445→                      <AlertCircle className="w-4 h-4" />
+   446→                      {errors.objectif}
+   447→                    </p>
+   448→                  )}
+   449→                </div>
+   450→
+   451→                <div className="space-y-2">
+   452→                  <Label htmlFor="description" className="text-base font-medium">
+   453→                    Description détaillée <span className="text-red-500">*</span>
+   454→                  </Label>
+   455→                  <Textarea
+   456→                    id="description"
+   457→                    placeholder="Décrivez en détail le déroulement de l'activité, les actions menées..."
+   458→                    value={formData.description}
+   459→                    onChange={(e) => updateField('description', e.target.value)}
+   460→                    rows={5}
+   461→                    className={`text-base resize-none ${errors.description ? 'border-red-300 bg-red-50' : ''}`}
+   462→                  />
+   463→                  {errors.description && (
+   464→                    <p className="text-sm text-red-500 flex items-center gap-1">
+   465→                      <AlertCircle className="w-4 h-4" />
+   466→                      {errors.description}
+   467→                    </p>
+   468→                  )}
+   469→                </div>
+   470→
+   471→                <div className="space-y-2">
+   472→                  <Label htmlFor="resultats" className="text-base font-medium">
+   473→                    Résultats obtenus
+   474→                  </Label>
+   475→                  <div className="relative">
+   476→                    <Award className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+   477→                    <Textarea
+   478→                      id="resultats"
+   479→                      placeholder="Quels sont les résultats concrets de cette activité ? (optionnel)"
+   480→                      value={formData.resultats}
+   481→                      onChange={(e) => updateField('resultats', e.target.value)}
+   482→                      rows={3}
+   483→                      className="pl-11 text-base resize-none"
+   484→                    />
+   485→                  </div>
+   486→                  <p className="text-xs text-slate-400">
+   487→                    Décrivez les résultats mesurables si possible.
+   488→                  </p>
+   489→                </div>
+   490→              </>
+   491→            )}
+   492→
+   493→            {/* ÉTAPE 3: Bénéficiaires */}
+   494→            {currentStep === 3 && (
+   495→              <>
+   496→                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+   497→                  <p className="text-sm text-blue-700">
+   498→                    <strong>💡 Conseil :</strong> Comptez précisément le nombre de personnes 
+   499→                    ayant bénéficié directement de cette activité.
+   500→                  </p>
+   501→                </div>
+   502→
+   503→                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   504→                  <div className="space-y-2">
+   505→                    <Label htmlFor="totalBeneficiaires" className="text-base font-medium">
+   506→                      Total bénéficiaires <span className="text-red-500">*</span>
+   507→                    </Label>
+   508→                    <Input
+   509→                      id="totalBeneficiaires"
+   510→                      type="number"
+   511→                      min="0"
+   512→                      placeholder="Ex: 50"
+   513→                      value={formData.totalBeneficiaires}
+   514→                      onChange={(e) => updateField('totalBeneficiaires', e.target.value)}
+   515→                      className={`h-12 text-base ${errors.totalBeneficiaires ? 'border-red-300 bg-red-50' : ''}`}
+   516→                    />
+   517→                    {errors.totalBeneficiaires && (
+   518→                      <p className="text-sm text-red-500 flex items-center gap-1">
+   519→                        <AlertCircle className="w-4 h-4" />
+   520→                        {errors.totalBeneficiaires}
+   521→                      </p>
+   522→                    )}
+   523→                  </div>
+   524→
+   525→                  <div className="space-y-2">
+   526→                    <Label htmlFor="hommes" className="text-base font-medium">
+   527→                      Hommes
+   528→                    </Label>
+   529→                    <Input
+   530→                      id="hommes"
+   531→                      type="number"
+   532→                      min="0"
+   533→                      placeholder="Ex: 20"
+   534→                      value={formData.hommes}
+   535→                      onChange={(e) => updateField('hommes', e.target.value)}
+   536→                      className="h-12 text-base"
+   537→                    />
+   538→                  </div>
+   539→
+   540→                  <div className="space-y-2">
+   541→                    <Label htmlFor="femmes" className="text-base font-medium">
+   542→                      Femmes
+   543→                    </Label>
+   544→                    <Input
+   545→                      id="femmes"
+   546→                      type="number"
+   547→                      min="0"
+   548→                      placeholder="Ex: 25"
+   549→                      value={formData.femmes}
+   550→                      onChange={(e) => updateField('femmes', e.target.value)}
+   551→                      className="h-12 text-base"
+   552→                    />
+   553→                  </div>
+   554→
+   555→                  <div className="space-y-2">
+   556→                    <Label htmlFor="enfants" className="text-base font-medium">
+   557→                      Enfants (-18 ans)
+   558→                    </Label>
+   559→                    <Input
+   560→                      id="enfants"
+   561→                      type="number"
+   562→                      min="0"
+   563→                      placeholder="Ex: 15"
+   564→                      value={formData.enfants}
+   565→                      onChange={(e) => updateField('enfants', e.target.value)}
+   566→                      className="h-12 text-base"
+   567→                    />
+   568→                  </div>
+   569→
+   570→                  <div className="space-y-2 md:col-span-2">
+   571→                    <Label htmlFor="personnesHandicapees" className="text-base font-medium">
+   572→                      Personnes en situation de handicap
+   573→                    </Label>
+   574→                    <Input
+   575→                      id="personnesHandicapees"
+   576→                      type="number"
+   577→                      min="0"
+   578→                      placeholder="Ex: 3 (optionnel)"
+   579→                      value={formData.personnesHandicapees}
+   580→                      onChange={(e) => updateField('personnesHandicapees', e.target.value)}
+   581→                      className="h-12 text-base"
+   582→                    />
+   583→                  </div>
+   584→                </div>
+   585→              </>
+   586→            )}
+   587→
+   588→            {/* ÉTAPE 4: Documents */}
+   589→            {currentStep === 4 && (
+   590→              <>
+   591→                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+   592→                  <p className="text-sm text-amber-700">
+   593→                    <strong>📷 Photos et documents :</strong> Ajoutez des photos ou documents 
+   594→                    qui illustrent votre activité. Formats acceptés : JPG, PNG, PDF (max 5Mo chacun).
+   595→                  </p>
+   596→                </div>
+   597→
+   598→                {/* Zone d'upload */}
+   599→                <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-orange-400 hover:bg-orange-50/30 transition-colors">
+   600→                  <input
+   601→                    type="file"
+   602→                    id="documents"
+   603→                    multiple
+   604→                    accept="image/*,.pdf"
+   605→                    onChange={handleFileUpload}
+   606→                    className="hidden"
+   607→                  />
+   608→                  <label htmlFor="documents" className="cursor-pointer">
+   609→                    <Upload className="w-12 h-12 mx-auto text-slate-400 mb-3" />
+   610→                    <p className="text-base font-medium text-slate-700">
+   611→                      Cliquez pour ajouter des fichiers
+   612→                    </p>
+   613→                    <p className="text-sm text-slate-500 mt-1">
+   614→                      ou glissez-déposez ici
+   615→                    </p>
+   616→                  </label>
+   617→                </div>
+   618→
+   619→                {/* Liste des fichiers uploadés */}
+   620→                {formData.documents.length > 0 && (
+   621→                  <div className="space-y-2 mt-4">
+   622→                    <p className="text-sm font-medium text-slate-700">
+   623→                      Fichiers sélectionnés ({formData.documents.length})
+   624→                    </p>
+   625→                    <div className="space-y-2 max-h-48 overflow-y-auto">
+   626→                      {formData.documents.map((file, index) => (
+   627→                        <div 
+   628→                          key={index}
+   629→                          className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
+   630→                        >
+   631→                          <div className="flex items-center gap-3">
+   632→                            <Image className="w-8 h-8 text-slate-400" />
+   633→                            <div className="text-left">
+   634→                              <p className="text-sm font-medium text-slate-700 truncate max-w-[200px]">
+   635→                                {file.name}
+   636→                              </p>
+   637→                              <p className="text-xs text-slate-500">
+   638→                                {(file.size / 1024 / 1024).toFixed(2)} Mo
+   639→                              </p>
+   640→                            </div>
+   641→                          </div>
+   642→                          <Button
+   643→                            variant="ghost"
+   644→                            size="icon"
+   645→                            onClick={() => removeDocument(index)}
+   646→                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+   647→                          >
+   648→                            <X className="w-4 h-4" />
+   649→                          </Button>
+   650→                        </div>
+   651→                      ))}
+   652→                    </div>
+   653→                  </div>
+   654→                )}
+   655→
+   656→                <p className="text-xs text-slate-400 mt-4 text-center">
+   657→                  L'ajout de photos est facultatif mais recommandé pour une meilleure traçabilité.
+   658→                </p>
+   659→              </>
+   660→            )}
+   661→
+   662→            {/* Boutons de navigation */}
+   663→            <Separator className="my-6" />
+   664→
+   665→            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+   666→              <Button
+   667→                variant="outline"
+   668→                onClick={prevStep}
+   669→                disabled={currentStep === 1}
+   670→                className="order-2 sm:order-1"
+   671→              >
+   672→                <ChevronLeft className="w-4 h-4 mr-2" />
+   673→                Précédent
+   674→              </Button>
+   675→
+   676→              <div className="flex items-center gap-3 order-1 sm:order-2">
+   677→                {/* Bouton Brouillon (visible à toutes les étapes sauf résumé) */}
+   678→                <Button
+   679→                  variant="outline"
+   680→                  onClick={saveDraft}
+   681→                  disabled={isSavingDraft}
+   682→                  className="text-slate-600 border-slate-300 hover:bg-slate-50"
+   683→                >
+   684→                  {isSavingDraft ? (
+   685→                    <>
+   686→                      <span className="animate-spin mr-2">⏳</span>
+   687→                      Sauvegarde...
+   688→                    </>
+   689→                  ) : (
+   690→                    <>
+   691→                      <Save className="w-4 h-4 mr-2" />
+   692→                      Enregistrer brouillon
+   693→                    </>
+   694→                  )}
+   695→                </Button>
+   696→
+   697→                {/* Bouton Suivant ou Résumé */}
+   698→                {currentStep < steps.length ? (
+   699→                  <Button
+   700→                    onClick={nextStep}
+   701→                    className="bg-orange-500 hover:bg-orange-600 text-white px-6"
+   702→                  >
+   703→                    Étape suivante
+   704→                    <ChevronRight className="w-4 h-4 ml-2" />
+   705→                  </Button>
+   706→                ) : (
+   707→                  <Button
+   708→                    onClick={showFinalSummary}
+   709→                    className="bg-green-600 hover:bg-green-700 text-white px-6"
+   710→                  >
+   711→                    Voir le résumé
+   712→                    <CheckCircle2 className="w-4 h-4 ml-2" />
+   713→                  </Button>
+   714→                )}
+   715→              </div>
+   716→            </div>
+   717→          </CardContent>
+   718→        </Card>
+   719→      ) : (
+   720→        /* RÉSUMÉ FINAL AVANT SOUMISSION */
+   721→        <Card className="border-orange-200 bg-gradient-to-b from-orange-50/50 to-white">
+   722→          <CardHeader className="pb-4">
+   723→            <CardTitle className="flex items-center gap-3 text-xl text-orange-800">
+   724→              <CheckCircle2 className="w-7 h-7 text-orange-500" />
+   725→              Résumé de votre activité
+   726→            </CardTitle>
+   727→            <CardDescription>
+   728→              Vérifiez toutes les informations avant de soumettre votre activité.
+   729→            </CardDescription>
+   730→          </CardHeader>
+   731→          
+   732→          <CardContent className="space-y-6">
+   733→            {/* Section Informations */}
+   734→            <section>
+   735→              <h3 className="font-semibold text-lg text-slate-900 mb-3 flex items-center gap-2">
+   736→                <Info className="w-5 h-5 text-orange-500" />
+   737→                Informations générales
+   738→              </h3>
+   739→              <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
+   740→                <div className="flex justify-between py-1">
+   741→                  <span className="text-slate-500">Intitulé :</span>
+   742→                  <span className="font-medium text-slate-900">{formData.intitule}</span>
+   743→                </div>
+   744→                <Separator />
+   745→                <div className="flex justify-between py-1">
+   746→                  <span className="text-slate-500">Date :</span>
+   747→                  <span className="font-medium">{new Date(formData.dateActivite).toLocaleDateString('fr-FR')}</span>
+   748→                </div>
+   749→                <Separator />
+   750→                <div className="flex justify-between py-1">
+   751→                  <span className="text-slate-500">Lieu :</span>
+   752→                  <span className="font-medium">{formData.lieu}</span>
+   753→                </div>
+   754→                <Separator />
+   755→                <div className="flex justify-between py-1">
+   756→                  <span className="text-slate-500">Type :</span>
+   757→                  <Badge variant="secondary">
+   758→                    {typesActivite.find(t => t.value === formData.typeActivite)?.label || formData.typeActivite}
+   759→                  </Badge>
+   760→                </div>
+   761→              </div>
+   762→            </section>
+   763→
+   764→            {/* Section Description */}
+   765→            <section>
+   766→              <h3 className="font-semibold text-lg text-slate-900 mb-3 flex items-center gap-2">
+   767→                <FileText className="w-5 h-5 text-orange-500" />
+   768→                Description
+   769→              </h3>
+   770→              <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-4">
+   771→                <div>
+   772→                  <p className="text-sm text-slate-500 mb-1">Objectif :</p>
+   773→                  <p className="text-slate-900">{formData.objectif}</p>
+   774→                </div>
+   775→                <Separator />
+   776→                <div>
+   777→                  <p className="text-sm text-slate-500 mb-1">Description :</p>
+   778→                  <p className="text-slate-900 whitespace-pre-wrap">{formData.description}</p>
+   779→                </div>
+   780→                {formData.resultats && (
+   781→                  <>
+   782→                    <Separator />
+   783→                    <div>
+   784→                      <p className="text-sm text-slate-500 mb-1">Résultats :</p>
+   785→                      <p className="text-slate-900">{formData.resultats}</p>
+   786→                    </div>
+   787→                  </>
+   788→                )}
+   789→              </div>
+   790→            </section>
+   791→
+   792→            {/* Section Bénéficiaires */}
+   793→            <section>
+   794→              <h3 className="font-semibold text-lg text-slate-900 mb-3 flex items-center gap-2">
+   795→                <Users className="w-5 h-5 text-orange-500" />
+   796→                Bénéficiaires
+   797→              </h3>
+   798→              <div className="bg-white rounded-lg border border-slate-200 p-4">
+   799→                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   800→                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+   801→                    <p className="text-2xl font-bold text-blue-600">{formData.totalBeneficiaires || 0}</p>
+   802→                    <p className="text-sm text-slate-600">Total</p>
+   803→                  </div>
+   804→                  <div className="text-center p-3 bg-green-50 rounded-lg">
+   805→                    <p className="text-2xl font-bold text-green-600">{formData.hommes || 0}</p>
+   806→                    <p className="text-sm text-slate-600">Hommes</p>
+   807→                  </div>
+   808→                  <div className="text-center p-3 bg-pink-50 rounded-lg">
+   809→                    <p className="text-2xl font-bold text-pink-600">{formData.femmes || 0}</p>
+   810→                    <p className="text-sm text-slate-600">Femmes</p>
+   811→                  </div>
+   812→                  <div className="text-center p-3 bg-purple-50 rounded-lg">
+   813→                    <p className="text-2xl font-bold text-purple-600">{formData.enfants || 0}</p>
+   814→                    <p className="text-sm text-slate-600">Enfants</p>
+   815→                  </div>
+   816→                </div>
+   817→                {formData.personnesHandicapees && (
+   818→                  <p className="text-sm text-slate-500 mt-3 text-center">
+   819→                    + {formData.personnesHandicapees} personne(s) en situation de handicap
+   820→                  </p>
+   821→                )}
+   822→              </div>
+   823→            </section>
+   824→
+   825→            {/* Section Documents */}
+   826→            {formData.documents.length > 0 && (
+   827→              <section>
+   828→                <h3 className="font-semibold text-lg text-slate-900 mb-3 flex items-center gap-2">
+   829→                  <Image className="w-5 h-5 text-orange-500" />
+   830→                  Documents joints ({formData.documents.length})
+   831→                </h3>
+   832→                <div className="bg-white rounded-lg border border-slate-200 p-4">
+   833→                  <div className="flex flex-wrap gap-2">
+   834→                    {formData.documents.map((file, index) => (
+   835→                      <Badge key={index} variant="secondary" className="py-2 px-3">
+   836→                        📎 {file.name}
+   837→                      </Badge>
+   838→                    ))}
+   839→                  </div>
+   840→                </div>
+   841→              </section>
+   842→            )}
+   843→
+   844→            {/* Actions finales */}
+   845→            <Separator />
+   846→
+   847→            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+   848→              <Button
+   849→                variant="outline"
+   850→                onClick={() => setShowSummary(false)}
+   851→                className="order-2 sm:order-1"
+   852→              >
+   853→                Modifier le formulaire
+   854→              </Button>
+   855→
+   856→              <div className="flex items-center gap-3 order-1 sm:order-2">
+   857→                <Button
+   858→                  variant="outline"
+   859→                  onClick={saveDraft}
+   860→                  disabled={isSavingDraft}
+   861→                  className="text-slate-600"
+   862→                >
+   863→                  <Save className="w-4 h-4 mr-2" />
+   864→                  Sauvegarder brouillon
+   865→                </Button>
+   866→
+   867→                <Button
+   868→                  onClick={submitActivity}
+   869→                  disabled={isSubmitting}
+   870→                  className="bg-green-600 hover:bg-green-700 text-white px-8 py-6 text-lg font-semibold shadow-lg shadow-green-500/30"
+   871→                >
+   872→                  {isSubmitting ? (
+   873→                    <>
+   874→                      <span className="animate-spin mr-2">⏳</span>
+   875→                      Soumission en cours...
+   876→                    </>
+   877→                  ) : (
+   878→                    <>
+   879→                      <Send className="w-5 h-5 mr-2" />
+   880→                      Soumettre l'activité
+   881→                    </>
+   882→                  )}
+   883→                </Button>
+   884→              </div>
+   885→            </div>
+   886→
+   887→            <p className="text-xs text-slate-400 text-center pt-2">
+   888→              En soumettant cette activité, vous certifiez que les informations fournies sont exactes.
+   889→            </p>
+   890→          </CardContent>
+   891→        </Card>
+   892→      )}
+   893→    </div>
+   894→  )
+   895→}
+   896→

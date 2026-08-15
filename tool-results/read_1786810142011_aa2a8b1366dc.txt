@@ -1,0 +1,1395 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import React, { useEffect, useRef, useCallback } from "react";
+     4→     4→
+     5→     5→/* ============================================
+     6→     6→   LANDING PAGE CONTENT e-OSCS PREMIUM
+     7→     7→   Client Component - Production Ready
+     8→     8→   Sans styled-jsx (évite l'hydratation mismatch)
+     9→     9→   ============================================ */
+    10→    10→export function PremiumLandingContent() {
+    11→    11→  const headerRef = useRef<HTMLElement>(null);
+    12→    12→  const mobileMenuRef = useRef<HTMLDivElement>(null);
+    13→    13→
+    14→    14→  /* === EFFETS CÔTÉ CLIENT === */
+    15→    15→  
+    16→    16→  // Animation au scroll avec IntersectionObserver
+    17→    17→  useEffect(() => {
+    18→    18→    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    19→    19→    
+    20→    20→    if (prefersReducedMotion) {
+    21→    21→      // Si reduced motion, tout afficher directement
+    22→    22→      document.querySelectorAll('.animate-on-scroll').forEach(el => {
+    23→    23→        (el as HTMLElement).style.opacity = '1';
+    24→    24→      });
+    25→    25→      return;
+    26→    26→    }
+    27→    27→
+    28→    28→    // Observer pour animations fadeInUp
+    29→    29→    const observer = new IntersectionObserver((entries) => {
+    30→    30→      entries.forEach(entry => {
+    31→    31→        if (entry.isIntersecting) {
+    32→    32→          entry.target.classList.add('is-visible');
+    33→    33→          observer.unobserve(entry.target);
+    34→    34→        }
+    35→    35→      });
+    36→    36→    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+    37→    37→    
+    38→    38→    document.querySelectorAll('.animate-on-scroll').forEach(el => {
+    39→    39→      observer.observe(el);
+    40→    40→    });
+    41→    41→
+    42→    42→    // Observer pour lignes de progression
+    43→    43→    const progressObserver = new IntersectionObserver((entries) => {
+    44→    44→      entries.forEach(entry => {
+    45→    45→        if (entry.isIntersecting) {
+    46→    46→          entry.target.classList.add('progress-line-animated');
+    47→    47→          progressObserver.unobserve(entry.target);
+    48→    48→        }
+    49→    49→      });
+    50→    50→    }, { threshold: 0.5 });
+    51→    51→    
+    52→    52→    document.querySelectorAll('.progress-line').forEach(el => {
+    53→    53→      progressObserver.observe(el);
+    54→    54→    });
+    55→    55→
+    56→    56→    return () => {
+    57→    57→      observer.disconnect();
+    58→    58→      progressObserver.disconnect();
+    59→    59→    };
+    60→    60→  }, []);
+    61→    61→
+    62→    62→  // Effet magnétique sur les boutons
+    63→    63→  useEffect(() => {
+    64→    64→    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    65→    65→    const hasFinePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    66→    66→    
+    67→    67→    if (!prefersReducedMotion && hasFinePointer) {
+    68→    68→      const handleMouseMove = (e: MouseEvent) => {
+    69→    69→        const btn = e.currentTarget as HTMLElement;
+    70→    70→        const rect = btn.getBoundingClientRect();
+    71→    71→        const x = e.clientX - rect.left - rect.width / 2;
+    72→    72→        const y = e.clientY - rect.top - rect.height / 2;
+    73→    73→        btn.style.transform = `translate(${x * 0.15}px, ${y * 0.15}px)`;
+    74→    74→      };
+    75→    75→
+    76→    76→      const handleMouseLeave = (e: MouseEvent) => {
+    77→    77→        const btn = e.currentTarget as HTMLElement;
+    78→    78→        btn.style.transform = 'translate(0, 0)';
+    79→    79→      };
+    80→    80→
+    81→    81→      const buttons = document.querySelectorAll('.magnetic-btn');
+    82→    82→      buttons.forEach(btn => {
+    83→    83→        btn.addEventListener('mousemove', handleMouseMove);
+    84→    84→        btn.addEventListener('mouseleave', handleMouseLeave);
+    85→    85→      });
+    86→    86→
+    87→    87→      return () => {
+    88→    88→        buttons.forEach(btn => {
+    89→    89→          btn.removeEventListener('mousemove', handleMouseMove);
+    90→    90→          btn.removeEventListener('mouseleave', handleMouseLeave);
+    91→    91→        });
+    92→    92→      };
+    93→    93→    }
+    94→    94→  }, []);
+    95→    95→
+    96→    96→  // Header sticky glassmorphism + Mobile menu + Smooth scroll
+    97→    97→  useEffect(() => {
+    98→    98→    const header = headerRef.current;
+    99→    99→    const mobileMenu = mobileMenuRef.current;
+   100→   100→    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+   101→   101→    
+   102→   102→    if (!header) return;
+   103→   103→
+   104→   104→    // Header sticky on scroll
+   105→   105→    const handleScroll = () => {
+   106→   106→      const currentScroll = window.pageYOffset;
+   107→   107→      
+   108→   108→      if (currentScroll > 50) {
+   109→   109→        header.classList.add('bg-white/95', 'backdrop-blur-md', 'shadow-lg', 'border-b', 'border-slate-100');
+   110→   110→      } else {
+   111→   111→        header.classList.remove('bg-white/95', 'backdrop-blur-md', 'shadow-lg', 'border-b', 'border-slate-100');
+   112→   112→      }
+   113→   113→    };
+   114→   114→
+   115→   115→    window.addEventListener('scroll', handleScroll, { passive: true });
+   116→   116→
+   117→   117→    // Mobile menu toggle
+   118→   118→    const handleMobileMenuClick = () => {
+   119→   119→      if (!mobileMenu || !mobileMenuBtn) return;
+   120→   120→      const isOpen = !mobileMenu.classList.contains('hidden');
+   121→   121→      mobileMenu.classList.toggle('hidden');
+   122→   122→      mobileMenuBtn.setAttribute('aria-expanded', String(!isOpen));
+   123→   123→    };
+   124→   124→
+   125→   125→    if (mobileMenuBtn && mobileMenu) {
+   126→   126→      mobileMenuBtn.addEventListener('click', handleMobileMenuClick);
+   127→   127→    }
+   128→   128→
+   129→   129→    // Smooth scroll pour les liens ancrages
+   130→   130→    const handleAnchorClick = (e: Event) => {
+   131→   131→      const anchor = e.currentTarget as HTMLAnchorElement;
+   132→   132→      const href = anchor.getAttribute('href');
+   133→   133→      
+   134→   134→      if (href && href !== '#' && href.startsWith('#')) {
+   135→   135→        e.preventDefault();
+   136→   136→        const target = document.querySelector(href);
+   137→   137→        if (target && header) {
+   138→   138→          const headerHeight = header.offsetHeight;
+   139→   139→          const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight - 20;
+   140→   140→          window.scrollTo({
+   141→   141→            top: targetPosition,
+   142→   142→            behavior: 'smooth'
+   143→   143→          });
+   144→   144→          // Fermer le menu mobile si ouvert
+   145→   145→          if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+   146→   146→            mobileMenu.classList.add('hidden');
+   147→   147→          }
+   148→   148→        }
+   149→   149→      }
+   150→   150→    };
+   151→   151→
+   152→   152→    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+   153→   153→      anchor.addEventListener('click', handleAnchorClick);
+   154→   154→    });
+   155→   155→
+   156→   156→    return () => {
+   157→   157→      window.removeEventListener('scroll', handleScroll);
+   158→   158→      if (mobileMenuBtn) {
+   159→   159→        mobileMenuBtn.removeEventListener('click', handleMobileMenuClick);
+   160→   160→      }
+   161→   161→      document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+   162→   162→        anchor.removeEventListener('click', handleAnchorClick);
+   163→   163→      });
+   164→   164→    };
+   165→   165→  }, []);
+   166→   166→
+   167→   167→  /* === RENDER === */
+   168→   168→  return (
+   169→   169→    <>
+   170→   170→      {/* ==========================================
+   171→   171→          LANDING PAGE PRINCIPALE
+   172→   172→          ========================================== */}
+   173→   173→      <main className="min-h-screen bg-[#FFFBF5] overflow-hidden">
+   174→   174→        
+   175→   175→        {/* ===== LISERÉ TRICOLORE CI EN TÊTE DE PAGE ===== */}
+   176→   176→        <div className="h-1 w-full flex" role="presentation">
+   177→   177→          <div className="flex-1 bg-[#F77F00]" /> {/* Orange CI */}
+   178→   178→          <div className="flex-1 bg-white" />
+   179→   179→          <div className="flex-1 bg-[#009E60]" /> {/* Vert CI */}
+   180→   180→        </div>
+   181→   181→
+   182→   182→        {/* ===== 1. HEADER STICKY GLASSMORPHISM ===== */}
+   183→   183→        <header
+   184→   184→          ref={headerRef}
+   185→   185→          id="header"
+   186→   186→          className="fixed top-1 left-0 right-0 z-50 transition-all duration-300"
+   187→   187→          role="banner"
+   188→   188→        >
+   189→   189→          <nav
+   190→   190→            className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+   191→   191→            aria-label="Navigation principale"
+   192→   192→          >
+   193→   193→            <div className="flex items-center justify-between h-16 md:h-20">
+   194→   194→              {/* Logo e-OSCS avec couleurs distinctes */}
+   195→   195→              <a href="/" className="flex items-center gap-2 group" aria-label="e-OSCS - Accueil">
+   196→   196→                <span className="text-2xl font-extrabold text-[#009E60]">e</span>
+   197→   197→                <span className="text-xl font-bold text-[#0F172A]">-</span>
+   198→   198→                <span className="text-2xl font-extrabold text-[#F77F00]">OSCS</span>
+   199→   199→              </a>
+   200→   200→
+   201→   201→              {/* Navigation desktop */}
+   202→   202→              <div className="hidden md:flex items-center gap-8">
+   203→   203→                {[
+   204→   204→                  { label: "Fonctionnalités", href: "#fonctionnalites" },
+   205→   205→                  { label: "Comment ça marche", href: "#comment-ca-marche" },
+   206→   206→                  { label: "Tarifs", href: "#tarifs" },
+   207→   207→                  { label: "Témoignages", href: "#temoignages" },
+   208→   208→                  { label: "FAQ", href: "#faq" },
+   209→   209→                ].map((link) => (
+   210→   210→                  <a
+   211→   211→                    key={link.href}
+   212→   212→                    href={link.href}
+   213→   213→                    className="text-sm font-medium text-slate-600 hover:text-[#F77F00] transition-colors"
+   214→   214→                  >
+   215→   215→                    {link.label}
+   216→   216→                  </a>
+   217→   217→                ))}
+   218→   218→                <a
+   219→   219→                  href="#demande"
+   220→   220→                  className="magnetic-btn inline-flex items-center px-5 py-2.5 text-sm font-semibold text-white bg-[#F77F00] rounded-xl shadow-lg shadow-orange-500/20 hover:bg-[#E67300] transition-colors"
+   221→   221→                >
+   222→   222→                  Demander un accès
+   223→   223→                </a>
+   224→   224→              </div>
+   225→   225→
+   226→   226→              {/* Bouton menu mobile */}
+   227→   227→              <button
+   228→   228→                id="mobile-menu-btn"
+   229→   229→                type="button"
+   230→   230→                className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+   231→   231→                aria-expanded="false"
+   232→   232→                aria-controls="mobile-menu"
+   233→   233→                aria-label="Ovrir le menu de navigation"
+   234→   234→              >
+   235→   235→                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+   236→   236→                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+   237→   237→                </svg>
+   238→   238→              </button>
+   239→   239→            </div>
+   240→   240→
+   241→   241→            {/* Menu mobile (caché par défaut) */}
+   242→   242→            <div
+   243→   243→              ref={mobileMenuRef}
+   244→   244→              id="mobile-menu"
+   245→   245→              className="hidden md:hidden pb-4 border-t border-slate-100 mt-2"
+   246→   246→            >
+   247→   247→              <div className="flex flex-col gap-3 pt-4">
+   248→   248→                {[
+   249→   249→                  { label: "Fonctionnalités", href: "#fonctionnalites" },
+   250→   250→                  { label: "Comment ça marche", href: "#comment-ca-marche" },
+   251→   251→                  { label: "Tarifs", href: "#tarifs" },
+   252→   252→                  { label: "Témoignages", href: "#temoignages" },
+   253→   253→                  { label: "FAQ", href: "#faq" },
+   254→   254→                ].map((link) => (
+   255→   255→                  <a
+   256→   256→                    key={link.href}
+   257→   257→                    href={link.href}
+   258→   258→                    className="px-3 py-2 text-base font-medium text-slate-600 hover:text-[#F77F00] hover:bg-orange-50 rounded-lg transition-colors"
+   259→   259→                  >
+   260→   260→                    {link.label}
+   261→   261→                  </a>
+   262→   262→                ))}
+   263→   263→                <a
+   264→   264→                  href="#demande"
+   265→   265→                  className="mt-2 inline-flex items-center justify-center px-5 py-3 text-base font-semibold text-white bg-[#F77F00] rounded-xl shadow-lg shadow-orange-500/20 hover:bg-[#E67300] transition-colors"
+   266→   266→                >
+   267→   267→                  Demander un accès
+   268→   268→                </a>
+   269→   269→              </div>
+   270→   270→            </div>
+   271→   271→          </nav>
+   272→   272→        </header>
+   273→   273→
+   274→   274→        {/* ===== 2. SECTION HERO ===== */}
+   275→   275→        <section
+   276→   276→          className="relative min-h-screen flex items-center pt-20 pb-32 african-pattern overflow-hidden"
+   277→   277→          aria-label="Section principale"
+   278→   278→        >
+   279→   279→          {/* Dégradés de fond subtils */}
+   280→   280→          <div className="absolute inset-0 pointer-events-none">
+   281→   281→            <div className="absolute top-20 right-10 w-96 h-96 bg-[#F77F00]/5 rounded-full blur-3xl" />
+   282→   282→            <div className="absolute bottom-20 left-10 w-80 h-80 bg-[#009E60]/5 rounded-full blur-3xl" />
+   283→   283→          </div>
+   284→   284→
+   285→   285→          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
+   286→   286→            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+   287→   287→              {/* Contenu texte Hero */}
+   288→   288→              <div className="text-center lg:text-left space-y-8 animate-on-scroll">
+   289→   289→                {/* Eyebrow ministère + mini-liseré tricolore */}
+   290→   290→                <div className="inline-flex items-center gap-3">
+   291→   291→                  <div className="h-px w-8 bg-[#F77F00]" />
+   292→   292→                  <span className="text-sm font-medium text-slate-500 tracking-wide uppercase">
+   293→   293→                    Ministère de la Cohésion Nationale — Côte d&apos;Ivoire
+   294→   294→                  </span>
+   295→   295→                  <div className="h-px w-8 bg-[#009E60]" />
+   296→   296→                </div>
+   297→   297→
+   298→   298→                {/* Titre accrocheur PROBLÈME */}
+   299→   299→                <h1 className="landing-heading text-4xl sm:text-5xl lg:text-[56px] xl:text-[64px] font-extrabold text-[#0F172A] leading-[1.1]">
+   300→   300→                  Fini les rapports trimestriels bricolés sur Word et Excel.
+   301→   301→                </h1>
+   302→   302→
+   303→   303→                {/* Sous-titre explicatif */}
+   304→   304→                <p className="landing-body text-lg sm:text-xl text-slate-600 leading-relaxed max-w-xl mx-auto lg:mx-0">
+   305→   305→                  e-OSCS transforme chaque activité saisie une seule fois en rapports institutionnels prêts à présenter — validation, consolidation et indicateurs inclus.
+   306→   306→                </p>
+   307→   307→
+   308→   308→                {/* CTAs principaux */}
+   309→   309→                <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start pt-4">
+   310→   310→                  <a
+   311→   311→                    href="#demande"
+   312→   312→                    className="magnetic-btn inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white bg-[#F77F00] rounded-2xl shadow-lg shadow-orange-500/25 hover:bg-[#E67300] hover:shadow-xl hover:shadow-orange-500/30 transition-all"
+   313→   313→                  >
+   314→   314→                    Demander mon espace
+   315→   315→                    <svg className="ml-2 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+   316→   316→                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+   317→   317→                    </svg>
+   318→   318→                  </a>
+   319→   319→                  <a
+   320→   320→                    href="#demo"
+   321→   321→                    className="magnetic-btn inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-[#009E60] border-2 border-[#009E60] rounded-2xl hover:bg-green-50 transition-all"
+   322→   322→                  >
+   323→   323→                    <svg className="mr-2 w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+   324→   324→                      <path d="M8 5v14l11-7z" />
+   325→   325→                    </svg>
+   326→   326→                    Voir la démo
+   327→   327→                  </a>
+   328→   328→                </div>
+   329→   329→
+   330→   330→                {/* Preuve sociale mini */}
+   331→   331→                <div className="flex items-center gap-4 justify-center lg:justify-start pt-4">
+   332→   332→                  <div className="flex -space-x-2">
+   333→   333→                    {[1, 2, 3, 4].map((i) => (
+   334→   334→                      <div
+   335→   335→                        key={i}
+   336→   336→                        className="w-9 h-9 rounded-full bg-gradient-to-br from-[#F77F00]/80 to-[#009E60]/80 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white"
+   337→   337→                      >
+   338→   338→                        {['AK', 'KN', 'MA', 'DJ'][i - 1]}
+   339→   339→                      </div>
+   340→   340→                    ))}
+   341→   341→                  </div>
+   342→   342→                  <p className="text-sm text-slate-500">
+   343→   343→                    <span className="font-semibold text-slate-700">+12 directions</span> nous font déjà confiance
+   344→   344→                  </p>
+   345→   345→                </div>
+   346→   346→              </div>
+   347→   347→
+   348→   348→              {/* MOCKUP DASHBOARD CSS PUR */}
+   349→   349→              <div className="mockup-container animate-on-scroll delay-2">
+   350→   350→                <div className="mockup-card relative">
+   351→   351→                  {/* Fenêtre navigateur */}
+   352→   352→                  <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden" style={{ boxShadow: '0 8px 30px rgb(15 23 42 / .06)' }}>
+   353→   353→                    
+   354→   354→                    {/* Barre titre fenêtre */}
+   355→   355→                    <div className="bg-gradient-to-r from-[#0F172A] to-[#1E293B] px-4 py-3 flex items-center gap-3">
+   356→   356→                      <div className="flex items-center gap-1.5">
+   357→   357→                        <div className="w-3 h-3 rounded-full bg-red-500/80" />
+   358→   358→                        <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+   359→   359→                        <div className="w-3 h-3 rounded-full bg-green-500/80" />
+   360→   360→                      </div>
+   361→   361→                      <div className="flex-1 flex justify-center">
+   362→   362→                        <div className="bg-slate-700/50 rounded-lg px-4 py-1 text-xs text-slate-300">
+   363→   363→                          dashboard.e-oscs.ci / Direction Régionale d&apos;Abidjan
+   364→   364→                        </div>
+   365→   365→                      </div>
+   366→   366→                    </div>
+   367→   367→
+   368→   368→                    <div className="flex">
+   369→   369→                      {/* Sidebar sombre */}
+   370→   370→                      <div className="hidden sm:block w-44 bg-[#0F172A] p-3 space-y-1">
+   371→   371→                        {/* Logo sidebar */}
+   372→   372→                        <div className="flex items-center gap-2 px-3 py-3 mb-4">
+   373→   373→                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#F77F00] to-[#009E60] flex items-center justify-center">
+   374→   374→                            <span className="text-white font-bold text-sm">e</span>
+   375→   375→                          </div>
+   376→   376→                          <span className="text-white font-bold text-sm">e-OSCS</span>
+   377→   377→                        </div>
+   378→   378→                        
+   379→   379→                        {/* Items menu */}
+   380→   380→                        {[
+   381→   381→                          { label: "Tableau de bord", active: true },
+   382→   382→                          { label: "Plan annuel", active: false },
+   383→   383→                          { label: "Activités", active: false },
+   384→   384→                          { label: "Validation", active: false, badge: "3" },
+   385→   385→                          { label: "Rapports", active: false },
+   386→   386→                          { label: "Indicateurs", active: false },
+   387→   387→                        ].map((item) => (
+   388→   388→                          <div
+   389→   389→                            key={item.label}
+   390→   390→                            className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
+   391→   391→                              item.active ? "bg-[#F77F00] text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"
+   392→   392→                            }`}
+   393→   393→                          >
+   394→   394→                            {item.label}
+   395→   395→                            {item.badge && (
+   396→   396→                              <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+   397→   397→                                {item.badge}
+   398→   398→                              </span>
+   399→   399→                            )}
+   400→   400→                          </div>
+   401→   401→                        ))}
+   402→   402→                      </div>
+   403→   403→
+   404→   404→                      {/* Contenu principal mockup */}
+   405→   405→                      <div className="flex-1 p-4 sm:p-5 bg-slate-50 min-h-[320px] sm:min-h-[380px]">
+   406→   406→                        {/* En-tête contenu */}
+   407→   407→                        <div className="flex items-center justify-between mb-4">
+   408→   408→                          <div>
+   409→   409→                            <h3 className="text-sm font-semibold text-slate-800">Tableau de bord</h3>
+   410→   410→                            <p className="text-xs text-slate-500">Trimestre 4 • 2024</p>
+   411→   411→                          </div>
+   412→   412→                          <div className="flex items-center gap-2">
+   413→   413→                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-md font-medium">
+   414→   414→                              ● En ligne
+   415→   415→                            </span>
+   416→   416→                          </div>
+   417→   417→                        </div>
+   418→   418→
+   419→   419→                        {/* KPI Cards */}
+   420→   420→                        <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
+   421→   421→                          {[
+   422→   422→                            { value: "47", label: "Activités", color: "#F77F00", change: "+12%" },
+   423→   423→                            { value: "38", label: "Validées", color: "#009E60", change: "+8%" },
+   424→   424→                            { value: "9", label: "En attente", color: "#D97706", change: "-3" },
+   425→   425→                            { value: "94%", label: "Taux compl.", color: "#2563EB", change: "+5%" },
+   426→   426→                          ].map((kpi) => (
+   427→   427→                            <div key={kpi.label} className="bg-white rounded-lg p-2.5 sm:p-3 border border-slate-100">
+   428→   428→                              <div className="flex items-center justify-between mb-1">
+   429→   429→                                <span className="text-lg sm:text-xl font-bold" style={{ color: kpi.color }}>
+   430→   430→                                  {kpi.value}
+   431→   431→                                </span>
+   432→   432→                                <span className={`text-[10px] sm:text-xs font-medium ${kpi.change.startsWith('+') ? 'text-green-600' : 'text-amber-600'}`}>
+   433→   433→                                  {kpi.change}
+   434→   434→                                </span>
+   435→   435→                              </div>
+   436→   436→                              <span className="text-[10px] sm:text-xs text-slate-500">{kpi.label}</span>
+   437→   437→                            </div>
+   438→   438→                          ))}
+   439→   439→                        </div>
+   440→   440→
+   441→   441→                        {/* Graphique barres simplifié */}
+   442→   442→                        <div className="bg-white rounded-lg p-3 sm:p-4 border border-slate-100 mb-4">
+   443→   443→                          <div className="flex items-center justify-between mb-3">
+   444→   444→                            <span className="text-xs font-semibold text-slate-700">Activités par mois</span>
+   445→   445→                            <span className="text-[10px] text-slate-400">T4 2024</span>
+   446→   446→                          </div>
+   447→   447→                          <div className="flex items-end gap-1.5 h-20 sm:h-24">
+   448→   448→                            {[
+   449→   449→                              { month: "O", height: 45 },
+   450→   450→                              { month: "N", height: 70 },
+   451→   451→                              { month: "D", height: 90 },
+   452→   452→                            ].map((bar) => (
+   453→   453→                              <div key={bar.month} className="flex-1 flex flex-col items-center gap-1">
+   454→   454→                                <div
+   455→   455→                                  className="w-full rounded-t-sm bg-gradient-to-t from-[#F77F00] to-[#FF9933]"
+   456→   456→                                  style={{ height: `${bar.height}%` }}
+   457→   457→                                />
+   458→   458→                                <span className="text-[9px] text-slate-400">{bar.month}</span>
+   459→   459→                              </div>
+   460→   460→                            ))}
+   461→   461→                          </div>
+   462→   462→                        </div>
+   463→   463→
+   464→   464→                        {/* Tableau activités récentes */}
+   465→   465→                        <div className="bg-white rounded-lg border border-slate-100 overflow-hidden">
+   466→   466→                          <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
+   467→   467→                            <span className="text-xs font-semibold text-slate-700">Activités récentes</span>
+   468→   468→                          </div>
+   469→   469→                          {[
+   470→   470→                            { name: "Atelier cohésion sociale", status: "Validée", statusColor: "bg-green-100 text-green-700" },
+   471→   471→                            { name: "Visite terrain Daloa", status: "En cours", statusColor: "bg-amber-100 text-amber-700" },
+   472→   472→                            { name: "Rapport mensuel nov.", status: "Brouillon", statusColor: "bg-slate-100 text-slate-600" },
+   473→   473→                          ].map((act, i) => (
+   474→   474→                            <div
+   475→   475→                              key={i}
+   476→   476→                              className="px-3 py-2 flex items-center justify-between border-b border-slate-50 last:border-0"
+   477→   477→                            >
+   478→   478→                              <span className="text-[11px] text-slate-700 truncate mr-2">{act.name}</span>
+   479→   479→                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap ${act.statusColor}`}>
+   480→   480→                                {act.status}
+   481→   481→                              </span>
+   482→   482→                            </div>
+   483→   483→                          ))}
+   484→   484→                        </div>
+   485→   485→                      </div>
+   486→   486→                    </div>
+   487→   487→                  </div>
+   488→   488→
+   489→   489→                  {/* Ombre décorative sous le mockup */}
+   490→   490→                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-3/4 h-8 bg-[#F77F00]/10 rounded-[50%] blur-xl" />
+   491→   491→                </div>
+   492→   492→              </div>
+   493→   493→            </div>
+   494→   494→          </div>
+   495→   495→        </section>
+   496→   496→
+   497→   497→        {/* ===== 3. SECTION PROBLÈME ("Vous reconnaissez ?") ===== */}
+   498→   498→        <section id="probleme" className="py-20 lg:py-28 bg-white" aria-label="Problématiques">
+   499→   499→          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   500→   500→            {/* En-tête section */}
+   501→   501→            <div className="text-center max-w-3xl mx-auto mb-16 animate-on-scroll">
+   502→   502→              <span className="inline-block text-sm font-semibold text-[#F77F00] uppercase tracking-wide mb-4">
+   503→   503→                La réalité terrain
+   504→   504→              </span>
+   505→   505→              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
+   506→   506→                Vous reconnaissez ces situations ?
+   507→   507→              </h2>
+   508→   508→              <p className="landing-body text-lg text-slate-600">
+   509→   509→                Chaque trimestre, les mêmes difficultés se répètent dans les directions régionales et départementales.
+   510→   510→              </p>
+   511→   511→            </div>
+   512→   512→
+   513→   513→            {/* Grille 3 problèmes */}
+   514→   514→            <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+   515→   515→              {[
+   516→   516→                {
+   517→   517→                  icon: (
+   518→   518→                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+   519→   519→                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.217.38 2.846 1.835 2.592L4.5 18.75m0 0V12m0 3.75H18M3.697 16.296 6.09 13.88m2.914 2.914 2.81-2.81M12 12h6.75m-6.75 0 2.81 2.81M18.75 12v6m0-3.75h.008v.008H18.75Z" />
+   520→   520→                    </svg>
+   521→   521→                  ),
+   522→   522→                  title: "Perte de données entre Word et Excel",
+   523→   523→                  description: "Les activités saisies dans un fichier Excel finissent mal copiées-collées dans le rapport Word. Résultat : incohérences, chiffres qui ne correspondent pas, heures perdues à tout vérifier.",
+   524→   524→                  stat: "73% des agents",
+   525→   525→                  highlight: true,
+   526→   526→                },
+   527→   527→                {
+   528→   528→                  icon: (
+   529→   529→                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+   530→   530→                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 9a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+   531→   531→                    </svg>
+   532→   532→                  ),
+   533→   533→                  title: "Rush de dernière minute avant échéance",
+   534→   534→                  description: "La semaine précédant la remise du rapport trimestriel, c'est la course : reconstituer les activités oubliées, retrouver les preuves photos, demander les validations en urgence.",
+   535→   535→                  stat: "-48h de stress",
+   536→   536→                  highlight: false,
+   537→   537→                },
+   538→   538→                {
+   539→   539→                  icon: (
+   540→   540→                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+   541→   541→                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+   542→   542→                    </svg>
+   543→   543→                  ),
+   544→   544→                  title: "Consolidation impossible au niveau central",
+   545→   545→                  description: "Le ministère reçoit 36 formats différents des 36 directions. Consolider tout ça demande des semaines de travail manuel, quand ce n'est pas tout simplement impossible.",
+   546→   546→                  stat: "36 formats différents",
+   547→   547→                  highlight: false,
+   548→   548→                },
+   549→   549→              ].map((problem, index) => (
+   550→   550→                <div
+   551→   551→                  key={index}
+   552→   552→                  className={`group relative p-6 lg:p-8 rounded-2xl border transition-all duration-300 animate-on-scroll delay-${index + 1} ${
+   553→   553→                    problem.highlight
+   554→   554→                      ? "bg-gradient-to-br from-[#FFF7ED] to-[#FFFBF5] border-[#FED7AA] shadow-lg shadow-orange-500/5"
+   555→   555→                      : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-lg"
+   556→   556→                  }`}
+   557→   557→                >
+   558→   558→                  {/* Icône */}
+   559→   559→                  <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl mb-5 ${
+   560→   560→                    problem.highlight ? "bg-[#F77F00]/10 text-[#F77F00]" : "bg-slate-100 text-slate-600 group-hover:bg-[#F77F00]/10 group-hover:text-[#F77F00] transition-colors"
+   561→   561→                  }`}>
+   562→   562→                    {problem.icon}
+   563→   563→                  </div>
+   564→   564→
+   565→   565→                  {/* Stat en badge */}
+   566→   566→                  <div className="inline-block mb-3">
+   567→   567→                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+   568→   568→                      problem.highlight ? "bg-[#F77F00]/10 text-[#F77F00]" : "bg-slate-100 text-slate-600"
+   569→   569→                    }`}>
+   570→   570→                      {problem.stat}
+   571→   571→                    </span>
+   572→   572→                  </div>
+   573→   573→
+   574→   574→                  {/* Titre */}
+   575→   575→                  <h3 className="landing-heading text-lg lg:text-xl font-bold text-[#0F172A] mb-3">
+   576→   576→                    {problem.title}
+   577→   577→                  </h3>
+   578→   578→
+   579→   579→                  {/* Description */}
+   580→   580→                  <p className="landing-body text-sm lg:text-base text-slate-600 leading-relaxed">
+   581→   581→                    {problem.description}
+   582→   582→                  </p>
+   583→   583→                </div>
+   584→   584→              ))}
+   585→   585→            </div>
+   586→   586→          </div>
+   587→   587→        </section>
+   588→   588→
+   589→   589→        {/* ===== 4. SECTION FONCTIONNALITÉS CLÉS ===== */}
+   590→   590→        <section id="fonctionnalites" className="py-20 lg:py-28 bg-[#FFFBF5] african-pattern" aria-label="Fonctionnalités">
+   591→   591→          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   592→   592→            {/* En-tête section */}
+   593→   593→            <div className="text-center max-w-3xl mx-auto mb-16 animate-on-scroll">
+   594→   594→              <span className="inline-block text-sm font-semibold text-[#009E60] uppercase tracking-wide mb-4">
+   595→   595→                Fonctionnalités clés
+   596→   596→              </span>
+   597→   597→              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
+   598→   598→                Tout ce qu'il vous faut, rien de superflu
+   599→   599→              </h2>
+   600→   600→              <p className="landing-body text-lg text-slate-600">
+   601→   601→                Quatre piliers technologiques conçus spécifiquement pour les réalités du MCNSLP ivoirien.
+   602→   602→              </p>
+   603→   603→            </div>
+   604→   604→
+   605→   605→            {/* Grille 4 fonctionnalités avec SVG inline */}
+   606→   606→            <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
+   607→   607→              {[
+   608→   608→                {
+   609→   609→                  svg: (
+   610→   610→                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-16 h-16">
+   611→   611→                      <rect x="8" y="12" width="48" height="40" rx="4" stroke="#F77F00" strokeWidth="2.5" fill="#FFF7ED"/>
+   612→   612→                      <line x1="8" y1="22" x2="56" y2="22" stroke="#F77F00" strokeWidth="2.5"/>
+   613→   613→                      <circle cx="16" cy="17" r="2" fill="#F77F00"/>
+   614→   614→                      <circle cx="22" cy="17" r="2" fill="#F77F00"/>
+   615→   615→                      <circle cx="28" cy="17" r="2" fill="#F77F00"/>
+   616→   616→                      <rect x="14" y="28" width="20" height="3" rx="1.5" fill="#FED7AA"/>
+   617→   617→                      <rect x="14" y="35" width="36" height="2" rx="1" fill="#E2E8F0"/>
+   618→   618→                      <rect x="14" y="41" width="30" height="2" rx="1" fill="#E2E8F0"/>
+   619→   619→                      <rect x="14" y="47" width="34" height="2" rx="1" fill="#E2E8F0"/>
+   620→   620→                      <path d="M42 32l4 4 8-8" stroke="#009E60" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+   621→   621→                    </svg>
+   622→   622→                  ),
+   623→   623→                  title: "Saisie unique, restitution multiple",
+   624→   624→                  description: "Vous saisissez une activité UNE seule fois avec photos, localisation et indicateurs. Le système génère automatiquement : fiches d'activité, tableaux de bord trimestriels, rapports consolidés au format institutionnel.",
+   625→   625→                  badge: "Gain de temps",
+   626→   626→                  color: "orange",
+   627→   627→                },
+   628→   628→                {
+   629→   629→                  svg: (
+   630→   630→                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-16 h-16">
+   631→   631→                      <rect x="12" y="8" width="40" height="48" rx="4" stroke="#009E60" strokeWidth="2.5" fill="#ECFDF5"/>
+   632→   632→                      <path d="M20 20h24M20 28h24M20 36h16" stroke="#009E60" strokeWidth="2" strokeLinecap="round"/>
+   633→   633→                      <rect x="28" y="44" width="16" height="6" rx="3" fill="#009E60"/>
+   634→   634→                      <circle cx="46" cy="47" r="6" stroke="#F77F00" strokeWidth="2" fill="#FFF7ED"/>
+   635→   635→                      <path d="M44 47l2 2 4-4" stroke="#F77F00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+   636→   636→                    </svg>
+   637→   637→                  ),
+   638→   638→                  title: "Circuit de validation intégré",
+   639→   639→                  description: "Chaque activité suit un circuit de validation clair : agent → chef de service → directeur régional → direction centrale. Notifications automatiques à chaque étape, historique complet des validations.",
+   640→   640→                  badge: "Traçabilité totale",
+   641→   641→                  color: "green",
+   642→   642→                },
+   643→   643→                {
+   644→   644→                  svg: (
+   645→   645→                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-16 h-16">
+   646→   646→                      <rect x="8" y="16" width="48" height="32" rx="4" stroke="#2563EB" strokeWidth="2.5" fill="#EFF6FF"/>
+   647→   647→                      <path d="M8 26h48" stroke="#2563EB" strokeWidth="2.5"/>
+   648→   648→                      <bar x="14" y="32" width="8" height="12" rx="1" fill="#93C5FD"/>
+   649→   649→                      <rect x="14" y="34" width="8" height="10" rx="1" fill="#3B82F6"/>
+   650→   650→                      <rect x="26" y="36" width="8" height="8" rx="1" fill="#60A5FA"/>
+   651→   651→                      <rect x="38" y="30" width="8" height="14" rx="1" fill="#2563EB"/>
+   652→   652→                      <circle cx="18" cy="20" r="2" fill="#2563EB"/>
+   653→   653→                      <circle cx="32" cy="20" r="2" fill="#2563EB"/>
+   654→   654→                      <circle cx="46" cy="20" r="2" fill="#2563EB"/>
+   655→   655→                    </svg>
+   656→   656→                  ),
+   657→   657→                  title: "Tableaux de bord & indicateurs en temps réel",
+   658→   658→                  description: "Visualisez instantanément l'avancement de votre direction : taux de réalisation du plan annuel, couverture géographique, répartition par type d'activité, comparaison inter-périodes.",
+   659→   659→                  badge: "Visibilité 360°",
+   660→   660→                  color: "blue",
+   661→   661→                },
+   662→   662→                {
+   663→   663→                  svg: (
+   664→   664→                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-16 h-16">
+   665→   665→                      <path d="M12 52V20a8 8 0 0 1 8-8h24a8 8 0 0 1 8 8v32" stroke="#0F172A" strokeWidth="2.5" fill="#F8FAFC"/>
+   666→   666→                      <rect x="18" y="24" width="28" height="6" rx="2" fill="#F77F00"/>
+   667→   667→                      <rect x="18" y="34" width="20" height="4" rx="1" fill="#E2E8F0"/>
+   668→   668→                      <rect x="18" y="42" width="24" height="4" rx="1" fill="#E2E8F0"/>
+   669→   669→                      <circle cx="48" cy="44" r="8" stroke="#009E60" strokeWidth="2.5" fill="#ECFDF5"/>
+   670→   670→                      <path d="M45 44l2 2 4-4" stroke="#009E60" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+   671→   671→                    </svg>
+   672→   672→                  ),
+   673→   673→                  title: "Rapports prêts à présenter en 1 clic",
+   674→   674→                  description: "Générez votre rapport trimestriel ou annuel en un clic : mise en page professionnelle, graphiques intégrés, données consolidées, format PDF conforme aux standards ministériels.",
+   675→   675→                  badge: "Export PDF/Excel",
+   676→   676→                  color: "slate",
+   677→   677→                },
+   678→   678→              ].map((feature, index) => (
+   679→   679→                <div
+   680→   680→                  key={index}
+   681→   681→                  className="group bg-white rounded-2xl p-6 lg:p-8 border border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-300 animate-on-scroll delay-(index % 2) + 1"
+   682→   682→                >
+   683→   683→                  <div className="flex items-start gap-5">
+   684→   684→                    {/* SVG Icon */}
+   685→   685→                    <div className="flex-shrink-0 mt-1">
+   686→   686→                      {feature.svg}
+   687→   687→                    </div>
+   688→   688→
+   689→   689→                    {/* Contenu */}
+   690→   690→                    <div className="flex-1">
+   691→   691→                      {/* Badge */}
+   692→   692→                      <span className={`inline-block text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full mb-3 ${
+   693→   693→                        feature.color === 'orange' ? 'bg-orange-100 text-orange-700' :
+   694→   694→                        feature.color === 'green' ? 'bg-green-100 text-green-700' :
+   695→   695→                        feature.color === 'blue' ? 'bg-blue-100 text-blue-700' :
+   696→   696→                        'bg-slate-100 text-slate-700'
+   697→   697→                      }`}>
+   698→   698→                        {feature.badge}
+   699→   699→                      </span>
+   700→   700→
+   701→   701→                      {/* Titre */}
+   702→   702→                      <h3 className="landing-heading text-lg lg:text-xl font-bold text-[#0F172A] mb-3">
+   703→   703→                        {feature.title}
+   704→   704→                      </h3>
+   705→   705→
+   706→   706→                      {/* Description */}
+   707→   707→                      <p className="landing-body text-sm lg:text-base text-slate-600 leading-relaxed">
+   708→   708→                        {feature.description}
+   709→   709→                      </p>
+   710→   710→                    </div>
+   711→   711→                  </div>
+   712→   712→                </div>
+   713→   713→              ))}
+   714→   714→            </div>
+   715→   715→          </div>
+   716→   716→        </section>
+   717→   717→
+   718→   718→        {/* ===== 5. SECTION COMMENT ÇA MARCHE ===== */}
+   719→   719→        <section id="comment-ca-marche" className="py-20 lg:py-28 bg-white relative overflow-hidden" aria-label="Fonctionnement">
+   720→   720→          {/* Ligne de progression verticale */}
+   721→   721→          <div className="absolute left-1/2 top-0 bottom-0 w-0.5 hidden lg:block">
+   722→   722→            <div className="progress-line absolute inset-0 w-full" />
+   723→   723→          </div>
+   724→   724→
+   725→   725→          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   726→   726→            {/* En-tête section */}
+   727→   727→            <div className="text-center max-w-3xl mx-auto mb-20 animate-on-scroll">
+   728→   728→              <span className="inline-block text-sm font-semibold text-[#F77F00] uppercase tracking-wide mb-4">
+   729→   729→                Mode d'emploi
+   730→   730→              </span>
+   731→   731→              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
+   732→   732→                Trois étapes, et vous êtes opérationnel
+   733→   733→              </h2>
+   734→   734→              <p className="landing-body text-lg text-slate-600">
+   735→   735→                Pas de formation complexe, pas de migration de données. Vous commencez à saisir vos activités dès le premier jour.
+   736→   736→              </p>
+   737→   737→            </div>
+   738→   738→
+   739→   739→            {/* Timeline 3 étapes */}
+   740→   740→            <div className="space-y-12 lg:space-y-0 lg:relative">
+   741→   741→              {/* Étape 01 */}
+   742→   742→              <div className="lg:flex items-center gap-12 animate-on-scroll">
+   743→   743→                <div className="lg:w-1/2 lg:text-right lg:pr-12">
+   744→   744→                  <div className="bg-gradient-to-br from-[#FFF7ED] to-white rounded-2xl p-6 lg:p-8 border border-[#FED7AA]">
+   745→   745→                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#F77F00] text-white text-xl font-bold mb-4">
+   746→   746→                      01
+   747→   747→                    </div>
+   748→   748→                    <h3 className="landing-heading text-xl lg:text-2xl font-bold text-[#0F172A] mb-3">
+   749→   749→                      On crée votre espace direction
+   750→   750→                    </h3>
+   751→   751→                    <p className="landing-body text-slate-600 mb-4">
+   752→   752→                      À partir de votre demande validée par la direction centrale, nous provisionnez votre espace personnalisé en moins de 24h. Import de votre plan annuel si disponible.
+   753→   753→                    </p>
+   754→   754→                    <ul className="space-y-2 text-sm text-slate-600">
+   755→   755→                      {["Création comptes agents", "Configuration structure", "Import plan annuel"].map((item) => (
+   756→   756→                        <li key={item} className="flex items-center gap-2 lg:justify-end">
+   757→   757→                          <span>{item}</span>
+   758→   758→                          <svg className="w-4 h-4 text-[#009E60] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+   759→   759→                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+   760→   760→                          </svg>
+   761→   761→                        </li>
+   762→   762→                      ))}
+   763→   763→                    </ul>
+   764→   764→                  </div>
+   765→   765→                </div>
+   766→   766→                {/* Point timeline (desktop only) */}
+   767→   767→                <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-[#F77F00] text-white items-center justify-center text-lg font-bold shadow-lg shadow-orange-500/30 z-10" style={{ top: '60px' }}>
+   768→   768→                  01
+   769→   769→                </div>
+   770→   770→                <div className="lg:w-1/2 hidden lg:block" />
+   771→   771→              </div>
+   772→   772→
+   773→   773→              {/* Étape 02 */}
+   774→   774→              <div className="lg:flex items-center gap-12 mt-12 lg:mt-0 animate-on-scroll delay-1">
+   775→   775→                <div className="hidden lg:block lg:w-1/2" />
+   776→   776→                {/* Point timeline (desktop only) */}
+   777→   777→                <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-[#009E60] text-white items-center justify-center text-lg font-bold shadow-lg shadow-green-500/30 z-10" style={{ top: '280px' }}>
+   778→   778→                  02
+   779→   779→                </div>
+   780→   780→                <div className="lg:w-1/2 lg:pl-12">
+   781→   781→                  <div className="bg-gradient-to-br from-[#ECFDF5] to-white rounded-2xl p-6 lg:p-8 border border [#BBF7D0]">
+   782→   782→                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#009E60] text-white text-xl font-bold mb-4">
+   783→   783→                      02
+   784→   784→                    </div>
+   785→   785→                    <h3 className="landing-heading text-xl lg:text-2xl font-bold text-[#0F172A] mb-3">
+   786→   786→                      Vous saisissez vos activités au fil de l'eau
+   787→   787→                    </h3>
+   788→   788→                    <p className="landing-body text-slate-600 mb-4">
+   789→   789→                      Après chaque mission, atelier ou réunion, vous la saisissez en 3 minutes : titre, date, lieu, photos, nombre de bénéficiaires. Fini l'accumulation de paperasse.
+   790→   790→                    </p>
+   791→   791→                    <ul className="space-y-2 text-sm text-slate-600">
+   792→   792→                      {["Formulaire guidé mobile-friendly", "Upload photos depuis smartphone", "Géolocalisation automatique"].map((item) => (
+   793→   793→                        <li key={item} className="flex items-center gap-2">
+   794→   794→                          <svg className="w-4 h-4 text-[#009E60] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+   795→   795→                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+   796→   796→                          </svg>
+   797→   797→                          <span>{item}</span>
+   798→   798→                        </li>
+   799→   799→                      ))}
+   800→   800→                    </ul>
+   801→   801→                  </div>
+   802→   802→                </div>
+   803→   803→              </div>
+   804→   804→
+   805→   805→              {/* Étape 03 */}
+   806→   806→              <div className="lg:flex items-center gap-12 mt-12 lg:mt-0 animate-on-scroll delay-2">
+   807→   807→                <div className="lg:w-1/2 lg:text-right lg:pr-12">
+   808→   808→                  <div className="bg-gradient-to-br from-[#EFF6FF] to-white rounded-2xl p-6 lg:p-8 border border-[#BFDBFE]">
+   809→   809→                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#2563EB] text-white text-xl font-bold mb-4">
+   810→   810→                      03
+   811→   811→                    </div>
+   812→   812→                    <h3 className="landing-heading text-xl lg:text-2xl font-bold text-[#0F172A] mb-3">
+   813→   813→                      Les rapports se génèrent tout seuls
+   814→   814→                    </h3>
+   815→   815→                    <p className="landing-body text-slate-600 mb-4">
+   816→   816→                      À chaque échéance trimestrielle, cliquez sur « Générer le rapport » : toutes vos activités validées sont automatiquement consolidées, mises en forme et prêtes à envoyer.
+   817→   817→                    </p>
+   818→   818→                    <ul className="space-y-2 text-sm text-slate-600">
+   819→   819→                      {["Rapport PDF professionnel", "Données consolidées", "Envoi direct au MCNSLP"].map((item) => (
+   820→   820→                        <li key={item} className="flex items-center gap-2 lg:justify-end">
+   821→   821→                          <span>{item}</span>
+   822→   822→                          <svg className="w-4 h-4 text-[#009E60] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+   823→   823→                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+   824→   824→                          </svg>
+   825→   825→                        </li>
+   826→   826→                      ))}
+   827→   827→                    </ul>
+   828→   828→                  </div>
+   829→   829→                </div>
+   830→   830→                {/* Point timeline (desktop only) */}
+   831→   831→                <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-[#0F172A] text-white items-center justify-center text-lg font-bold shadow-lg z-10" style={{ top: '500px' }}>
+   832→   832→                  03
+   833→   833→                </div>
+   834→   834→                <div className="lg:w-1/2 hidden lg:block" />
+   835→   835→              </div>
+   836→   836→            </div>
+   837→   837→          </div>
+   838→   838→        </section>
+   839→   839→
+   840→   840→        {/* ===== 6. SECTION TÉMOIGNAGES ===== */}
+   841→   841→        <section id="temoignages" className="py-20 lg:py-28 bg-[#0F172A] relative overflow-hidden" aria-label="Témoignages">
+   842→   842→          {/* Motif subtil overlay */}
+   843→   843→          <div className="absolute inset-0 african-pattern opacity-30" />
+   844→   844→
+   845→   845→          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   846→   846→            {/* En-tête section */}
+   847→   847→            <div className="text-center max-w-3xl mx-auto mb-16 animate-on-scroll">
+   848→   848→              <span className="inline-block text-sm font-semibold text-[#F77F00] uppercase tracking-wide mb-4">
+   849→   849→                Témoignages
+   850→   850→              </span>
+   851→   851→              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-white mb-6 leading-tight">
+   852→   852→                Ils ont dit adieu aux rapports de dernière minute
+   853→   853→              </h2>
+   854→   854→              <p className="text-lg text-slate-400">
+   855→   855→                Découvrez comment e-OSCS a transformé le quotidien de professionnels comme vous.
+   856→   856→              </p>
+   857→   857→            </div>
+   858→   858→
+   859→   859→            {/* Grille 3 témoignages */}
+   860→   860→            <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+   861→   861→              {[
+   862→   862→                {
+   863→   863→                  quote: "Avant e-OSCS, je passais mes deux dernières semaines de chaque trimestre à reconstituer mes activités dans Excel. Maintenant, je saisis au fil de l'eau et mon rapport trimestriel est prêt en 10 minutes. C'est une autre vie.",
+   864→   864→                  name: "Aminata K.",
+   865→   865→                  role: "Chef de Service, DR Bouaké",
+   866→   866→                  location: "Bouaké",
+   867→   867→                  avatar: "AK",
+   868→   868→                  stats: { activities: "127", timeSaved: "15j/an" },
+   869→   869→                },
+   870→   870→                {
+   871→   871→                  quote: "La consolidation des rapports de nos 8 départements était un cauchemar. Avec e-OSCS, j'ai une vue en temps réel de tout le territoire et le rapport consolidé se génère seul. Mes collègues des autres directions sont jaloux.",
+   872→   872→                  name: "Koné S.",
+   873→   873→                  role: "Directeur Régional, Korhogo",
+   874→   874→                  location: "Korhogo",
+   875→   875→                  avatar: "KS",
+   876→   876→                  stats: { departments: "8", reports: "100%" },
+   877→   877→                },
+   878→   878→                {
+   879→   879→                  quote: "J'étais réticente au début parce que je ne suis pas très technology. Mais l'interface est tellement simple que je l'ai adoptée en une demi-journée. Maintenant, je forme moi-même les nouveaux agents.",
+   880→   880→                  name: "Adjoua M.",
+   881→   881→                  role: "Charge d'Activités, San-Pédro",
+   882→   882→                  location: "San-Pédro",
+   883→   883→                  avatar: "AM",
+   884→   884→                  stats: { training: "12 agents", adoption: "2 jours" },
+   885→   885→                },
+   886→   886→              ].map((testimonial, index) => (
+   887→   887→                <div
+   888→   888→                  key={index}
+   889→   889→                  className="group bg-white/5 backdrop-blur-sm rounded-2xl p-6 lg:p-8 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-300 animate-on-scroll delay-index + 1"
+   890→   890→                >
+   891→   891→                  {/* Quote icon */}
+   892→   892→                  <svg className="w-10 h-10 text-[#F77F00]/30 mb-5" fill="currentColor" viewBox="0 0 24 24">
+   893→   893→                    <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
+   894→   894→                  </svg>
+   895→   895→
+   896→   896→                  {/* Citation */}
+   897→   897→                  <blockquote className="landing-body text-sm lg:text-base text-slate-300 leading-relaxed mb-6">
+   898→   898→                    "{testimonial.quote}"
+   899→   899→                  </blockquote>
+   900→   900→
+   901→   901→                  {/* Stats mini */}
+   902→   902→                  <div className="flex items-center gap-4 mb-6 pb-6 border-b border-white/10">
+   903→   903→                    {Object.entries(testimonial.stats).map(([key, value]) => (
+   904→   904→                      <div key={key} className="text-center">
+   905→   905→                        <div className="text-lg font-bold text-[#F77F00]">{value}</div>
+   906→   906→                        <div className="text-[10px] text-slate-500 uppercase tracking-wide">
+   907→   907→                          {key === 'activities' ? 'Activités' : key === 'timeSaved' ? 'Temps gagné' : key === 'departments' ? 'Départements' : key === 'reports' ? 'Taux rapport' : key === 'training' ? 'Formés' : 'Adoption'}
+   908→   908→                        </div>
+   909→   909→                      </div>
+   910→   910→                    ))}
+   911→   911→                  </div>
+   912→   912→
+   913→   913→                  {/* Auteur */}
+   914→   914→                  <div className="flex items-center gap-3">
+   915→   915→                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#F77F00] to-[#009E60] flex items-center justify-center text-white font-bold text-sm">
+   916→   916→                      {testimonial.avatar}
+   917→   917→                    </div>
+   918→   918→                    <div>
+   919→   919→                      <div className="font-semibold text-white text-sm">{testimonial.name}</div>
+   920→   920→                      <div className="text-xs text-slate-400">{testimonial.role}</div>
+   921→   921→                      <div className="text-[10px] text-[#F77F00]">📍 {testimonial.location}</div>
+   922→   922→                    </div>
+   923→   923→                  </div>
+   924→   924→                </div>
+   925→   925→              ))}
+   926→   926→            </div>
+   927→   927→          </div>
+   928→   928→        </section>
+   929→   929→
+   930→   930→        {/* ===== 7. SECTION TARIFICATION ===== */}
+   931→   931→        <section id="tarifs" className="py-20 lg:py-28 bg-white" aria-label="Tarification">
+   932→   932→          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   933→   933→            {/* En-tête section */}
+   934→   934→            <div className="text-center max-w-3xl mx-auto mb-16 animate-on-scroll">
+   935→   935→              <span className="inline-block text-sm font-semibold text-[#009E60] uppercase tracking-wide mb-4">
+   936→   936→                Tarification transparente
+   937→   937→              </span>
+   938→   938→              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
+   939→   939→                Un investissement mesurable pour votre direction
+   940→   940→              </h2>
+   941→   941→              <p className="landing-body text-lg text-slate-600">
+   942→   942→                Des tarifs adaptés aux réalités budgétaires des services publics ivoiriens. Pas de frais cachés, pas de surprise.
+   943→   943→              </p>
+   944→   944→            </div>
+   945→   945→
+   946→   946→            {/* Toggle Annuel/Mensuel (optionnel visuel) */}
+   947→   947→            <div className="flex items-center justify-center gap-4 mb-12 animate-on-scroll">
+   948→   948→              <span className="text-sm font-medium text-slate-600">Facturation mensuelle</span>
+   949→   949→              <div className="relative inline-flex items-center">
+   950→   950→                <span className="text-sm font-semibold text-[#009E60] mr-2">✓</span>
+   951→   951→                <span className="text-sm font-medium text-slate-800">Paiement FCFA</span>
+   952→   952→              </div>
+   953→   953→            </div>
+   954→   954→
+   955→   955→            {/* Grille 3 plans */}
+   956→   956→            <div className="grid md:grid-cols-3 gap-6 lg:gap-8 items-start">
+   957→   957→              {[
+   958→   958→                {
+   959→   959→                  name: "Essentiel",
+   960→   960→                  price: "10 000",
+   961→   961→                  currency: "FCFA/mois",
+   962→   962→                  description: "Pour les départements qui débutent leur transformation numérique",
+   963→   963→                  features: [
+   964→   964→                    "Jusqu'à 5 utilisateurs",
+   965→   965→                    "Saisie d'activités illimitée",
+   966→   966→                    "Rapports trimestriels automatiques",
+   967→   967→                    "Stockage photos (2 Go)",
+   968→   968→                    "Support par email",
+   969→   969→                  ],
+   970→   970→                  limitations: [
+   971→   971→                    "Pas de validation multi-niveaux",
+   972→   972→                    "Pas de tableau de bord avancé",
+   973→   973→                  ],
+   974→   974→                  popular: false,
+   975→   975→                  cta: "Commencer l'essai",
+   976→   976→                  color: "slate",
+   977→   977→                },
+   978→   978→                {
+   979→   979→                  name: "Professionnel",
+   980→   980→                  price: "15 000",
+   981→   981→                  currency: "FCFA/mois",
+   982→   982→                  description: "Pour les directions régionales qui veulent maîtriser leur reporting",
+   983→   983→                  features: [
+   984→   984→                    "Jusqu'à 20 utilisateurs",
+   985→   985→                    "Tout le plan Essentiel, plus :",
+   986→   986→                    "Circuit de validation multi-niveaux",
+   987→   987→                    "Tableaux de bord & indicateurs",
+   988→   988→                    "Export PDF/Excel avancé",
+   989→   989→                    "Stockage photos (10 Go)",
+   990→   990→                    "Support prioritaire",
+   991→   991→                    "Formation incluse",
+   992→   992→                  ],
+   993→   993→                  limitations: [],
+   994→   994→                  popular: true,
+   995→   995→                  cta: "Demander ce plan",
+   996→   996→                  color: "orange",
+   997→   997→                },
+   998→   998→                {
+   999→   999→                  name: "Institutionnel",
+  1000→  1000→                  price: "25 000",
+  1001→  1001→                  currency: "FCFA/mois",
+  1002→  1002→                  description: "Pour la direction centrale et les grandes structures",
+  1003→  1003→                  features: [
+  1004→  1004→                    "Utilisateurs illimités",
+  1005→  1005→                    "Tout le plan Professionnel, plus :",
+  1006→  1006→                    "Consolidation multi-directions",
+  1007→  1007→                    "API d'integration",
+  1008→  1008→                    "Compte dédié personnalisé",
+  1009→  1009→                    "SLA garantie 99.9%",
+  1010→  1010→                    "Manager de succès dédié",
+  1011→  1011→                    "Formation sur mesure",
+  1012→  1012→                    "Reports customisés",
+  1013→  1013→                  ],
+  1014→  1014→                  limitations: [],
+  1015→  1015→                  popular: false,
+  1016→  1016→                  cta: "Nous contacter",
+  1017→  1017→                  color: "green",
+  1018→  1018→                },
+  1019→  1019→              ].map((plan, index) => (
+  1020→  1020→                <div
+  1021→  1021→                  key={index}
+  1022→  1022→                  className={`relative rounded-2xl overflow-hidden transition-all duration-300 animate-on-scroll delay-index + 1 ${
+  1023→  1023→                    plan.popular
+  1024→  1024→                      ? "ring-2 ring-[#F77F00] shadow-2xl shadow-orange-500/10 scale-[1.02]"
+  1025→  1025→                      : "border border-slate-200 hover:border-slate-300 hover:shadow-lg"
+  1026→  1026→                  }`}
+  1027→  1027→                >
+  1028→  1028→                  {/* Badge populaire */}
+  1029→  1029→                  {plan.popular && (
+  1030→  1030→                    <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-[#F77F00] to-[#E67300] text-white text-center text-sm font-semibold py-2">
+  1031→  1031→                      ⭐ Plan le plus populaire
+  1032→  1032→                    </div>
+  1033→  1033→                  )}
+  1034→  1034→
+  1035→  1035→                  <div className={`p-6 lg:p-8 ${plan.popular ? 'pt-14' : ''} bg-white`}>
+  1036→  1036→                    {/* Nom du plan */}
+  1037→  1037→                    <h3 className="landing-heading text-xl font-bold text-[#0F172A] mb-2">
+  1038→  1038→                      {plan.name}
+  1039→  1039→                    </h3>
+  1040→  1040→                    <p className="text-sm text-slate-500 mb-6">{plan.description}</p>
+  1041→  1041→
+  1042→  1042→                    {/* Prix */}
+  1043→  1043→                    <div className="mb-6">
+  1044→  1044→                      <div className="flex items-baseline gap-1">
+  1045→  1045→                        <span className="text-4xl lg:text-5xl font-extrabold text-[#0F172A]">
+  1046→  1046→                          {plan.price}
+  1047→  1047→                        </span>
+  1048→  1048→                      </div>
+  1049→  1049→                      <span className="text-sm text-slate-500">{plan.currency}</span>
+  1050→  1050→                    </div>
+  1051→  1051→
+  1052→  1052→                    {/* Features */}
+  1053→  1053→                    <ul className="space-y-3 mb-8">
+  1054→  1054→                      {plan.features.map((feature) => (
+  1055→  1055→                        <li key={feature} className="flex items-start gap-3 text-sm">
+  1056→  1056→                          <svg className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+  1057→  1057→                            plan.popular ? 'text-[#F77F00]' : 'text-[#009E60]'
+  1058→  1058→                          }`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  1059→  1059→                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+  1060→  1060→                          </svg>
+  1061→  1061→                          <span className="text-slate-600">{feature}</span>
+  1062→  1062→                        </li>
+  1063→  1063→                      ))}
+  1064→  1064→                      {plan.limitations.map((limitation) => (
+  1065→  1065→                        <li key={limitation} className="flex items-start gap-3 text-sm text-slate-400">
+  1066→  1066→                          <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  1067→  1067→                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  1068→  1068→                          </svg>
+  1069→  1069→                          <span>{limitation}</span>
+  1070→  1070→                        </li>
+  1071→  1071→                      ))}
+  1072→  1072→                    </ul>
+  1073→  1073→
+  1074→  1074→                    {/* CTA */}
+  1075→  1075→                    <a
+  1076→  1076→                      href="#demande"
+  1077→  1077→                      className={`block w-full text-center py-3.5 px-6 rounded-xl font-semibold transition-all ${
+  1078→  1078→                        plan.popular
+  1079→  1079→                          ? "bg-[#F77F00] text-white hover:bg-[#E67300] shadow-lg shadow-orange-500/20"
+  1080→  1080→                          : plan.color === 'green'
+  1081→  1081→                          ? "bg-[#009E60] text-white hover:bg-[#059669]"
+  1082→  1082→                          : "bg-[#0F172A] text-white hover:bg-[#1E293B]"
+  1083→  1083→                      }`}
+  1084→  1084→                    >
+  1085→  1085→                      {plan.cta}
+  1086→  1086→                    </a>
+  1087→  1087→                  </div>
+  1088→  1088→                </div>
+  1089→  1089→              ))}
+  1090→  1090→            </div>
+  1091→  1091→
+  1092→  1092→            {/* Note transparence */}
+  1093→  1093→            <p className="text-center text-sm text-slate-500 mt-8 animate-on-scroll">
+  1094→  1094→              💡 Tous les prix sont HT. Réduction de 15% pour paiement annuel. Formation et support inclus sans limitation.
+  1095→  1095→            </p>
+  1096→  1096→          </div>
+  1097→  1097→        </section>
+  1098→  1098→
+  1099→  1099→        {/* ===== 8. SECTION FAQ ===== */}
+  1100→  1100→        <section id="faq" className="py-20 lg:py-28 bg-[#FFFBF5] african-pattern" aria-label="Questions fréquentes">
+  1101→  1101→          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+  1102→  1102→            {/* En-tête section */}
+  1103→  1103→            <div className="text-center mb-16 animate-on-scroll">
+  1104→  1104→              <span className="inline-block text-sm font-semibold text-[#F77F00] uppercase tracking-wide mb-4">
+  1105→  1105→                FAQ
+  1106→  1106→              </span>
+  1107→  1107→              <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0F172A] mb-6 leading-tight">
+  1108→  1108→                Questions fréquentes
+  1109→  1109→              </h2>
+  1110→  1110→              <p className="landing-body text-lg text-slate-600">
+  1111→  1111→                Tout ce que vous besoin de savoir avant de commencer.
+  1112→  1112→              </p>
+  1113→  1113→            </div>
+  1114→  1114→
+  1115→  1115→            {/* Liste FAQ */}
+  1116→  1116→            <div className="space-y-4">
+  1117→  1117→              {[
+  1118→  1118→                {
+  1119→  1119→                  question: "Combien de temps faut-il pour mettre en place e-OSCS dans ma direction ?",
+  1120→  1120→                  answer: "Une fois votre demande validée par la direction centrale, nous provisionnons votre espace en moins de 24 heures. La formation initiale prend environ 2 heures pour les administrateurs et 30 minutes pour les utilisateurs finaux. La plupart de nos directions sont pleinement opérationnelles en moins d'une semaine.",
+  1121→  1121→                },
+  1122→  1122→                {
+  1123→  1123→                  question: "Mes données sont-elles hébergées en Côte d'Ivoire ?",
+  1124→  1124→                  answer: "e-OSCS est hébergé sur des serveurs sécurisés conformes au RGPD. Nous utilisons Supabase (basé sur PostgreSQL) avec chiffrement des données en transit et au repos. Les sauvegardes quotidiennes sont effectuées automatiquement. Un accord de confidentialité spécifique peut être signé pour les institutions qui le souhaitent.",
+  1125→  1125→                },
+  1126→  1126→                {
+  1127→  1127→                  question: "Puis-je importer mes données existantes (anciens rapports, activités) ?",
+  1128→  1128→                  answer: "Oui, nous fournissons des templates Excel structurés pour importer votre historique d'activités et votre plan annuel en cours. Notre équipe peut aussi vous accompagner lors de la migration initiale. Les données importées sont immédiatement disponibles dans vos rapports et tableaux de bord.",
+  1129→  1129→                },
+  1130→  1130→                {
+  1131→  1131→                  question: "Que se passe-t-il si internet coupe pendant une saisie sur le terrain ?",
+  1132→  1132→                  answer: "L'application fonctionne en mode dégradé : vous pouvez préparer vos saisies hors-ligne et les synchroniser dès que la connexion revient. Les photos stockées localement seront uploadées automatiquement. Aucune donnée n'est perdue même en cas de coupure brutale.",
+  1133→  1133→                },
+  1134→  1134→              ].map((faq, index) => (
+  1135→  1135→                <details
+  1136→  1136→                  key={index}
+  1137→  1137→                  className="group bg-white rounded-2xl border border-slate-200 overflow-hidden animate-on-scroll delay-index % 2 + 1"
+  1138→  1138→                >
+  1139→  1139→                  <summary className="flex items-center justify-between cursor-pointer px-6 py-5 text-left hover:bg-slate-50 transition-colors">
+  1140→  1140→                    <span className="landing-heading pr-8 font-semibold text-[#0F172A] text-base lg:text-lg">
+  1141→  1141→                      {faq.question}
+  1142→  1142→                    </span>
+  1143→  1143→                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center group-open:bg-[#F77F00]/10 group-open:rotate-180 transition-all">
+  1144→  1144→                      <svg className="w-4 h-4 text-slate-500 group-open:text-[#F77F00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  1145→  1145→                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+  1146→  1146→                      </svg>
+  1147→  1147→                    </span>
+  1148→  1148→                  </summary>
+  1149→  1149→                  <div className="px-6 pb-5 pt-0">
+  1150→  1150→                    <p className="landing-body text-slate-600 leading-relaxed pl-0 border-t border-slate-100 pt-4">
+  1151→  1151→                      {faq.answer}
+  1152→  1152→                    </p>
+  1153→  1153→                  </div>
+  1154→  1154→                </details>
+  1155→  1155→              ))}
+  1156→  1156→            </div>
+  1157→  1157→          </div>
+  1158→  1158→        </section>
+  1159→  1159→
+  1160→  1160→        {/* ===== 9. SECTION DEMANDE D'ACCÈS / CTA FINAL ===== */}
+  1161→  1161→        <section id="demande" className="py-20 lg:py-28 bg-white" aria-label="Demande d'accès">
+  1162→  1162→          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+  1163→  1163→            <div className="relative bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0F172A] rounded-3xl overflow-hidden shadow-2xl">
+  1164→  1164→              {/* Décorations */}
+  1165→  1165→              <div className="absolute top-0 right-0 w-96 h-96 bg-[#F77F00]/10 rounded-full blur-3xl" />
+  1166→  1166→              <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#009E60]/10 rounded-full blur-3xl" />
+  1167→  1167→
+  1168→  1168→              <div className="relative z-10 px-6 py-12 sm:px-12 sm:py-16 lg:px-16 lg:py-20 text-center">
+  1169→  1169→                {/* Badge */}
+  1170→  1170→                <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#F77F00] uppercase tracking-wide mb-6">
+  1171→  1171→                  <span className="w-2 h-2 rounded-full bg-[#F77F00] animate-pulse" />
+  1172→  1172→                  Démarrage rapide
+  1173→  1173→                </span>
+  1174→  1174→
+  1175→  1175→                {/* Titre */}
+  1176→  1176→                <h2 className="landing-heading text-3xl sm:text-4xl lg:text-[44px] font-bold text-white mb-6 leading-tight">
+  1177→  1177→                  Prêt à transformer votre reporting ?
+  1178→  1178→                </h2>
+  1179→  1179→
+  1180→  1180→                {/* Description */}
+  1181→  1181→                <p className="text-lg text-slate-300 mb-10 max-w-2xl mx-auto">
+  1182→  1182→                  Demandez votre accès dès aujourd'hui et rejoignez les directions qui ont déjà dit adieu aux rapports de dernière minute.
+  1183→  1183→                </p>
+  1184→  1184→
+  1185→  1185→                {/* Formulaire simplifié */}
+  1186→  1186→                <form className="max-w-md mx-auto space-y-4 text-left" onSubmit={(e) => e.preventDefault()}>
+  1187→  1187→                  {/* Nom complet */}
+  1188→  1188→                  <div>
+  1189→  1189→                    <label htmlFor="demande-nom" className="block text-sm font-medium text-slate-300 mb-2">
+  1190→  1190→                      Nom complet *
+  1191→  1191→                    </label>
+  1192→  1192→                    <input
+  1193→  1193→                      type="text"
+  1194→  1194→                      id="demande-nom"
+  1195→  1195→                      required
+  1196→  1196→                      placeholder="Ex: Koné Mohamed"
+  1197→  1197→                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F77F00] focus:border-transparent transition-all"
+  1198→  1198→                    />
+  1199→  1199→                  </div>
+  1200→  1200→
+  1201→  1201→                  {/* Email institutionnel */}
+  1202→  1202→                  <div>
+  1203→  1203→                    <label htmlFor="demande-email" className="block text-sm font-medium text-slate-300 mb-2">
+  1204→  1204→                      Email institutionnel *
+  1205→  1205→                    </label>
+  1206→  1206→                    <input
+  1207→  1207→                      type="email"
+  1208→  1208→                      id="demande-email"
+  1209→  1209→                      required
+  1210→  1210→                      placeholder="exemple@gouv.ci"
+  1211→  1211→                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F77F00] focus:border-transparent transition-all"
+  1212→  1212→                    />
+  1213→  1213→                  </div>
+  1214→  1214→
+  1215→  1215→                  {/* Direction / Structure */}
+  1216→  1216→                  <div>
+  1217→  1217→                    <label htmlFor="demande-direction" className="block text-sm font-medium text-slate-300 mb-2">
+  1218→  1218→                      Direction / Structure *
+  1219→  1219→                    </label>
+  1220→  1220→                    <select
+  1221→  1221→                      id="demande-direction"
+  1222→  1222→                      required
+  1223→  1223→                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-[#F77F00] focus:border-transparent transition-all appearance-none"
+  1224→  1224→                    >
+  1225→  1225→                      <option value="" className="bg-[#1E293B]">Sélectionnez votre structure</option>
+  1226→  1226→                      <option value="direction-regionale" className="bg-[#1E293B]">Direction Régionale</option>
+  1227→  1227→                      <option value="direction-departementale" className="bg-[#1E293B]">Direction Départementale</option>
+  1228→  1228→                      <option value="direction-centrale" className="bg-[#1E293B]">Direction Centrale</option>
+  1229→  1229→                      <option value="autre" className="bg-[#1E293B]">Autre structure</option>
+  1230→  1230→                    </select>
+  1231→  1231→                  </div>
+  1232→  1232→
+  1233→  1233→                  {/* Message optionnel */}
+  1234→  1234→                  <div>
+  1235→  1235→                    <label htmlFor="demande-message" className="block text-sm font-medium text-slate-300 mb-2">
+  1236→  1236→                      Message (optionnel)
+  1237→  1237→                    </label>
+  1238→  1238→                    <textarea
+  1239→  1239→                      id="demande-message"
+  1240→  1240→                      rows={3}
+  1241→  1241→                      placeholder="Précisez vos besoins spécifiques..."
+  1242→  1242→                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F77F00] focus:border-transparent transition-all resize-none"
+  1243→  1243→                    />
+  1244→  1244→                  </div>
+  1245→  1245→
+  1246→  1246→                  {/* Submit */}
+  1247→  1247→                  <button
+  1248→  1248→                    type="submit"
+  1249→  1249→                    className="magnetic-btn w-full py-4 px-8 bg-[#F77F00] hover:bg-[#E67300] text-white font-semibold rounded-xl shadow-lg shadow-orange-500/25 transition-all text-lg"
+  1250→  1250→                  >
+  1251→  1251→                    Envoyer ma demande
+  1252→  1252→                    <svg className="inline ml-2 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  1253→  1253→                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+  1254→  1254→                    </svg>
+  1255→  1255→                  </button>
+  1256→  1256→                </form>
+  1257→  1257→
+  1258→  1258→                {/* Note confiance */}
+  1259→  1259→                <p className="mt-6 text-sm text-slate-400">
+  1260→  1260→                  🔒 Vos données sont protégées et ne seront jamais partagées avec des tiers. Réponse sous 48h ouvrables.
+  1261→  1261→                </p>
+  1262→  1262→              </div>
+  1263→  1263→            </div>
+  1264→  1264→          </div>
+  1265→  1265→        </section>
+  1266→  1266→
+  1267→  1267→        {/* ===== 10. SECTION CTA FINAL (Optionnel) ===== */}
+  1268→  1268→        <section className="py-16 lg:py-20 bg-gradient-to-r from-[#F77F00] to-[#E67300] relative overflow-hidden" aria-label="Appel à l'action final">
+  1269→  1269→          <div className="absolute inset-0 opacity-10">
+  1270→  1270→            <div className="absolute top-10 left-10 w-40 h-40 border-2 border-white rounded-full" />
+  1271→  1271→            <div className="absolute bottom-10 right-10 w-60 h-60 border-2 border-white rounded-full" />
+  1272→  1272→            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 border border-white rounded-full" />
+  1273→  1273→          </div>
+  1274→  1274→
+  1275→  1275→          <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+  1276→  1276→            <h2 className="landing-heading text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-4">
+  1277→  1277→              Rejoignez la transformation digitale du MCNSLP
+  1278→  1278→            </h2>
+  1279→  1279→            <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
+  1280→  1280→              Plus de 12 directions utilisent déjà e-OSCS au quotidien. La prochaine pourrait être la vôtre.
+  1281→  1281→            </p>
+  1282→  1282→            <a
+  1283→  1283→              href="#demande"
+  1284→  1284→              className="magnetic-btn inline-flex items-center px-8 py-4 bg-white text-[#F77F00] font-semibold rounded-2xl shadow-xl hover:bg-slate-50 transition-all text-lg"
+  1285→  1285→            >
+  1286→  1286→              Demander mon accès maintenant
+  1287→  1287→              <svg className="ml-2 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  1288→  1288→                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+  1289→  1289→              </svg>
+  1290→  1290→            </a>
+  1291→  1291→          </div>
+  1292→  1292→        </section>
+  1293→  1293→
+  1294→  1294→        {/* ===== 11. FOOTER ARDOISE ===== */}
+  1295→  1295→        <footer className="bg-[#0F172A] text-slate-400" role="contentinfo">
+  1296→  1296→          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+  1297→  1297→            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12">
+  1298→  1298→              {/* Colonne 1 : Marque */}
+  1299→  1299→              <div className="col-span-2 md:col-span-1">
+  1300→  1300→                <a href="/" className="flex items-center gap-2 mb-4">
+  1301→  1301→                  <span className="text-2xl font-extrabold text-[#009E60]">e</span>
+  1302→  1302→                  <span className="text-xl font-bold text-white">-</span>
+  1303→  1303→                  <span className="text-2xl font-extrabold text-[#F77F00]">OSCS</span>
+  1304→  1304→                </a>
+  1305→  1305→                <p className="text-sm leading-relaxed mb-4">
+  1306→  1306→                  Solution de reporting et de gestion des activités pour le Ministère de la Cohésion Nationale, de la Solidarité Sociale et de la Lutte contre la Pauvreté.
+  1307→  1307→                </p>
+  1308→  1308→                {/* Liseré tricolore mini */}
+  1309→  1309→                <div className="flex gap-1">
+  1310→  1310→                  <div className="w-6 h-1 rounded-full bg-[#F77F00]" />
+  1311→  1311→                  <div className="w-6 h-1 rounded-full bg-white" />
+  1312→  1312→                  <div className="w-6 h-1 rounded-full bg-[#009E60]" />
+  1313→  1313→                </div>
+  1314→  1314→              </div>
+  1315→  1315→
+  1316→  1316→              {/* Colonne 2 : Produit */}
+  1317→  1317→              <div>
+  1318→  1318→                <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wide">Produit</h4>
+  1319→  1319→                <ul className="space-y-2.5 text-sm">
+  1320→  1320→                  {['Fonctionnalités', 'Tarification', 'Témoignages', 'FAQ', 'Roadmap'].map((item) => (
+  1321→  1321→                    <li key={item}>
+  1322→  1322→                      <a href={`#${item.toLowerCase()}`} className="hover:text-white transition-colors">
+  1323→  1323→                        {item}
+  1324→  1324→                      </a>
+  1325→  1325→                    </li>
+  1326→  1326→                  ))}
+  1327→  1327→                </ul>
+  1328→  1328→              </div>
+  1329→  1329→
+  1330→  1330→              {/* Colonne 3 : Support */}
+  1331→  1331→              <div>
+  1332→  1332→                <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wide">Support</h4>
+  1333→  1333→                <ul className="space-y-2.5 text-sm">
+  1334→  1334→                  {[
+  1335→  1335→                    { label: 'Documentation', href: '#' },
+  1336→  1336→                    { label: 'Contact', href: '#contact' },
+  1337→  1337→                    { label: 'Statut du service', href: '#' },
+  1338→  1338→                    { label: 'Mentions légales', href: '#' },
+  1339→  1339→                  ].map((item) => (
+  1340→  1340→                    <li key={item.label}>
+  1341→  1341→                      <a href={item.href} className="hover:text-white transition-colors">
+  1342→  1342→                        {item.label}
+  1343→  1343→                      </a>
+  1344→  1344→                    </li>
+  1345→  1345→                  ))}
+  1346→  1346→                </ul>
+  1347→  1347→              </div>
+  1348→  1348→
+  1349→  1349→              {/* Colonne 4 : Contact */}
+  1350→  1350→              <div>
+  1351→  1351→                <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wide">Contact</h4>
+  1352→  1352→                <ul className="space-y-2.5 text-sm">
+  1353→  1353→                  <li className="flex items-center gap-2">
+  1354→  1354→                    <svg className="w-4 h-4 text-[#F77F00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  1355→  1355→                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.07 8.91A2.25 2.25 0 0 1 2 8.668V6.75" />
+  1356→  1356→                    </svg>
+  1357→  1357→                    omouitsi@gmail.com
+  1358→  1358→                  </li>
+  1359→  1359→                  <li className="flex items-center gap-2">
+  1360→  1360→                    <svg className="w-4 h-4 text-[#F77F00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  1361→  1361→                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.715 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+  1362→  1362→                    </svg>
+  1363→  1363→                    +225 05 761 032 77
+  1364→  1364→                  </li>
+  1365→  1365→                  <li className="flex items-start gap-2">
+  1366→  1366→                    <svg className="w-4 h-4 mt-0.5 text-[#F77F00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  1367→  1367→                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+  1368→  1368→                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+  1369→  1369→                    </svg>
+  1370→  1370→                    Abidjan, Plateau<br/>Côte d'Ivoire
+  1371→  1371→                  </li>
+  1372→  1372→                </ul>
+  1373→  1373→              </div>
+  1374→  1374→            </div>
+  1375→  1375→
+  1376→  1376→            {/* Séparation */}
+  1377→  1377→            <div className="border-t border-white/10 mt-12 pt-8">
+  1378→  1378→              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+  1379→  1379→                <p className="text-sm">
+  1380→  1380→                  © {new Date().getFullYear()} e-OSCS. Tous droits réservés.
+  1381→  1381→                </p>
+  1382→  1382→                <p className="text-xs text-slate-500">
+  1383→  1383→                  Fièrement développé en Côte d'Ivoire 🇨🇮 pour le MCNSLP
+  1384→  1384→                </p>
+  1385→  1385→              </div>
+  1386→  1386→            </div>
+  1387→  1387→          </div>
+  1388→  1388→        </footer>
+  1389→  1389→      </main>
+  1390→  1390→    </>
+  1391→  1391→  );
+  1392→  1392→}
+  1393→  1393→
+  1394→  1394→export default PremiumLandingContent;
+  1395→  1395→
