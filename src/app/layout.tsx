@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProviderWrapper } from "@/components/ui/theme-toggle";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
 
 export const metadata: Metadata = {
   title: "e-OSCS — Plateforme nationale de suivi des activités de solidarité et de cohésion sociale",
@@ -33,6 +35,14 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * RootLayout - Layout racine de l'application
+ * 
+ * Intègre:
+ * - ThemeProvider (next-themes) pour le dark mode global
+ * - Script anti-flash pour éviter le clignotement au chargement
+ * - Toaster pour les notifications toast
+ */
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,9 +50,35 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <body className="font-sans antialiased bg-background text-foreground">
-        {children}
-        <Toaster />
+      <head>
+        {/* Script anti-flash pour le thème */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('theme');
+                  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body className="font-sans antialiased bg-background text-foreground transition-colors duration-300">
+        <NextThemesProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem={true}
+          disableTransitionOnChange={false}
+        >
+          <ThemeProviderWrapper>
+            {children}
+            <Toaster />
+          </ThemeProviderWrapper>
+        </NextThemesProvider>
       </body>
     </html>
   );

@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { ThemeToggleCompact } from '@/components/ui/theme-toggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -307,6 +308,9 @@ export function AgentHeader({ user }: AgentHeaderProps) {
 
       {/* Actions droite */}
       <div className="flex items-center gap-2">
+        {/* Toggle Dark/Light Mode */}
+        <ThemeToggleCompact />
+        
         {/* Notifications améliorées */}
         <Popover>
           <PopoverTrigger asChild>

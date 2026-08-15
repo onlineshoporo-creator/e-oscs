@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
+import { ThemeToggleCompact } from "@/components/ui/theme-toggle";
 
 /* ============================================
    LANDING PAGE CONTENT e-OSCS PREMIUM
@@ -735,6 +736,9 @@ export function PremiumLandingContent() {
                 >
                   Demander un accès
                 </a>
+
+                {/* Toggle Dark/Light Mode */}
+                <ThemeToggleCompact className="ml-2" />
               </div>
 
               {/* Bouton menu mobile avec animation hamburger/X */}
@@ -789,6 +793,12 @@ export function PremiumLandingContent() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                   </a>
+                  
+                  {/* Toggle Dark/Light Mode - Mobile */}
+                  <div className="mx-2 mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-sm text-slate-500">Thème</span>
+                    <ThemeToggleCompact />
+                  </div>
                 </div>
               </div>
             </div>

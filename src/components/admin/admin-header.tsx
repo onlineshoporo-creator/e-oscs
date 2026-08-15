@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { ThemeToggleCompact } from '@/components/ui/theme-toggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -137,6 +138,9 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
 
       {/* Actions droite */}
       <div className="flex items-center gap-2">
+        {/* Toggle Dark/Light Mode */}
+        <ThemeToggleCompact />
+        
         {/* Badge admin */}
         <Badge variant="outline" className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 border-orange-200 text-orange-700 bg-orange-50">
           <Shield className="w-3.5 h-3.5" />

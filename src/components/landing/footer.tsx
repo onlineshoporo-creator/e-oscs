@@ -19,6 +19,7 @@ const footerLinks = {
     { name: "Demande d'abonnement", href: "#demande" },
   ],
   legal: [
+    { name: "À propos", href: "/a-propos" },
     { name: "Conditions d'utilisation", href: "/conditions" },
     { name: "Politique de confidentialité", href: "/confidentialite" },
   ],

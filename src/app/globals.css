@@ -259,6 +259,32 @@
   --shadow-modal-premium: 0 25px 50px -12px rgb(0 0 0 / 0.5);
 }
 
+/* === DARK MODE - STYLES COMPLÉMENTAIRES === */
+
+/* Transition globale pour le changement de thème */
+.dark *,
+.dark *::before,
+.dark *::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: ease-in-out;
+}
+
+/* Typographie en dark mode */
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
+  color: #F1F5F9;
+}
+
+/* Landing page body text */
+.dark .landing-body {
+  color: #CBD5E1;
+}
+
 /* === BASE === */
 @layer base {
   * {
@@ -702,5 +728,142 @@
     font-size: 16px;
     line-height: 1.7;
     color: #172033;
+  }
+}
+
+/* ===========================================
+   DARK MODE - UTILITAIRES SPÉCIFIQUES
+   =========================================== */
+@layer utilities {
+  
+  /* --- TYPOGRAPHIE EN DARK MODE --- */
+  
+  .dark .text-muted {
+    color: #94A3B8;
+  }
+  
+  .dark .text-label {
+    color: #94A3B8;
+  }
+  
+  .dark .text-important {
+    color: #E2E8F0;
+  }
+
+  /* --- FONDS EN DARK MODE --- */
+  
+  .dark .bg-admin-premium {
+    background-color: #0F172A;
+  }
+  
+  .dark .card-premium {
+    background-color: #1E293B;
+    border-color: #334155;
+  }
+
+  /* --- BORDURES EN DARK MODE --- */
+  
+  .dark .border-primary {
+    border-color: #FF9933;
+  }
+  
+  .dark .border-teal {
+    border-color: #14B8A6;
+  }
+  
+  .dark .border-premium {
+    border-color: #334155;
+  }
+
+  /* --- BADGES DE STATUT EN DARK MODE --- */
+  
+  .dark .status-brouillon {
+    background-color: rgba(51, 65, 85, 0.5);
+    color: #94A3B8;
+    border-color: #475569;
+  }
+  
+  .dark .status-soumis {
+    background-color: rgba(96, 165, 250, 0.15);
+    color: #93C5FD;
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+  
+  .dark .status-en-cours {
+    background-color: rgba(251, 191, 36, 0.15);
+    color: #FCD34D;
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+  
+  .dark .status-valide {
+    background-color: rgba(52, 211, 153, 0.15);
+    color: #6EE7B7;
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+  
+  .dark .status-approuve {
+    background-color: rgba(45, 212, 191, 0.15);
+    color: #5EEAD4;
+    border-color: rgba(20, 184, 166, 0.3);
+  }
+  
+  .dark .status-rejete {
+    background-color: rgba(248, 113, 113, 0.15);
+    color: #FCA5A5;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+  
+  .dark .status-annule {
+    background-color: rgba(51, 65, 85, 0.5);
+    color: #94A3B8;
+    border-color: #475569;
+  }
+  
+  .dark .status-attente {
+    background-color: rgba(251, 191, 36, 0.15);
+    color: #FCD34D;
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+
+  /* --- COMPOSANTS ADMIN EN DARK MODE --- */
+  
+  /* Header admin en dark mode */
+  .dark .header-admin {
+    background-color: #1E293B;
+    border-bottom-color: #334155;
+  }
+  
+  /* Container admin en dark mode */
+  .dark .container-admin {
+    background-color: #0F172A;
+  }
+  
+  /* Tableau premium en dark mode */
+  .dark .table-premium {
+    background-color: #1E293B;
+    border-color: #334155;
+  }
+  
+  .dark .table-premium th {
+    background-color: #1E293B;
+    color: #94A3B8;
+    border-bottom-color: #334155;
+  }
+  
+  .dark .table-premium td {
+    border-bottom-color: #334155;
+  }
+  
+  .dark .table-premium tr:hover td {
+    background-color: #334155;
+  }
+
+  /* --- LANDING PAGE DARK MODE --- */
+  
+  /* African pattern plus subtil en dark mode */
+  .dark .african-pattern {
+    background-image: 
+      linear-gradient(30deg, rgba(255, 153, 51, 0.03) 12%, transparent 12.5%, transparent 87%, rgba(255, 153, 51, 0.03) 87.5%, rgba(255, 153, 51, 0.03)),
+      linear-gradient(150deg, rgba(20, 184, 166, 0.03) 12%, transparent 12.5%, transparent 87%, rgba(20, 184, 166, 0.03) 87.5%, rgba(20, 184, 166, 0.03));
   }
 }

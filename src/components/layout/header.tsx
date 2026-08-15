@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { ThemeToggleCompact } from '@/components/ui/theme-toggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -207,6 +208,9 @@ export function Header({ user }: HeaderProps) {
 
       {/* Actions droite */}
       <div className="flex items-center gap-2">
+        {/* Toggle Dark/Light Mode */}
+        <ThemeToggleCompact />
+        
         {/* Notifications avec Badge intégré */}
         <Popover>
           <PopoverTrigger asChild>
