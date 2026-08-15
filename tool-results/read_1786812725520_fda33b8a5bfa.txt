@@ -1,0 +1,1137 @@
+     1→import type { Metadata } from "next";
+     2→import Link from "next/link";
+     3→import { Button } from "@/components/ui/button";
+     4→import { Separator } from "@/components/ui/separator";
+     5→import {
+     6→  Heart,
+     7→  HandHeart,
+     8→  Target,
+     9→  Users,
+    10→  Building2,
+    11→  TrendingUp,
+    12→  Clock,
+    13→  CheckCircle2,
+    14→  ArrowRight,
+    15→  ArrowLeft,
+    16→  Mail,
+    17→  Phone,
+    18→  MapPin,
+    19→  Shield,
+    20→  Zap,
+    21→  BarChart3,
+    22→  FileText,
+    23→  Globe,
+    24→  Code2,
+    25→  Database,
+    26→  Server,
+    27→  CalendarDays,
+    28→  Rocket,
+    29→  Star,
+    30→  Award,
+    31→  BookOpen,
+    32→  Lightbulb,
+    33→  AlertTriangle,
+    34→  ThumbsUp,
+    35→  Layers,
+    36→  Cpu,
+    37→} from "lucide-react";
+    38→
+    39→export const metadata: Metadata = {
+    40→  title: "À Propos — e-OSCS | MCNSLP Côte d'Ivoire",
+    41→  description:
+    42→    "Découvrez e-OSCS, la solution numérique au service de la Cohésion Nationale. Notre mission, notre histoire et notre engagement pour le MCNSLP.",
+    43→};
+    44→
+    45→/* ============================================
+    46→   PAGE À PROPOS e-OSCS
+    47→   Présentation du projet et de sa mission
+    48→   ============================================ */
+    49→export default function AProposPage() {
+    50→  return (
+    51→    <div className="min-h-screen bg-white">
+    52→      {/* ============================================
+    53→          HEADER STICKY avec navigation et breadcrumb
+    54→          ============================================ */}
+    55→      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    56→        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    57→          <div className="flex h-16 items-center justify-between">
+    58→            {/* Logo et breadcrumb */}
+    59→            <div className="flex items-center gap-4">
+    60→              <Link
+    61→                href="/"
+    62→                className="flex items-center gap-2.5 group"
+    63→                aria-label="Retour à l'accueil e-OSCS"
+    64→              >
+    65→                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#F77F00] to-[#009E60] flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+    66→                  <span className="text-lg font-bold text-white">e</span>
+    67→                </div>
+    68→                <span className="text-xl font-bold text-slate-900">e-OSCS</span>
+    69→              </Link>
+    70→
+    71→              {/* Breadcrumb */}
+    72→              <nav aria-label="Fil d'Ariane" className="hidden sm:flex items-center gap-2 text-sm">
+    73→                <Separator orientation="vertical" className="h-5 bg-slate-300" />
+    74→                <Link href="/" className="text-slate-500 hover:text-[#F77F00] transition-colors">
+    75→                  Accueil
+    76→                </Link>
+    77→                <span className="text-slate-400">/</span>
+    78→                <span className="text-slate-900 font-medium">À propos</span>
+    79→              </nav>
+    80→            </div>
+    81→
+    82→            {/* Bouton retour */}
+    83→            <Button variant="outline" size="sm" asChild className="gap-2">
+    84→              <Link href="/">
+    85→                <ArrowLeft className="w-4 h-4" />
+    86→                Retour à l&apos;accueil
+    87→              </Link>
+    88→            </Button>
+    89→          </div>
+    90→        </div>
+    91→      </header>
+    92→
+    93→      {/* ============================================
+    94→          SECTION HERO - Liseré tricolore CI
+    95→          ============================================ */}
+    96→      <section className="relative overflow-hidden">
+    97→        {/* Liseré tricolore Côte d'Ivoire */}
+    98→        <div className="h-2 flex">
+    99→          <div className="flex-1 bg-[#F77F00]" /> {/* Orange */}
+   100→          <div className="flex-1 bg-white" /> {/* Blanc */}
+   101→          <div className="flex-1 bg-[#009E60]" /> {/* Vert */}
+   102→        </div>
+   103→
+   104→        {/* Fond hero avec gradient */}
+   105→        <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-[#0F172A] py-20 md:py-28 lg:py-36">
+   106→          {/* Motifs décoratifs CSS */}
+   107→          <div className="absolute inset-0 opacity-10">
+   108→            <div className="absolute top-20 left-10 w-72 h-72 bg-[#F77F00] rounded-full blur-3xl" />
+   109→            <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#009E60] rounded-full blur-3xl" />
+   110→            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white rounded-full blur-3xl opacity-5" />
+   111→          </div>
+   112→
+   113→          <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+   114→            {/* Badge */}
+   115→            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 mb-8">
+   116→              <Star className="w-4 h-4 text-[#F77F00]" />
+   117→              <span className="text-sm text-white/90 font-medium">
+   118→                Plateforme officielle MCNSLP
+   119→              </span>
+   120→            </div>
+   121→
+   122→            {/* Titre principal */}
+   123→            <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6 tracking-tight">
+   124→              À propos d&apos;{" "}
+   125→              <span className="bg-gradient-to-r from-[#F77F00] to-[#FFB84D] bg-clip-text text-transparent">
+   126→                e-OSCS
+   127→              </span>
+   128→            </h1>
+   129→
+   130→            {/* Sous-titre */}
+   131→            <p className="text-xl md:text-2xl lg:text-3xl text-white/80 max-w-4xl mx-auto mb-8 leading-relaxed font-light">
+   132→              La solution numérique au service de la{" "}
+   133→              <span className="text-[#009E60] font-semibold">Cohésion Nationale</span>
+   134→            </p>
+   135→
+   136→            {/* Description */}
+   137→            <p className="text-base md:text-lg text-slate-400 max-w-3xl mx-auto mb-12 leading-relaxed">
+   138→              e-OSCS (électronique Organisation, Suivi et Contrôle des activités de Solidarité)
+   139→              est une plateforme innovante développée pour le Ministère de la Cohésion Nationale,
+   140→              de la Solidarité Sociale et de la Lutte contre la Pauvreté.
+   141→            </p>
+   142→
+   143→            {/* CTA buttons */}
+   144→            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+   145→              <Button
+   146→                size="lg"
+   147→                asChild
+   148→                className="bg-gradient-to-r from-[#F77F00] to-[#E67E00] hover:from-[#E67E00] hover:to-[#F77F00] text-white shadow-lg shadow-orange-500/25 px-8 h-14 text-base"
+   149→              >
+   150→                <Link href="#mission">
+   151→                  Découvrir notre mission
+   152→                  <ArrowRight className="ml-2 w-5 h-5" />
+   153→                </Link>
+   154→              </Button>
+   155→              <Button
+   156→                variant="outline"
+   157→                size="lg"
+   158→                asChild
+   159→                className="border-white/30 text-white hover:bg-white/10 px-8 h-14 text-base"
+   160→              >
+   161→                <Link href="#contact">
+   162→                  Nous contacter
+   163→                  <Mail className="ml-2 w-5 h-5" />
+   164→                </Link>
+   165→              </Button>
+   166→            </div>
+   167→          </div>
+   168→        </div>
+   169→      </section>
+   170→
+   171→      {/* ============================================
+   172→          SECTION NOTRE MISSION
+   173→          ============================================ */}
+   174→      <section id="mission" className="py-20 md:py-28 bg-gradient-to-b from-slate-50 to-white">
+   175→        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+   176→          {/* En-tête de section */}
+   177→          <div className="text-center max-w-3xl mx-auto mb-16">
+   178→            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#F77F00]/10 to-[#009E60]/10 mb-6">
+   179→              <Target className="w-8 h-8 text-[#F77F00]" />
+   180→            </div>
+   181→            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-6">
+   182→              Notre Mission
+   183→            </h2>
+   184→            <p className="text-lg text-slate-600 leading-relaxed">
+   185→              Au service du{" "}
+   186→              <strong className="text-slate-900">MCNSLP</strong>, nous transformons la gestion
+   187→              des activités de solidarité grâce à une solution numérique moderne, efficace et
+   188→              adaptée aux réalités ivoiriennes.
+   189→            </p>
+   190→          </div>
+   191→
+   192→          {/* Les 3 piliers */}
+   193→          <div className="grid md:grid-cols-3 gap-8 mb-20">
+   194→            {/* Pilier 1 : Cohésion sociale */}
+   195→            <div className="group relative bg-white rounded-2xl p-8 shadow-sm border border-slate-200 hover:shadow-xl hover:border-[#F77F00]/30 transition-all duration-300">
+   196→              <div className="absolute inset-0 bg-gradient-to-br from-[#F77F00]/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+   197→              <div className="relative">
+   198→                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#F77F00] to-[#E67E00] flex items-center justify-center mb-6 shadow-lg shadow-orange-500/20 group-hover:scale-110 transition-transform">
+   199→                  <Heart className="w-8 h-8 text-white" />
+   200→                </div>
+   201→                <h3 className="text-xl font-bold text-slate-900 mb-3">
+   202→                  Cohésion Sociale
+   203→                </h3>
+   204→                <p className="text-slate-600 leading-relaxed">
+   205→                  Renforcer les liens entre les communautés et promouvoir le vivre ensemble
+   206→                  à travers un suivi rigoureux des programmes d&apos;intégration sociale.
+   207→                </p>
+   208→              </div>
+   209→            </div>
+   210→
+   211→            {/* Pilier 2 : Solidarité nationale */}
+   212→            <div className="group relative bg-white rounded-2xl p-8 shadow-sm border border-slate-200 hover:shadow-xl hover:border-[#009E60]/30 transition-all duration-300">
+   213→              <div className="absolute inset-0 bg-gradient-to-br from-[#009E60]/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+   214→              <div className="relative">
+   215→                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#009E60] to-[#007A4D] flex items-center justify-center mb-6 shadow-lg shadow-green-500/20 group-hover:scale-110 transition-transform">
+   216→                  <HandHeart className="w-8 h-8 text-white" />
+   217→                </div>
+   218→                <h3 className="text-xl font-bold text-slate-900 mb-3">
+   219→                  Solidarité Nationale
+   220→                </h3>
+   221→                <p className="text-slate-600 leading-relaxed">
+   222→                  Faciliter la coordination des actions de solidarité sur tout le territoire
+   223→                  national pour une répartition équitable des ressources.
+   224→                </p>
+   225→              </div>
+   226→            </div>
+   227→
+   228→            {/* Pilier 3 : Lutte contre la pauvreté */}
+   229→            <div className="group relative bg-white rounded-2xl p-8 shadow-sm border border-slate-200 hover:shadow-xl hover:border-[#0F172A]/30 transition-all duration-300">
+   230→              <div className="absolute inset-0 bg-gradient-to-br from-[#0F172A]/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+   231→              <div className="relative">
+   232→                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0F172A] to-slate-700 flex items-center justify-center mb-6 shadow-lg shadow-slate-500/20 group-hover:scale-110 transition-transform">
+   233→                  <TrendingUp className="w-8 h-8 text-white" />
+   234→                </div>
+   235→                <h3 className="text-xl font-bold text-slate-900 mb-3">
+   236→                  Lutte contre la Pauvreté
+   237→                </h3>
+   238→                <p className="text-slate-600 leading-relaxed">
+   239→                  Mesurer l&apos;impact réel des programmes sociaux et optimiser l&apos;allocation
+   240→                  des ressources pour une efficacité maximale.
+   241→                </p>
+   242→              </div>
+   243→            </div>
+   244→          </div>
+   245→
+   246→          {/* Statistiques clés */}
+   247→          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-[#0F172A] rounded-3xl p-8 md:p-12 relative overflow-hidden">
+   248→            {/* Décorations */}
+   249→            <div className="absolute top-0 right-0 w-64 h-64 bg-[#F77F00]/10 rounded-full blur-3xl" />
+   250→            <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#009E60]/10 rounded-full blur-3xl" />
+   251→
+   252→            <div className="relative">
+   253→              <h3 className="text-2xl md:text-3xl font-bold text-white text-center mb-12">
+   254→                Impact en chiffres
+   255→              </h3>
+   256→
+   257→              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+   258→                {/* Stat 1 */}
+   259→                <div className="text-center">
+   260→                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#F77F00] to-[#FFB84D] bg-clip-text text-transparent mb-2">
+   261→                    31+
+   262→                  </div>
+   263→                  <p className="text-slate-400 text-sm md:text-base">
+   264→                    Directions Régionales<br />connectées
+   265→                  </p>
+   266→                </div>
+   267→
+   268→                {/* Stat 2 */}
+   269→                <div className="text-center">
+   270→                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#009E60] to-[#34D399] bg-clip-text text-transparent mb-2">
+   271→                    150+
+   272→                  </div>
+   273→                  <p className="text-slate-400 text-sm md:text-base">
+   274→                    Directions<br />Départementales
+   275→                  </p>
+   276→                </div>
+   277→
+   278→                {/* Stat 3 */}
+   279→                <div className="text-center">
+   280→                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-blue-300 bg-clip-text text-transparent mb-2">
+   281→                    50K+
+   282→                  </div>
+   283→                  <p className="text-slate-400 text-sm md:text-base">
+   284→                    Bénéficiaires<br />suivis/an
+   285→                  </p>
+   286→                </div>
+   287→
+   288→                {/* Stat 4 */}
+   289→                <div className="text-center">
+   290→                  <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-400 to-purple-300 bg-clip-text text-transparent mb-2">
+   291→                    98%
+   292→                  </div>
+   293→                  <p className="text-slate-400 text-sm md:text-base">
+   294→                    Taux de satisfaction<br />des utilisateurs
+   295→                  </p>
+   296→                </div>
+   297→              </div>
+   298→            </div>
+   299→          </div>
+   300→        </div>
+   301→      </section>
+   302→
+   303→      {/* ============================================
+   304→          SECTION LE PROBLÈME (Avant/Après)
+   305→          ============================================ */}
+   306→      <section id="probleme" className="py-20 md:py-28 bg-white">
+   307→        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+   308→          {/* En-tête */}
+   309→          <div className="text-center max-w-3xl mx-auto mb-16">
+   310→            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-50 mb-6">
+   311→              <AlertTriangle className="w-8 h-8 text-red-500" />
+   312→            </div>
+   313→            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-6">
+   314→              Le Problème
+   315→            </h2>
+   316→            <p className="text-lg text-slate-600 leading-relaxed">
+   317→              Avant e-OSCS, le reporting institutionnel du MCNSLP faisait face à des défis majeurs
+   318→              qui freinaient l&apos;efficacité de l&apos;action publique.
+   319→            </p>
+   320→          </div>
+   321→
+   322→          {/* Comparaison Avant / Après */}
+   323→          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+   324→            {/* AVANT */}
+   325→            <div className="relative bg-gradient-to-br from-red-50 to-orange-50 rounded-3xl p-8 border border-red-100 overflow-hidden">
+   326→              {/* Badge "Avant" */}
+   327→              <div className="absolute top-6 right-6 px-4 py-1.5 bg-red-500 text-white text-sm font-semibold rounded-full">
+   328→                AVANT
+   329→              </div>
+   330→
+   331→              <div className="pt-8">
+   332→                <div className="flex items-center gap-4 mb-6">
+   333→                  <div className="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center">
+   334→                    <FileText className="w-7 h-7 text-red-500" />
+   335→                  </div>
+   336→                  <div>
+   337→                    <h3 className="text-xl font-bold text-slate-900">
+   338→                      Processus Manuel
+   339→                    </h3>
+   340→                    <p className="text-slate-600 text-sm">
+   341→                      Reporting traditionnel
+   342→                    </p>
+   343→                  </div>
+   344→                </div>
+   345→
+   346→                <ul className="space-y-4">
+   347→                  {[
+   348→                    {
+   349→                      icon: "📄",
+   350→                      title: "Saisie multiple",
+   351→                      desc: "Mêmes données recopiées dans Word, Excel, PowerPoint",
+   352→                    },
+   353→                    {
+   354→                      icon: "⏱️",
+   355→                      title: "Perte de temps",
+   356→                      desc: "Journées entières pour compiler les rapports",
+   357→                    },
+   358→                    {
+   359→                      icon: "❌",
+   360→                      title: "Erreurs fréquentes",
+   361→                      desc: "Incohérences entre documents",
+   362→                    },
+   363→                    {
+   364→                      icon: "📊",
+   365→                      title: "Pas de consolidation",
+   366→                      desc: "Difficulté à agréger les données nationales",
+   367→                    },
+   368→                    {
+   369→                      icon: "🔒",
+   370→                      title: "Traçabilité faible",
+   371→                      desc: "Impossible de suivre les validations",
+   372→                    },
+   373→                  ].map((item, index) => (
+   374→                    <li key={index} className="flex items-start gap-3 p-3 bg-white/70 rounded-xl">
+   375→                      <span className="text-xl">{item.icon}</span>
+   376→                      <div>
+   377→                        <p className="font-semibold text-slate-900 text-sm">{item.title}</p>
+   378→                        <p className="text-slate-600 text-xs">{item.desc}</p>
+   379→                      </div>
+   380→                    </li>
+   381→                  ))}
+   382→                </ul>
+   383→              </div>
+   384→            </div>
+   385→
+   386→            {/* APRÈS */}
+   387→            <div className="relative bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl p-8 border border-green-100 overflow-hidden">
+   388→              {/* Badge "Après" */}
+   389→              <div className="absolute top-6 right-6 px-4 py-1.5 bg-[#009E60] text-white text-sm font-semibold rounded-full">
+   390→                APRÈS e-OSCS
+   391→              </div>
+   392→
+   393→              <div className="pt-8">
+   394→                <div className="flex items-center gap-4 mb-6">
+   395→                  <div className="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center">
+   396→                    <Zap className="w-7 h-7 text-[#009E60]" />
+   397→                  </div>
+   398→                  <div>
+   399→                    <h3 className="text-xl font-bold text-slate-900">
+   400→                      Processus Digitalisé
+   401→                    </h3>
+   402→                    <p className="text-slate-600 text-sm">
+   403→                      Solution intégrée e-OSCS
+   404→                    </p>
+   405→                  </div>
+   406→                </div>
+   407→
+   408→                <ul className="space-y-4">
+   409→                  {[
+   410→                    {
+   411→                      icon: "✅",
+   412→                      title: "Saisie unique",
+   413→                      desc: "Une donnée saisie, exploitée partout",
+   414→                    },
+   415→                    {
+   416→                      icon: "⚡",
+   417→                      title: "Rapports instantanés",
+   418→                      desc: "Génération automatique en un clic",
+   419→                    },
+   420→                    {
+   421→                      icon: "✓",
+   422→                      title: "Données fiables",
+   423→                      desc: "Validation intégrée et cohérence garantie",
+   424→                    },
+   425→                    {
+   426→                      icon: "📈",
+   427→                      title: "Consolidation temps réel",
+   428→                      desc: "Vue nationale automatisée",
+   429→                    },
+   430→                    {
+   431→                      icon: "🔐",
+   432→                      title: "Traçabilité complète",
+   433→                      desc: "Historique de toutes les actions",
+   434→                    },
+   435→                  ].map((item, index) => (
+   436→                    <li key={index} className="flex items-start gap-3 p-3 bg-white/70 rounded-xl">
+   437→                      <span className="text-xl">{item.icon}</span>
+   438→                      <div>
+   439→                        <p className="font-semibold text-slate-900 text-sm">{item.title}</p>
+   440→                        <p className="text-slate-600 text-xs">{item.desc}</p>
+   441→                      </div>
+   442→                    </li>
+   443→                  ))}
+   444→                </ul>
+   445→              </div>
+   446→            </div>
+   447→          </div>
+   448→
+   449→          {/* Flèche de transformation */}
+   450→          <div className="hidden md:flex justify-center my-8">
+   451→            <div className="flex items-center gap-4">
+   452→              <div className="h-0.5 w-24 bg-gradient-to-r from-red-300 to-green-300" />
+   453→              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#F77F00] to-[#009E60] flex items-center justify-center shadow-lg">
+   454→                <ArrowRight className="w-6 h-6 text-white" />
+   455→              </div>
+   456→              <div className="h-0.5 w-24 bg-gradient-to-l from-red-300 to-green-300" />
+   457→            </div>
+   458→          </div>
+   459→        </div>
+   460→      </section>
+   461→
+   462→      {/* ============================================
+   463→          SECTION LA SOLUTION e-OSCS
+   464→          ============================================ */}
+   465→      <section id="solution" className="py-20 md:py-28 bg-gradient-to-b from-slate-50 to-white">
+   466→        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+   467→          {/* En-tête */}
+   468→          <div className="text-center max-w-3xl mx-auto mb-16">
+   469→            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#F77F00]/10 to-[#009E60]/10 mb-6">
+   470→              <Lightbulb className="w-8 h-8 text-[#F77F00]" />
+   471→            </div>
+   472→            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-6">
+   473→              La Solution e-OSCS
+   474→            </h2>
+   475→            <p className="text-lg text-slate-600 leading-relaxed">
+   476→              Une plateforme complète qui révolutionne la gestion et le reporting des activités
+   477→              de solidarité sociale en Côte d&apos;Ivoire.
+   478→            </p>
+   479→          </div>
+   480→
+   481→          {/* Mockup Dashboard CSS */}
+   482→          <div className="max-w-5xl mx-auto mb-16">
+   483→            <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+   484→              {/* Barre du haut du mockup */}
+   485→              <div className="bg-slate-100 px-4 py-3 flex items-center gap-2">
+   486→                <div className="flex gap-1.5">
+   487→                  <div className="w-3 h-3 rounded-full bg-red-400" />
+   488→                  <div className="w-3 h-3 rounded-full bg-yellow-400" />
+   489→                  <div className="w-3 h-3 rounded-full bg-green-400" />
+   490→                </div>
+   491→                <div className="flex-1 flex justify-center">
+   492→                  <div className="bg-white rounded-md px-4 py-1 text-xs text-slate-500 max-w-md w-full text-center">
+   493→                    app.e-oscs.ci / dashboard
+   494→                  </div>
+   495→                </div>
+   496→              </div>
+   497→
+   498→              {/* Contenu du mockup */}
+   499→              <div className="p-6 bg-slate-50">
+   500→                <div className="grid grid-cols-4 gap-4 mb-6">
+   501→                  {/* Cards stats mockup */}
+   502→                  {[
+   503→                    { label: "Activités", value: "1,247", color: "#F77F00", icon: "📋" },
+   504→                    { label: "Bénéficiaires", value: "12,459", color: "#009E60", icon: "👥" },
+   505→                    { label: "Taux complétion", value: "87%", color: "#3B82F6", icon: "✓" },
+   506→                    { label: "Rapports", value: "34", color: "#8B5CF6", icon: "📄" },
+   507→                  ].map((stat, i) => (
+   508→                    <div
+   509→                      key={i}
+   510→                      className="bg-white rounded-xl p-4 shadow-sm border border-slate-100"
+   511→                    >
+   512→                      <div className="flex items-center justify-between mb-2">
+   513→                        <span className="text-2xl">{stat.icon}</span>
+   514→                        <span
+   515→                          className="text-xs px-2 py-0.5 rounded-full text-white font-medium"
+   516→                          style={{ backgroundColor: stat.color }}
+   517→                        >
+   518→                          +{Math.floor(Math.random() * 20) + 5}%
+   519→                        </span>
+   520→                      </div>
+   521→                      <div className="text-2xl font-bold text-slate-900">{stat.value}</div>
+   522→                      <div className="text-xs text-slate-500">{stat.label}</div>
+   523→                    </div>
+   524→                  ))}
+   525→                </div>
+   526→
+   527→                {/* Graphique mockup CSS */}
+   528→                <div className="grid grid-cols-3 gap-4">
+   529→                  <div className="col-span-2 bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+   530→                    <div className="text-sm font-semibold text-slate-700 mb-4">
+   531→                      Activités par trimestre
+   532→                    </div>
+   533→                    <div className="flex items-end gap-2 h-32">
+   534→                      {[65, 80, 95, 72, 88, 105, 120, 135, 115, 140, 155, 145].map(
+   535→                        (height, i) => (
+   536→                          <div
+   537→                            key={i}
+   538→                            className="flex-1 rounded-t-sm bg-gradient-to-t from-[#F77F00] to-[#FFB84D]"
+   539→                            style={{ height: `${height}%` }}
+   540→                          />
+   541→                        )
+   542→                      )}
+   543→                    </div>
+   544→                    <div className="flex justify-between mt-2 text-xs text-slate-400">
+   545→                      <span>Jan</span>
+   546→                      <span>Juin</span>
+   547→                      <span>Déc</span>
+   548→                    </div>
+   549→                  </div>
+   550→
+   551→                  <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+   552→                    <div className="text-sm font-semibold text-slate-700 mb-4">
+   553→                      Répartition
+   554→                    </div>
+   555→                    <div className="relative w-24 h-24 mx-auto mb-4">
+   556→                      {/* Donut chart CSS */}
+   557→                      <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+   558→                        <circle
+   559→                          cx="18"
+   560→                          cy="18"
+   561→                          r="15.9"
+   562→                          fill="none"
+   563→                          stroke="#F77F00"
+   564→                          strokeWidth="3"
+   565→                          strokeDasharray="40 60"
+   566→                        />
+   567→                        <circle
+   568→                          cx="18"
+   569→                          cy="18"
+   570→                          r="15.9"
+   571→                          fill="none"
+   572→                          stroke="#009E60"
+   573→                          strokeWidth="3"
+   574→                          strokeDasharray="30 70"
+   575→                          strokeDashoffset="-40"
+   576→                        />
+   577→                        <circle
+   578→                          cx="18"
+   579→                          cy="18"
+   580→                          r="15.9"
+   581→                          fill="none"
+   582→                          stroke="#3B82F6"
+   583→                          strokeWidth="3"
+   584→                          strokeDasharray="20 80"
+   585→                          strokeDashoffset="-70"
+   586→                        />
+   587→                        <circle
+   588→                          cx="18"
+   589→                          cy="18"
+   590→                          r="15.9"
+   591→                          fill="none"
+   592→                          stroke="#8B5CF6"
+   593→                          strokeWidth="3"
+   594→                          strokeDasharray="10 90"
+   595→                          strokeDashoffset="-90"
+   596→                        />
+   597→                      </svg>
+   598→                    </div>
+   599→                    <div className="space-y-1 text-xs">
+   600→                      <div className="flex items-center gap-2">
+   601→                        <div className="w-2 h-2 rounded-full bg-[#F77F00]" />
+   602→                        <span className="text-slate-600">Social (40%)</span>
+   603→                      </div>
+   604→                      <div className="flex items-center gap-2">
+   605→                        <div className="w-2 h-2 rounded-full bg-[#009E60]" />
+   606→                        <span className="text-slate-600">Éducatif (30%)</span>
+   607→                      </div>
+   608→                      <div className="flex items-center gap-2">
+   609→                        <div className="w-2 h-2 rounded-full bg-blue-500" />
+   610→                        <span className="text-slate-600">Santé (20%)</span>
+   611→                      </div>
+   612→                      <div className="flex items-center gap-2">
+   613→                        <div className="w-2 h-2 rounded-full bg-purple-500" />
+   614→                        <span className="text-slate-600">Autres (10%)</span>
+   615→                      </div>
+   616→                    </div>
+   617→                  </div>
+   618→                </div>
+   619→              </div>
+   620→            </div>
+   621→            <p className="text-center text-sm text-slate-500 mt-4 italic">
+   622→              Interface du tableau de bord e-OSCS
+   623→            </p>
+   624→          </div>
+   625→
+   626→          {/* Liste des bénéfices */}
+   627→          <div className="max-w-4xl mx-auto">
+   628→            <h3 className="text-2xl font-bold text-slate-900 text-center mb-10">
+   629→              Bénéfices clés de la plateforme
+   630→            </h3>
+   631→
+   632→            <div className="grid sm:grid-cols-2 gap-6">
+   633→              {[
+   634→                {
+   635→                  icon: Zap,
+   636→                  title: "Gain de temps considérable",
+   637→                  description:
+   638→                    "Réduction de 80% du temps consacré au reporting grâce à l'automatisation.",
+   639→                  color: "from-yellow-500 to-orange-500",
+   640→                },
+   641→                {
+   642→                  icon: Shield,
+   643→                  title: "Sécurité des données",
+   644→                  description:
+   645→                    "Chiffrement bout-en-bout et traçabilité complète de chaque action.",
+   646→                  color: "from-blue-500 to-cyan-500",
+   647→                },
+   648→                {
+   649→                  icon: BarChart3,
+   650→                  title: "Tableau de bord analytique",
+   651→                  description:
+   652→                    "Visualisation en temps réel des indicateurs de performance.",
+   653→                  color: "from-green-500 to-emerald-500",
+   654→                },
+   655→                {
+   656→                  icon: FileText,
+   657→                  title: "Génération automatique",
+   658→                  description:
+   659→                    "Rapports Word et PowerPoint conformes générés en un clic.",
+   660→                  color: "from-purple-500 to-pink-500",
+   661→                },
+   662→                {
+   663→                  icon: Users,
+   664→                  title: "Collaboration simplifiée",
+   665→                  description:
+   666→                    "Workflow de validation entre agents, chefs de service et directeurs.",
+   667→                  color: "from-rose-500 to-red-500",
+   668→                },
+   669→                {
+   670→                  icon: Globe,
+   671→                  title: "Accessibilité totale",
+   672→                  description:
+   673→                    "Plateforme accessible 24/7 depuis n'importe quel appareil connecté.",
+   674→                  color: "from-indigo-500 to-violet-500",
+   675→                },
+   676→              ].map((benefit, index) => (
+   677→                <div
+   678→                  key={index}
+   679→                  className="group flex items-start gap-4 p-6 bg-white rounded-2xl border border-slate-200 hover:shadow-lg hover:border-slate-300 transition-all"
+   680→                >
+   681→                  <div
+   682→                    className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${benefit.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}
+   683→                  >
+   684→                    <benefit.icon className="w-6 h-6 text-white" />
+   685→                  </div>
+   686→                  <div>
+   687→                    <h4 className="font-bold text-slate-900 mb-1">{benefit.title}</h4>
+   688→                    <p className="text-sm text-slate-600 leading-relaxed">
+   689→                      {benefit.description}
+   690→                    </p>
+   691→                  </div>
+   692→                </div>
+   693→              ))}
+   694→            </div>
+   695→          </div>
+   696→        </div>
+   697→      </section>
+   698→
+   699→      {/* ============================================
+   700→          SECTION ÉQUIPE / PARTENAIRES
+   701→          ============================================ */}
+   702→      <section id="equipe" className="py-20 md:py-28 bg-white">
+   703→        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+   704→          {/* En-tête */}
+   705→          <div className="text-center max-w-3xl mx-auto mb-16">
+   706→            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#009E60]/10 mb-6">
+   707→              <Building2 className="w-8 h-8 text-[#009E60]" />
+   708→            </div>
+   709→            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-6">
+   710→              Nos Partenaires & Technologies
+   711→            </h2>
+   712→            <p className="text-lg text-slate-600 leading-relaxed">
+   713→              Un projet porté par le MCNSLP et construit avec les meilleures technologies
+   714→              du marché.
+   715→            </p>
+   716→          </div>
+   717→
+   718→          {/* Ministère porteur */}
+   719→          <div className="max-w-4xl mx-auto mb-16">
+   720→            <div className="bg-gradient-to-br from-[#F77F00]/5 via-white to-[#009E60]/5 rounded-3xl p-8 md:p-12 border border-slate-200">
+   721→              <div className="flex flex-col md:flex-row items-center gap-8">
+   722→                {/* Logo placeholder ministère */}
+   723→                <div className="flex-shrink-0 w-32 h-32 rounded-2xl bg-gradient-to-br from-[#F77F00] to-[#009E60] flex items-center justify-center shadow-xl">
+   724→                  <div className="text-center">
+   725→                    <Award className="w-12 h-12 text-white mx-auto mb-1" />
+   726→                    <span className="text-white font-bold text-sm">MCNSLP</span>
+   727→                  </div>
+   728→                </div>
+   729→
+   730→                <div className="text-center md:text-left">
+   731→                  <h3 className="text-2xl font-bold text-slate-900 mb-3">
+   732→                    Ministère de la Cohésion Nationale, de la Solidarité Sociale
+   733→                    et de la Lutte contre la Pauvreté
+   734→                  </h3>
+   735→                  <p className="text-slate-600 leading-relaxed mb-4">
+   736→                    Porteur du projet e-OSCS, le MCNSLP est le ministère souverain en charge
+   737→                    des politiques de cohésion sociale en République de Côte d&apos;Ivoire.
+   738→                    Cette plateforme est le fruit d&apos;une vision ambitieuse de modernisation
+   739→                    de l&apos;administration publique.
+   740→                  </p>
+   741→                  <div className="flex flex-wrap justify-center md:justify-start gap-3">
+   742→                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F77F00]/10 text-[#F77F00] rounded-full text-sm font-medium">
+   743→                      <CheckCircle2 className="w-4 h-4" />
+   744→                      Projet Officiel
+   745→                    </span>
+   746→                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#009E60]/10 text-[#009E60] rounded-full text-sm font-medium">
+   747→                      <Shield className="w-4 h-4" />
+   748→                      Validé par l'État
+   749→                    </span>
+   750→                  </div>
+   751→                </div>
+   752→              </div>
+   753→            </div>
+   754→          </div>
+   755→
+   756→          {/* Stack technologique */}
+   757→          <div className="max-w-4xl mx-auto">
+   758→            <h3 className="text-xl font-bold text-slate-900 text-center mb-8">
+   759→              Construit avec les technologies modernes
+   760→            </h3>
+   761→
+   762→            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   763→              {[
+   764→                {
+   765→                  name: "Next.js 16",
+   766→                  category: "Framework Frontend",
+   767→                  icon: "⚛️",
+   768→                  color: "bg-slate-900",
+   769→                },
+   770→                {
+   771→                  name: "TypeScript",
+   772→                  category: "Langage",
+   773→                  icon: "📘",
+   774→                  color: "bg-blue-600",
+   775→                },
+   776→                {
+   777→                  name: "Supabase",
+   778→                  category: "Base de données",
+   779→                  icon: "🗄️",
+   780→                  color: "bg-emerald-500",
+   781→                },
+   782→                {
+   783→                  name: "Tailwind CSS",
+   784→                  category: "Styling",
+   785→                  icon: "🎨",
+   786→                  color: "bg-cyan-500",
+   787→                },
+   788→                {
+   789→                  name: "Prisma ORM",
+   790→                  category: "Database Toolkit",
+   791→                  icon: "🔷",
+   792→                  color: "bg-gray-800",
+   793→                },
+   794→                {
+   795→                  name: "React",
+   796→                  category: "UI Library",
+   797→                  icon: "⚛️",
+   798→                  color: "bg-blue-400",
+   799→                },
+   800→                {
+   801→                  name: "Vercel",
+   802→                  category: "Hébergement",
+   803→                  icon: "▲",
+   804→                  color: "bg-black",
+   805→                },
+   806→                {
+   807→                  name: "shadcn/ui",
+   808→                  category: "Components",
+   809→                  icon: "🧩",
+   810→                  color: "bg-slate-700",
+   811→                },
+   812→              ].map((tech, index) => (
+   813→                <div
+   814→                  key={index}
+   815→                  className="group p-5 bg-white rounded-2xl border border-slate-200 hover:shadow-lg hover:border-slate-300 transition-all text-center"
+   816→                >
+   817→                  <div
+   818→                    className={`w-14 h-14 ${tech.color} rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform shadow-md`}
+   819→                  >
+   820→                    <span className="text-2xl">{tech.icon}</span>
+   821→                  </div>
+   822→                  <h4 className="font-bold text-slate-900 text-sm">{tech.name}</h4>
+   823→                  <p className="text-xs text-slate-500 mt-1">{tech.category}</p>
+   824→                </div>
+   825→              ))}
+   826→            </div>
+   827→          </div>
+   828→
+   829→          {/* Logos partenaires placeholder */}
+   830→          <div className="mt-16 pt-12 border-t border-slate-200">
+   831→            <p className="text-center text-sm text-slate-500 mb-8">
+   832→              Ils nous font confiance
+   833→            </p>
+   834→            <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12 opacity-60">
+   835→              {["République de Côte d'Ivoire", "MCNSLP", "Direction IT", "Partenaire Tech"].map(
+   836→                (partner, index) => (
+   837→                  <div
+   838→                    key={index}
+   839→                    className="flex items-center gap-3 px-6 py-3 bg-slate-100 rounded-xl"
+   840→                  >
+   841→                    <div className="w-10 h-10 rounded-lg bg-slate-300 flex items-center justify-center">
+   842→                      <Building2 className="w-5 h-5 text-slate-500" />
+   843→                    </div>
+   844→                    <span className="font-semibold text-slate-600 text-sm">{partner}</span>
+   845→                  </div>
+   846→                )
+   847→              )}
+   848→            </div>
+   849→          </div>
+   850→        </div>
+   851→      </section>
+   852→
+   853→      {/* ============================================
+   854→          SECTION TIMELINE / HISTORIQUE
+   855→          ============================================ */}
+   856→      <section id="historique" className="py-20 md:py-28 bg-gradient-to-b from-slate-900 via-slate-800 to-[#0F172A]">
+   857→        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+   858→          {/* En-tête */}
+   859→          <div className="text-center max-w-3xl mx-auto mb-16">
+   860→            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 mb-6">
+   861→              <CalendarDays className="w-8 h-8 text-[#F77F00]" />
+   862→            </div>
+   863→            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6">
+   864→              Notre Historique
+   865→            </h2>
+   866→            <p className="text-lg text-slate-400 leading-relaxed">
+   867→              Retour sur les étapes clés qui ont façonné e-OSCS.
+   868→            </p>
+   869→          </div>
+   870→
+   871→          {/* Timeline */}
+   872→          <div className="max-w-3xl mx-auto">
+   873→            <div className="relative">
+   874→              {/* Ligne verticale centrale */}
+   875→              <div className="absolute left-8 md:left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-[#F77F00] via-[#009E60] to-slate-600 md:-translate-x-0.5" />
+   876→
+   877→              {/* Items timeline */}
+   878→              <div className="space-y-12">
+   879→                {/* 2023 - Idéation */}
+   880→                <div className="relative flex items-start gap-8 md:gap-0">
+   881→                  {/* Content gauche (desktop) / droite (mobile) */}
+   882→                  <div className="flex-1 md:w-1/2 md:pr-12 md:text-right pl-20 md:pl-0">
+   883→                    <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-colors">
+   884→                      <span className="inline-block px-3 py-1 bg-[#F77F00] text-white text-sm font-bold rounded-full mb-3">
+   885→                        2023
+   886→                      </span>
+   887→                      <h3 className="text-xl font-bold text-white mb-2">
+   888→                        Idéation du Projet
+   889→                      </h3>
+   890→                      <p className="text-slate-400 text-sm leading-relaxed">
+   891→                        Identification des besoins en digitalisation du reporting au sein du
+   892→                        MCNSLP. Études préliminaires et définition du cahier des charges.
+   893→                      </p>
+   894→                      <ul className="mt-4 space-y-2 text-sm text-slate-500">
+   895→                        <li className="flex items-center gap-2 md:justify-end">
+   896→                          <BookOpen className="w-4 h-4" />
+   897→                          Analyse des processus existants
+   898→                        </li>
+   899→                        <li className="flex items-center gap-2 md:justify-end">
+   900→                          <Lightbulb className="w-4 h-4" />
+   901→                          Conception de la solution
+   902→                        </li>
+   903→                        <li className="flex items-center gap-2 md:justify-end">
+   904→                          <Users className="w-4 h-4" />
+   905→                          Consultation des parties prenantes
+   906→                        </li>
+   907→                      </ul>
+   908→                    </div>
+   909→                  </div>
+   910→
+   911→                  {/* Point central */}
+   912→                  <div className="absolute left-8 md:left-1/2 w-4 h-4 bg-[#F77F00] rounded-full border-4 border-slate-800 md:-translate-x-1/2 -translate-x-1/2 ring-4 ring-[#F77F00]/30" />
+   913→
+   914→                  {/* Espace vide côté droite */}
+   915→                  <div className="hidden md:block flex-1 w-1/2 pl-12" />
+   916→                </div>
+   917→
+   918→                {/* 2024 - Développement */}
+   919→                <div className="relative flex items-start gap-8 md:gap-0">
+   920→                  {/* Espace vide côté gauche */}
+   921→                  <div className="hidden md:block flex-1 w-1/2 pr-12" />
+   922→
+   923→                  {/* Point central */}
+   924→                  <div className="absolute left-8 md:left-1/2 w-4 h-4 bg-[#009E60] rounded-full border-4 border-slate-800 md:-translate-x-1/2 -translate-x-1/2 ring-4 ring-[#009E60]/30" />
+   925→
+   926→                  {/* Content droite (desktop) / gauche (mobile) */}
+   927→                  <div className="flex-1 md:w-1/2 md:pl-12 pl-20 md:pl-12">
+   928→                    <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-colors">
+   929→                      <span className="inline-block px-3 py-1 bg-[#009E60] text-white text-sm font-bold rounded-full mb-3">
+   930→                        2024
+   931→                      </span>
+   932→                      <h3 className="text-xl font-bold text-white mb-2">
+   933→                        Développement & Lancement
+   934→                      </h3>
+   935→                      <p className="text-slate-400 text-sm leading-relaxed">
+   936→                        Développement de la plateforme, tests intensifs et déploiement progressif
+   937→                        auprès des directions pilotes.
+   938→                      </p>
+   939→                      <ul className="mt-4 space-y-2 text-sm text-slate-500">
+   940→                        <li className="flex items-center gap-2">
+   941→                          <Code2 className="w-4 h-4" />
+   942→                          Développement de la plateforme
+   943→                        </li>
+   944→                        <li className="flex items-center gap-2">
+   945→                          <Shield className="w-4 h-4" />
+   946→                          Tests de sécurité et validation
+   947→                        </li>
+   948→                        <li className="flex items-center gap-2">
+   949→                          <Rocket className="w-4 h-4" />
+   950→                          Lancement officiel
+   951→                        </li>
+   952→                      </ul>
+   953→                    </div>
+   954→                  </div>
+   955→                </div>
+   956→
+   957→                {/* 2025 - Expansion (objectif) */}
+   958→                <div className="relative flex items-start gap-8 md:gap-0">
+   959→                  {/* Content gauche (desktop) / droite (mobile) */}
+   960→                  <div className="flex-1 md:w-1/2 md:pr-12 md:text-right pl-20 md:pl-0">
+   961→                    <div className="bg-gradient-to-br from-[#F77F00]/10 to-[#009E60]/10 backdrop-blur-sm rounded-2xl p-6 border border-[#F77F00]/20 hover:border-[#F77F00]/40 transition-colors">
+   962→                      <span className="inline-block px-3 py-1 bg-gradient-to-r from-[#F77F00] to-[#009E60] text-white text-sm font-bold rounded-full mb-3">
+   963→                        2025
+   964→                      </span>
+   965→                      <h3 className="text-xl font-bold text-white mb-2">
+   966→                        Expansion Nationale 🚀
+   967→                      </h3>
+   968→                      <p className="text-slate-400 text-sm leading-relaxed">
+   969→                        Objectif : couverture de l&apos;ensemble des 31 directions régionales et
+   970→                        150+ directions départementales.
+   971→                      </p>
+   972→                      <ul className="mt-4 space-y-2 text-sm text-slate-500">
+   973→                        <li className="flex items-center gap-2 md:justify-end">
+   974→                          <Globe className="w-4 h-4" />
+   975→                          Déploiement national complet
+   976→                        </li>
+   977→                        <li className="flex items-center gap-2 md:justify-end">
+   978→                          <Cpu className="w-4 h-4" />
+   979→                          Nouvelles fonctionnalités IA
+   980→                        </li>
+   981→                        <li className="flex items-center gap-2 md:justify-end">
+   982→                          <Star className="w-4 h-4" />
+   983→                          Certification et reconnaissance
+   984→                        </li>
+   985→                      </ul>
+   986→                    </div>
+   987→                  </div>
+   988→
+   989→                  {/* Point central */}
+   990→                  <div className="absolute left-8 md:left-1/2 w-4 h-4 bg-gradient-to-r from-[#F77F00] to-[#009E60] rounded-full border-4 border-slate-800 md:-translate-x-1/2 -translate-x-1/2 ring-4 ring-white/20 animate-pulse" />
+   991→
+   992→                  {/* Espace vide côté droite */}
+   993→                  <div className="hidden md:block flex-1 w-1/2 pl-12" />
+   994→                </div>
+   995→              </div>
+   996→            </div>
+   997→          </div>
+   998→        </div>
+   999→      </section>
+  1000→
+  1001→      {/* ============================================
+  1002→          SECTION CONTACT CTA
+  1003→          ============================================ */}
+  1004→      <section id="contact" className="py-20 md:py-28 bg-white">
+  1005→        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+  1006→          <div className="max-w-4xl mx-auto">
+  1007→            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-[#0F172A] rounded-3xl p-8 md:p-16 relative overflow-hidden">
+  1008→              {/* Décorations */}
+  1009→              <div className="absolute top-0 left-0 w-64 h-64 bg-[#F77F00]/20 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+  1010→              <div className="absolute bottom-0 right-0 w-64 h-64 bg-[#009E60]/20 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+  1011→
+  1012→              <div className="relative text-center">
+  1013→                {/* Icône */}
+  1014→                <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-[#F77F00] to-[#009E60] mb-8 shadow-2xl">
+  1015→                  <Mail className="w-10 h-10 text-white" />
+  1016→                </div>
+  1017→
+  1018→                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6">
+  1019→                  Rejoignez l&apos;aventure e-OSCS
+  1020→                </h2>
+  1021→
+  1022→                <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
+  1023→                  Vous représentez une direction régionale ou départementale ? Vous souhaitez
+  1024→                  en savoir plus sur la plateforme ? Contactez-nous pour discuter de vos besoins.
+  1025→                </p>
+  1026→
+  1027→                {/* Coordonnées contact */}
+  1028→                <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-10">
+  1029→                  <a
+  1030→                    href="mailto:omouitsi@gmail.com"
+  1031→                    className="flex items-center gap-3 px-6 py-4 bg-white/10 hover:bg-white/20 rounded-xl transition-colors group"
+  1032→                  >
+  1033→                    <div className="w-12 h-12 rounded-xl bg-[#F77F00]/20 flex items-center justify-center group-hover:bg-[#F77F00]/30 transition-colors">
+  1034→                      <Mail className="w-5 h-5 text-[#F77F00]" />
+  1035→                    </div>
+  1036→                    <div className="text-left">
+  1037→                      <p className="text-xs text-slate-400 uppercase tracking-wide">Email</p>
+  1038→                      <p className="text-white font-medium">omouitsi@gmail.com</p>
+  1039→                    </div>
+  1040→                  </a>
+  1041→
+  1042→                  <a
+  1043→                    href="https://wa.me/2250576103277"
+  1044→                    target="_blank"
+  1045→                    rel="noopener noreferrer"
+  1046→                    className="flex items-center gap-3 px-6 py-4 bg-white/10 hover:bg-white/20 rounded-xl transition-colors group"
+  1047→                  >
+  1048→                    <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
+  1049→                      <Phone className="w-5 h-5 text-green-400" />
+  1050→                    </div>
+  1051→                    <div className="text-left">
+  1052→                      <p className="text-xs text-slate-400 uppercase tracking-wide">WhatsApp</p>
+  1053→                      <p className="text-white font-medium">+225 05 76 103 277</p>
+  1054→                    </div>
+  1055→                  </a>
+  1056→
+  1057→                  <div className="flex items-center gap-3 px-6 py-4 bg-white/10 rounded-xl">
+  1058→                    <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+  1059→                      <MapPin className="w-5 h-5 text-blue-400" />
+  1060→                    </div>
+  1061→                    <div className="text-left">
+  1062→                      <p className="text-xs text-slate-400 uppercase tracking-wide">Adresse</p>
+  1063→                      <p className="text-white font-medium">Abidjan, Plateau, CI</p>
+  1064→                    </div>
+  1065→                  </div>
+  1066→                </div>
+  1067→
+  1068→                {/* Boutons CTA */}
+  1069→                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+  1070→                  <Button
+  1071→                    size="lg"
+  1072→                    asChild
+  1073→                    className="bg-gradient-to-r from-[#F77F00] to-[#E67E00] hover:from-[#E67E00] hover:to-[#F77F00] text-white shadow-lg shadow-orange-500/25 px-8 h-14 text-base"
+  1074→                  >
+  1075→                    <Link href="/#demande">
+  1076→                      Demander un accès
+  1077→                      <ArrowRight className="ml-2 w-5 h-5" />
+  1078→                    </Link>
+  1079→                  </Button>
+  1080→                  <Button
+  1081→                    variant="outline"
+  1082→                    size="lg"
+  1083→                    asChild
+  1084→                    className="border-white/30 text-white hover:bg-white/10 px-8 h-14 text-base"
+  1085→                  >
+  1086→                    <Link href="/">
+  1087→                      Retour à l'accueil
+  1088→                    </Link>
+  1089→                  </Button>
+  1090→                </div>
+  1091→              </div>
+  1092→            </div>
+  1093→          </div>
+  1094→        </div>
+  1095→      </section>
+  1096→
+  1097→      {/* ============================================
+  1098→          FOOTER SIMPLIFIÉ
+  1099→          ============================================ */}
+  1100→      <footer className="mt-auto border-t border-slate-200 bg-white">
+  1101→        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  1102→          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+  1103→            <div className="flex items-center gap-3">
+  1104→              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#F77F00] to-[#009E60] flex items-center justify-center">
+  1105→                <span className="text-sm font-bold text-white">e</span>
+  1106→              </div>
+  1107→              <span className="text-sm text-slate-600">
+  1108→                © {new Date().getFullYear()} e-OSCS — MCNSLP Côte d&apos;Ivoire
+  1109→              </span>
+  1110→            </div>
+  1111→            <div className="flex items-center gap-6 text-sm">
+  1112→              <Link
+  1113→                href="/conditions"
+  1114→                className="text-slate-500 hover:text-[#F77F00] transition-colors"
+  1115→              >
+  1116→                Mentions Légales
+  1117→              </Link>
+  1118→              <Link
+  1119→                href="/confidentialite"
+  1120→                className="text-slate-500 hover:text-[#F77F00] transition-colors"
+  1121→              >
+  1122→                Confidentialité
+  1123→              </Link>
+  1124→              <Link
+  1125→                href="/a-propos"
+  1126→                className="text-slate-500 hover:text-[#F77F00] transition-colors font-medium"
+  1127→              >
+  1128→                À propos
+  1129→              </Link>
+  1130→            </div>
+  1131→          </div>
+  1132→        </div>
+  1133→      </footer>
+  1134→    </div>
+  1135→  );
+  1136→}
+  1137→

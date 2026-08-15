@@ -1,0 +1,1153 @@
+     1→'use client'
+     2→
+     3→import React, { useState, useEffect, useCallback } from 'react'
+     4→import { useRouter } from 'next/navigation'
+     5→import Link from 'next/link'
+     6→import {
+     7→  Info,
+     8→  FileText,
+     9→  Users,
+    10→  Image,
+    11→  CheckCircle2,
+    12→  ChevronRight,
+    13→  ChevronLeft,
+    14→  Save,
+    15→  Send,
+    16→  AlertCircle,
+    17→  Upload,
+    18→  X,
+    19→  Calendar as CalendarIcon,
+    20→  MapPin,
+    21→  Target,
+    22→  Award,
+    23→  Eye,
+    24→  Clock,
+    25→  Sparkles,
+    26→  Camera,
+    27→  Trash2,
+    28→  Loader2,
+    29→} from 'lucide-react'
+    30→import { Button } from '@/components/ui/button'
+    31→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+    32→import { Input } from '@/components/ui/input'
+    33→import { Textarea } from '@/components/ui/textarea'
+    34→import { Label } from '@/components/ui/label'
+    35→import {
+    36→  Select,
+    37→  SelectContent,
+    38→  SelectItem,
+    39→  SelectTrigger,
+    40→  SelectValue,
+    41→} from '@/components/ui/select'
+    42→import { Badge } from '@/components/ui/badge'
+    43→import { Separator } from '@/components/ui/separator'
+    44→import { Progress } from '@/components/ui/progress'
+    45→import { useToast } from '@/hooks/use-toast'
+    46→
+    47→// Types pour le formulaire
+    48→interface ActivityFormData {
+    49→  // Étape 1: Informations générales
+    50→  intitule: string
+    51→  dateActivite: string
+    52→  heureDebut: string
+    53→  heureFin: string
+    54→  lieu: string
+    55→  typeActivite: string
+    56→  
+    57→  // Étape 2: Description
+    58→  objectif: string
+    59→  description: string
+    60→  resultats: string
+    61→  
+    62→  // Étape 3: Bénéficiaires
+    63→  totalBeneficiaires: string
+    64→  hommes: string
+    65→  femmes: string
+    66→  enfants: string
+    67→  personnesHandicapees: string
+    68→  
+    69→  // Étape 4: Documents (simulé)
+    70→  documents: File[]
+    71→  documentPreviews: string[]
+    72→}
+    73→
+    74→interface FormErrors {
+    75→  [key: string]: string
+    76→}
+    77→
+    78→// Configuration des étapes
+    79→const steps = [
+    80→  {
+    81→    id: 1,
+    82→    title: 'Informations',
+    83→    description: 'Détails de base',
+    84→    icon: Info,
+    85→  },
+    86→  {
+    87→    id: 2,
+    88→    title: 'Description',
+    89→    description: 'Objectifs & résultats',
+    90→    icon: FileText,
+    91→  },
+    92→  {
+    93→    id: 3,
+    94→    title: 'Bénéficiaires',
+    95→    description: 'Public touché',
+    96→    icon: Users,
+    97→  },
+    98→  {
+    99→    id: 4,
+   100→    title: 'Documents',
+   101→    description: 'Photos & pièces jointes',
+   102→    icon: Image,
+   103→  },
+   104→]
+   105→
+   106→// Types d'activité disponibles
+   107→const typesActivite = [
+   108→  { value: 'SENSIBILISATION', label: 'Sensibilisation', emoji: '📢' },
+   109→  { value: 'FORMATION', label: 'Formation', emoji: '🎓' },
+   110→  { value: 'DISTRIBUTION', label: 'Distribution', emoji: '📦' },
+   111→  { value: 'VISITE', label: 'Visite', emoji: '🏠' },
+   112→  { value: 'ATELIER', label: 'Atelier', emoji: '🔧' },
+   113→  { value: 'REUNION', label: 'Réunion', emoji: '👥' },
+   114→  { value: 'CAMPAGNE', label: 'Campagne', emoji: '📣' },
+   115→]
+   116→
+   117→// Données initiales du formulaire
+   118→const initialFormData: ActivityFormData = {
+   119→  intitule: '',
+   120→  dateActivite: '',
+   121→  heureDebut: '',
+   122→  heureFin: '',
+   123→  lieu: '',
+   124→  typeActivite: '',
+   125→  objectif: '',
+   126→  description: '',
+   127→  resultats: '',
+   128→  totalBeneficiaires: '',
+   129→  hommes: '',
+   130→  femmes: '',
+   131→  enfants: '',
+   132→  personnesHandicapees: '',
+   133→  documents: [],
+   134→  documentPreviews: [],
+   135→}
+   136→
+   137→export default function NouvelleActivitePage() {
+   138→  const router = useRouter()
+   139→  const { toast } = useToast()
+   140→  
+   141→  // États du formulaire
+   142→  const [currentStep, setCurrentStep] = useState(1)
+   143→  const [formData, setFormData] = useState<ActivityFormData>(initialFormData)
+   144→  const [errors, setErrors] = useState<FormErrors>({})
+   145→  const [isSubmitting, setIsSubmitting] = useState(false)
+   146→  const [showPreview, setShowPreview] = useState(false)
+   147→  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+   148→  const [isDragging, setIsDragging] = useState(false)
+   149→  
+   150→  // Calculer la progression globale
+   151→  const calculateProgress = (): number => {
+   152→    let filledFields = 0
+   153→    let totalFields = 0
+   154→    
+   155→    // Champs obligatoires à vérifier
+   156→    const fieldsToCheck = [
+   157→      formData.intitule,
+   158→      formData.dateActivite,
+   159→      formData.lieu,
+   160→      formData.typeActivite,
+   161→      formData.objectif,
+   162→      formData.description,
+   163→      formData.totalBeneficiaires,
+   164→    ]
+   165→    
+   166→    totalFields = fieldsToCheck.length
+   167→    filledFields = fieldsToCheck.filter(f => f && f.trim().length > 0).length
+   168→    
+   169→    return Math.round((filledFields / totalFields) * 100)
+   170→  }
+   171→  
+   172→  const progress = calculateProgress()
+   173→
+   174→  // Auto-save toutes les 30 secondes
+   175→  useEffect(() => {
+   176→    const interval = setInterval(() => {
+   177→      if (formData.intitule || formData.description) {
+   178→        saveDraft()
+   179→      }
+   180→    }, 30000)
+   181→    
+   182→    return () => clearInterval(interval)
+   183→  }, [formData])
+   184→
+   185→  // Sauvegarder le brouillon
+   186→  const saveDraft = useCallback(() => {
+   187→    // Simuler la sauvegarde (en production: appel API)
+   188→    localStorage.setItem('activity_draft', JSON.stringify({
+   189→      ...formData,
+   190→      savedAt: new Date().toISOString(),
+   191→    }))
+   192→    setLastSaved(new Date())
+   193→    
+   194→    toast({
+   195→      title: 'Brouillon sauvegardé',
+   196→      description: 'Votre progression a été enregistrée.',
+   197→    })
+   198→  }, [formData, toast])
+   199→
+   200→  // Charger un brouillon existant au montage
+   201→  useEffect(() => {
+   202→    const savedDraft = localStorage.getItem('activity_draft')
+   203→    if (savedDraft) {
+   204→      try {
+   205→        const draft = JSON.parse(savedDraft)
+   206→        if (draft.savedAt) {
+   207→          setLastSaved(new Date(draft.savedAt))
+   208→          toast({
+   209→            title: 'Brouillon récupéré',
+   210→            description: 'Voulez-vous reprendre votre activité en cours ?',
+   211→            action: (
+   212→              <Button 
+   213→                size="sm" 
+   214→                onClick={() => {
+   215→                  setFormData({ ...initialFormData, ...draft })
+   216→                  toast({ title: 'Brouillon restauré' })
+   217→                }}
+   218→              >
+   219→                Restaurer
+   220→              </Button>
+   221→            ),
+   222→          })
+   223→        }
+   224→      } catch (e) {
+   225→        console.error('Erreur lors du chargement du brouillon')
+   226→      }
+   227→    }
+   228→  }, [])
+   229→
+   230→  // Validation temps réel
+   231→  const validateField = (field: string, value: string): string | null => {
+   232→    switch (field) {
+   233→      case 'intitule':
+   234→        if (!value.trim()) return "L'intitulé est obligatoire"
+   235→        if (value.trim().length < 5) return "L'intitulé doit contenir au moins 5 caractères"
+   236→        if (value.trim().length > 200) return "L'intitulé ne doit pas dépasser 200 caractères"
+   237→        break
+   238→      case 'dateActivite':
+   239→        if (!value) return "La date est obligatoire"
+   240→        const selectedDate = new Date(value)
+   241→        const today = new Date()
+   242→        today.setHours(0, 0, 0, 0)
+   243→        if (selectedDate > today) return "La date ne peut pas être dans le futur"
+   244→        break
+   245→      case 'lieu':
+   246→        if (!value.trim()) return "Le lieu est obligatoire"
+   247→        break
+   248→      case 'typeActivite':
+   249→        if (!value) return "Le type d'activité est obligatoire"
+   250→        break
+   251→      case 'objectif':
+   252→        if (!value.trim()) return "L'objectif est obligatoire"
+   253→        break
+   254→      case 'description':
+   255→        if (!value.trim()) return "La description est obligatoire"
+   256→        if (value.trim().length < 20) return "La description doit contenir au moins 20 caractères"
+   257→        break
+   258→      case 'totalBeneficiaires':
+   259→        if (!value) return "Le nombre de bénéficiaires est obligatoire"
+   260→        const num = parseInt(value)
+   261→        if (isNaN(num) || num < 1) return "Entrez un nombre valide"
+   262→        if (num > 10000) return "Le nombre semble trop élevé"
+   263→        break
+   264→    }
+   265→    return null
+   266→  }
+   267→
+   268→  // Gérer les changements avec validation temps réel
+   269→  const handleChange = (field: string, value: string) => {
+   270→    setFormData(prev => ({ ...prev, [field]: value }))
+   271→    
+   272→    // Validation temps réel
+   273→    const error = validateField(field, value)
+   274→    setErrors(prev => {
+   275→      if (error) {
+   276→        return { ...prev, [field]: error }
+   277→      } else {
+   278→        const next = { ...prev }
+   279→        delete next[field]
+   280→        return next
+   281→      }
+   282→    })
+   283→  }
+   284→
+   285→  // Valider l'étape actuelle
+   286→  const validateCurrentStep = (): boolean => {
+   287→    const newErrors: FormErrors = {}
+   288→    
+   289→    switch (currentStep) {
+   290→      case 1:
+   291→        const step1Fields = ['intitule', 'dateActivite', 'lieu', 'typeActivite']
+   292→        step1Fields.forEach(field => {
+   293→          const error = validateField(field, (formData as any)[field])
+   294→          if (error) newErrors[field] = error
+   295→        })
+   296→        break
+   297→      case 2:
+   298→        const step2Fields = ['objectif', 'description']
+   299→        step2Fields.forEach(field => {
+   300→          const error = validateField(field, (formData as any)[field])
+   301→          if (error) newErrors[field] = error
+   302→        })
+   303→        break
+   304→      case 3:
+   305→        const error = validateField('totalBeneficiaires', formData.totalBeneficiaires)
+   306→        if (error) newErrors.totalBeneficiaires = error
+   307→        break
+   308→      case 4:
+   309→        // Pas de champs obligatoires pour les documents
+   310→        break
+   311→    }
+   312→    
+   313→    setErrors(newErrors)
+   314→    return Object.keys(newErrors).length === 0
+   315→  }
+   316→
+   317→  // Navigation entre étapes
+   318→  const nextStep = () => {
+   319→    if (validateCurrentStep()) {
+   320→      if (currentStep < steps.length) {
+   321→        setCurrentStep(currentStep + 1)
+   322→        window.scrollTo({ top: 0, behavior: 'smooth' })
+   323→      }
+   324→    } else {
+   325→      toast({
+   326→        title: 'Champs manquants',
+   327→        description: 'Veuillez remplir tous les champs obligatoires.',
+   328→        variant: 'destructive',
+   329→      })
+   330→    }
+   331→  }
+   332→
+   333→  const prevStep = () => {
+   334→    if (currentStep > 1) {
+   335→      setCurrentStep(currentStep - 1)
+   336→      window.scrollTo({ top: 0, behavior: 'smooth' })
+   337→    }
+   338→  }
+   339→
+   340→  // Gestion des fichiers (drag & drop)
+   341→  const handleFileUpload = (files: FileList | null) => {
+   342→    if (!files) return
+   343→    
+   344→    const newFiles = Array.from(files).filter(file => 
+   345→      file.type.startsWith('image/') && file.size <= 5 * 1024 * 1024
+   346→    )
+   347→    
+   348→    if (newFiles.length !== files.length) {
+   349→      toast({
+   350→        title: 'Fichiers ignorés',
+   351→        description: 'Seules les images de moins de 5MB sont acceptées.',
+   352→        variant: 'destructive',
+   353→      })
+   354→    }
+   355→    
+   356→    newFiles.forEach(file => {
+   357→      const reader = new FileReader()
+   358→      reader.onload = (e) => {
+   359→        setFormData(prev => ({
+   360→          ...prev,
+   361→          documents: [...prev.documents, file],
+   362→          documentPreviews: [...prev.documentPreviews, e.target?.result as string],
+   363→        }))
+   364→      }
+   365→      reader.readAsDataURL(file)
+   366→    })
+   367→  }
+   368→
+   369→  const removeDocument = (index: number) => {
+   370→    setFormData(prev => ({
+   371→      ...prev,
+   372→      documents: prev.documents.filter((_, i) => i !== index),
+   373→      documentPreviews: prev.documentPreviews.filter((_, i) => i !== index),
+   374→    }))
+   375→  }
+   376→
+   377→  const handleDragOver = (e: React.DragEvent) => {
+   378→    e.preventDefault()
+   379→    setIsDragging(true)
+   380→  }
+   381→
+   382→  const handleDragLeave = () => {
+   383→    setIsDragging(false)
+   384→  }
+   385→
+   386→  const handleDrop = (e: React.DragEvent) => {
+   387→    e.preventDefault()
+   388→    setIsDragging(false)
+   389→    handleFileUpload(e.dataTransfer.files)
+   390→  }
+   391→
+   392→  // Soumission finale
+   393→  const handleSubmit = async () => {
+   394→    if (!validateCurrentStep()) return
+   395→    
+   396→    setIsSubmitting(true)
+   397→    
+   398→    try {
+   399→      // Simuler l'envoi API
+   400→      await new Promise(resolve => setTimeout(resolve, 2000))
+   401→      
+   402→      // Nettoyer le brouillon
+   403→      localStorage.removeItem('activity_draft')
+   404→      
+   405→      toast({
+   406→        title: 'Activité soumise avec succès ! 🎉',
+   407→        description: 'Votre activité a été envoyée pour validation.',
+   408→      })
+   409→      
+   410→      router.push('/agent/soumises')
+   411→    } catch (error) {
+   412→      toast({
+   413→        title: 'Erreur lors de la soumission',
+   414→        description: 'Une erreur est survenue. Veuillez réessayer.',
+   415→        variant: 'destructive',
+   416→      })
+   417→    } finally {
+   418→      setIsSubmitting(false)
+   419→    }
+   420→  }
+   421→
+   422→  // Rendu de chaque étape
+   423→  const renderStepContent = () => {
+   424→    switch (currentStep) {
+   425→      case 1:
+   426→        return (
+   427→          <div className="space-y-6">
+   428→            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+   429→              {/* Intitulé */}
+   430→              <div className="md:col-span-2 space-y-2">
+   431→                <Label htmlFor="intitule" className="text-base font-medium flex items-center gap-2">
+   432→                  Intitulé de l&apos;activité <span className="text-red-500">*</span>
+   433→                </Label>
+   434→                <Input
+   435→                  id="intitule"
+   436→                  placeholder="Ex: Sensibilisation sur l'hygiène communautaire"
+   437→                  value={formData.intitule}
+   438→                  onChange={(e) => handleChange('intitule', e.target.value)}
+   439→                  className={`h-12 ${errors.intitule ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+   440→                />
+   441→                {errors.intitule && (
+   442→                  <p className="text-sm text-red-500 flex items-center gap-1">
+   443→                    <AlertCircle className="w-4 h-4" />
+   444→                    {errors.intitule}
+   445→                  </p>
+   446→                )}
+   447→                <p className="text-xs text-slate-400">{formData.intitule.length}/200 caractères</p>
+   448→              </div>
+   449→
+   450→              {/* Type d'activité */}
+   451→              <div className="space-y-2">
+   452→                <Label className="text-base font-medium flex items-center gap-2">
+   453→                  Type d&apos;activité <span className="text-red-500">*</span>
+   454→                </Label>
+   455→                <Select value={formData.typeActivite} onValueChange={(v) => handleChange('typeActivite', v)}>
+   456→                  <SelectTrigger className={`h-12 ${errors.typeActivite ? 'border-red-500' : ''}`}>
+   457→                    <SelectValue placeholder="Sélectionner le type" />
+   458→                  </SelectTrigger>
+   459→                  <SelectContent>
+   460→                    {typesActivite.map(type => (
+   461→                      <SelectItem key={type.value} value={type.value}>
+   462→                        <span className="flex items-center gap-2">
+   463→                          <span>{type.emoji}</span>
+   464→                          {type.label}
+   465→                        </span>
+   466→                      </SelectItem>
+   467→                    ))}
+   468→                  </SelectContent>
+   469→                </Select>
+   470→                {errors.typeActivite && (
+   471→                  <p className="text-sm text-red-500 flex items-center gap-1">
+   472→                    <AlertCircle className="w-4 h-4" />
+   473→                    {errors.typeActivite}
+   474→                  </p>
+   475→                )}
+   476→              </div>
+   477→
+   478→              {/* Date */}
+   479→              <div className="space-y-2">
+   480→                <Label htmlFor="dateActivite" className="text-base font-medium flex items-center gap-2">
+   481→                  Date de l&apos;activité <span className="text-red-500">*</span>
+   482→                </Label>
+   483→                <Input
+   484→                  id="dateActivite"
+   485→                  type="date"
+   486→                  value={formData.dateActivite}
+   487→                  onChange={(e) => handleChange('dateActivite', e.target.value)}
+   488→                  className={`h-12 ${errors.dateActivite ? 'border-red-500' : ''}`}
+   489→                  max={new Date().toISOString().split('T')[0]}
+   490→                />
+   491→                {errors.dateActivite && (
+   492→                  <p className="text-sm text-red-500 flex items-center gap-1">
+   493→                    <AlertCircle className="w-4 h-4" />
+   494→                    {errors.dateActivite}
+   495→                  </p>
+   496→                )}
+   497→              </div>
+   498→
+   499→              {/* Heures */}
+   500→              <div className="space-y-2">
+   501→                <Label htmlFor="heureDebut" className="text-base font-medium">Heure de début</Label>
+   502→                <Input
+   503→                  id="heureDebut"
+   504→                  type="time"
+   505→                  value={formData.heureDebut}
+   506→                  onChange={(e) => handleChange('heureDebut', e.target.value)}
+   507→                  className="h-12"
+   508→                />
+   509→              </div>
+   510→
+   511→              <div className="space-y-2">
+   512→                <Label htmlFor="heureFin" className="text-base font-medium">Heure de fin</Label>
+   513→                <Input
+   514→                  id="heureFin"
+   515→                  type="time"
+   516→                  value={formData.heureFin}
+   517→                  onChange={(e) => handleChange('heureFin', e.target.value)}
+   518→                  className="h-12"
+   519→                />
+   520→              </div>
+   521→
+   522→              {/* Lieu */}
+   523→              <div className="md:col-span-2 space-y-2">
+   524→                <Label htmlFor="lieu" className="text-base font-medium flex items-center gap-2">
+   525→                  <MapPin className="w-4 h-4 text-[#F77F00]" />
+   526→                  Lieu <span className="text-red-500">*</span>
+   527→                </Label>
+   528→                <Input
+   529→                  id="lieu"
+   530→                  placeholder="Ex: Abidjan, Yopougon - Salle communautaire"
+   531→                  value={formData.lieu}
+   532→                  onChange={(e) => handleChange('lieu', e.target.value)}
+   533→                  className={`h-12 ${errors.lieu ? 'border-red-500' : ''}`}
+   534→                />
+   535→                {errors.lieu && (
+   536→                  <p className="text-sm text-red-500 flex items-center gap-1">
+   537→                    <AlertCircle className="w-4 h-4" />
+   538→                    {errors.lieu}
+   539→                  </p>
+   540→                )}
+   541→              </div>
+   542→            </div>
+   543→          </div>
+   544→        )
+   545→
+   546→      case 2:
+   547→        return (
+   548→          <div className="space-y-6">
+   549→            {/* Objectif */}
+   550→            <div className="space-y-2">
+   551→              <Label htmlFor="objectif" className="text-base font-medium flex items-center gap-2">
+   552→                <Target className="w-4 h-4 text-[#F77F00]" />
+   553→                Objectif principal <span className="text-red-500">*</span>
+   554→              </Label>
+   555→              <Textarea
+   556→                id="objectif"
+   557→                placeholder="Décrivez l'objectif principal de cette activité..."
+   558→                value={formData.objectif}
+   559→                onChange={(e) => handleChange('objectif', e.target.value)}
+   560→                rows={3}
+   561→                className={`resize-none ${errors.objectif ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+   562→              />
+   563→              {errors.objectif && (
+   564→                <p className="text-sm text-red-500 flex items-center gap-1">
+   565→                  <AlertCircle className="w-4 h-4" />
+   566→                  {errors.objectif}
+   567→                </p>
+   568→              )}
+   569→            </div>
+   570→
+   571→            {/* Description */}
+   572→            <div className="space-y-2">
+   573→              <Label htmlFor="description" className="text-base font-medium flex items-center gap-2">
+   574→                <FileText className="w-4 h-4 text-[#F77F00]" />
+   575→                Description détaillée <span className="text-red-500">*</span>
+   576→              </Label>
+   577→              <Textarea
+   578→                id="description"
+   579→                placeholder="Décrivez en détail le déroulement de l'activité, les sujets abordés, les méthodes utilisées..."
+   580→                value={formData.description}
+   581→                onChange={(e) => handleChange('description', e.target.value)}
+   582→                rows={5}
+   583→                className={`resize-none ${errors.description ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+   584→              />
+   585→              {errors.description && (
+   586→                <p className="text-sm text-red-500 flex items-center gap-1">
+   587→                  <AlertCircle className="w-4 h-4" />
+   588→                  {errors.description}
+   589→                </p>
+   590→              )}
+   591→              <p className="text-xs text-slate-400">{formData.description.length} caractères (minimum 20)</p>
+   592→            </div>
+   593→
+   594→            {/* Résultats */}
+   595→            <div className="space-y-2">
+   596→              <Label htmlFor="resultats" className="text-base font-medium flex items-center gap-2">
+   597→                <Award className="w-4 h-4 text-[#009E60]" />
+   598→                Résultats obtenus
+   599→              </Label>
+   600→              <Textarea
+   601→                id="resultats"
+   602→                placeholder="Quels sont les résultats concrets obtenus ? (optionnel)"
+   603→                value={formData.resultats}
+   604→                onChange={(e) => handleChange('resultats', e.target.value)}
+   605→                rows={3}
+   606→                className="resize-none"
+   607→              />
+   608→            </div>
+   609→          </div>
+   610→        )
+   611→
+   612→      case 3:
+   613→        return (
+   614→          <div className="space-y-6">
+   615→            <Card className="bg-[#F77F00]/5 border-[#F77F00]/20">
+   616→              <CardContent className="p-4 flex items-start gap-3">
+   617→                <Users className="w-5 h-5 text-[#F77F00] mt-0.5" />
+   618→                <div>
+   619→                  <p className="font-medium text-sm text-[#F77F00]">Information bénéficiaires</p>
+   620→                  <p className="text-sm text-slate-600 mt-1">
+   621→                    Indiquez le nombre de personnes ayant bénéficié de cette activité. 
+   622→                    Le total se calculera automatiquement.
+   623→                  </p>
+   624→                </div>
+   625→              </CardContent>
+   626→            </Card>
+   627→
+   628→            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   629→              {/* Total */}
+   630→              <div className="space-y-2">
+   631→                <Label htmlFor="totalBeneficiaires" className="text-base font-medium flex items-center gap-1">
+   632→                  Total <span className="text-red-500">*</span>
+   633→                </Label>
+   634→                <Input
+   635→                  id="totalBeneficiaires"
+   636→                  type="number"
+   637→                  min="1"
+   638→                  placeholder="0"
+   639→                  value={formData.totalBeneficiaires}
+   640→                  onChange={(e) => handleChange('totalBeneficiaires', e.target.value)}
+   641→                  className={`h-12 text-lg font-semibold ${errors.totalBeneficiaires ? 'border-red-500' : ''}`}
+   642→                />
+   643→                {errors.totalBeneficiaires && (
+   644→                  <p className="text-sm text-red-500">{errors.totalBeneficiaires}</p>
+   645→                )}
+   646→              </div>
+   647→
+   648→              {/* Hommes */}
+   649→              <div className="space-y-2">
+   650→                <Label htmlFor="hommes" className="text-base font-medium text-blue-600">Hommes</Label>
+   651→                <Input
+   652→                  id="hommes"
+   653→                  type="number"
+   654→                  min="0"
+   655→                  placeholder="0"
+   656→                  value={formData.hommes}
+   657→                  onChange={(e) => handleChange('hommes', e.target.value)}
+   658→                  className="h-12"
+   659→                />
+   660→              </div>
+   661→
+   662→              {/* Femmes */}
+   663→              <div className="space-y-2">
+   664→                <Label htmlFor="femmes" className="text-base font-medium text-pink-600">Femmes</Label>
+   665→                <Input
+   666→                  id="femmes"
+   667→                  type="number"
+   668→                  min="0"
+   669→                  placeholder="0"
+   670→                  value={formData.femmes}
+   671→                  onChange={(e) => handleChange('femmes', e.target.value)}
+   672→                  className="h-12"
+   673→                />
+   674→              </div>
+   675→
+   676→              {/* Enfants */}
+   677→              <div className="space-y-2">
+   678→                <Label htmlFor="enfants" className="text-base font-medium text-green-600">Enfants</Label>
+   679→                <Input
+   680→                  id="enfants"
+   681→                  type="number"
+   682→                  min="0"
+   683→                  placeholder="0"
+   684→                  value={formData.enfants}
+   685→                  onChange={(e) => handleChange('enfants', e.target.value)}
+   686→                  className="h-12"
+   687→                />
+   688→              </div>
+   689→            </div>
+   690→
+   691→            {/* Personnes handicapées */}
+   692→            <div className="space-y-2">
+   693→              <Label htmlFor="personnesHandicapees" className="text-base font-medium text-purple-600">
+   694→                Personnes en situation de handicap
+   695→              </Label>
+   696→              <Input
+   697→                id="personnesHandicapees"
+   698→                type="number"
+   699→                min="0"
+   700→                placeholder="0 (optionnel)"
+   701→                value={formData.personnesHandicapees}
+   702→                onChange={(e) => handleChange('personnesHandicapees', e.target.value)}
+   703→                className="h-12 max-w-xs"
+   704→              />
+   705→            </div>
+   706→
+   707→            {/* Indicateur de répartition */}
+   708→            {(parseInt(formData.hommes) || parseInt(formData.femmes) || parseInt(formData.enfants)) && (
+   709→              <div className="bg-slate-50 rounded-xl p-4">
+   710→                <p className="text-sm font-medium text-slate-700 mb-3">Répartition</p>
+   711→                <div className="flex h-4 rounded-full overflow-hidden bg-slate-200">
+   712→                  {parseInt(formData.hommes) > 0 && (
+   713→                    <div 
+   714→                      className="bg-blue-500 transition-all duration-300"
+   715→                      style={{ width: `${(parseInt(formData.hommes) / parseInt(formData.totalBeneficiares || '1')) * 100}%` }}
+   716→                      title={`Hommes: ${formData.hommes}`}
+   717→                    />
+   718→                  )}
+   719→                  {parseInt(formData.femmes) > 0 && (
+   720→                    <div 
+   721→                      className="bg-pink-500 transition-all duration-300"
+   722→                      style={{ width: `${(parseInt(formData.femmes) / parseInt(formData.totalBeneficiares || '1')) * 100}%` }}
+   723→                      title={`Femmes: ${formData.femmes}`}
+   724→                    />
+   725→                  )}
+   726→                  {parseInt(formData.enfants) > 0 && (
+   727→                    <div 
+   728→                      className="bg-green-500 transition-all duration-300"
+   729→                      style={{ width: `${(parseInt(formData.enfants) / parseInt(formData.totalBeneficiares || '1')) * 100}%` }}
+   730→                      title={`Enfants: ${formData.enfants}`}
+   731→                    />
+   732→                  )}
+   733→                </div>
+   734→                <div className="flex justify-between mt-2 text-xs text-slate-500">
+   735→                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Hommes: {formData.hommes || '0'}</span>
+   736→                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-500"></span> Femmes: {formData.femmes || '0'}</span>
+   737→                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Enfants: {formData.enfants || '0'}</span>
+   738→                </div>
+   739→              </div>
+   740→            )}
+   741→          </div>
+   742→        )
+   743→
+   744→      case 4:
+   745→        return (
+   746→          <div className="space-y-6">
+   747→            {/* Zone de drop */}
+   748→            <div
+   749→              onDragOver={handleDragOver}
+   750→              onDragLeave={handleDragLeave}
+   751→              onDrop={handleDrop}
+   752→              className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
+   753→                isDragging 
+   754→                  ? 'border-[#F77F00] bg-orange-50 scale-[1.02]' 
+   755→                  : 'border-slate-300 hover:border-[#F77F00]/50 hover:bg-slate-50'
+   756→              }`}
+   757→            >
+   758→              <input
+   759→                type="file"
+   760→                id="file-upload"
+   761→                multiple
+   762→                accept="image/*"
+   763→                className="hidden"
+   764→                onChange={(e) => handleFileUpload(e.target.files)}
+   765→              />
+   766→              
+   767→              <label htmlFor="file-upload" className="cursor-pointer">
+   768→                <div className="w-16 h-16 mx-auto rounded-2xl bg-[#F77F00]/10 flex items-center justify-center mb-4">
+   769→                  {isDragging ? (
+   770→                    <Upload className="w-8 h-8 text-[#F77F00] animate-bounce" />
+   771→                  ) : (
+   772→                    <Camera className="w-8 h-8 text-[#F77F00]" />
+   773→                  )}
+   774→                </div>
+   775→                
+   776→                <p className="text-lg font-medium text-slate-700">
+   777→                  {isDragging ? 'Déposez vos images ici' : 'Glissez vos photos ici'}
+   778→                </p>
+   779→                <p className="text-sm text-slate-500 mt-1">
+   780→                  ou cliquez pour parcourir
+   781→                </p>
+   782→                <p className="text-xs text-slate-400 mt-3">
+   783→                  PNG, JPG jusqu'à 5MB · Maximum 10 images
+   784→                </p>
+   785→              </label>
+   786→            </div>
+   787→
+   788→            {/* Prévisualisation des images */}
+   789→            {formData.documentPreviews.length > 0 && (
+   790→              <div className="space-y-3">
+   791→                <p className="text-sm font-medium text-slate-700">
+   792→                  Images sélectionnées ({formData.documents.length}/10)
+   793→                </p>
+   794→                
+   795→                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   796→                  {formData.documentPreviews.map((preview, index) => (
+   797→                    <div key={index} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200">
+   798→                      <img
+   799→                        src={preview}
+   800→                        alt={`Document ${index + 1}`}
+   801→                        className="w-full h-full object-cover"
+   802→                      />
+   803→                      
+   804→                      {/* Overlay actions */}
+   805→                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+   806→                        <button
+   807→                          onClick={() => removeDocument(index)}
+   808→                          className="p-2 bg-red-500 rounded-full text-white hover:bg-red-600 transition-colors"
+   809→                        >
+   810→                          <Trash2 className="w-4 h-4" />
+   811→                        </button>
+   812→                      </div>
+   813→                      
+   814→                      {/* Badge index */}
+   815→                      <Badge className="absolute top-2 left-2 bg-black/70 text-white text-xs">
+   816→                        {index + 1}
+   817→                      </Badge>
+   818→                    </div>
+   819→                  ))}
+   820→                </div>
+   821→              </div>
+   822→            )}
+   823→
+   824→            {/* Info optionnel */}
+   825→            <Card className="bg-slate-50 border-slate-200">
+   826→              <CardContent className="p-4">
+   827→                <p className="text-sm text-slate-600 flex items-start gap-2">
+   828→                  <Info className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+   829→                  L&apos;ajout de photos est optionnel mais fortement recommandé. 
+   830→                  Elles permettent de valoriser votre travail et facilitent la validation.
+   831→                </p>
+   832→              </CardContent>
+   833→            </Card>
+   834→          </div>
+   835→        )
+   836→    }
+   837→  }
+   838→
+   839→  // Rendu du preview
+   840→  const renderPreview = () => (
+   841→    <div className="space-y-6">
+   842→      <Card className="border-[#009E60]/30 bg-gradient-to-br from-green-50/50 to-white">
+   843→        <CardHeader>
+   844→          <CardTitle className="flex items-center gap-2 text-[#009E60]">
+   845→            <Eye className="w-5 h-5" />
+   846→            Aperçu avant soumission
+   847→          </CardTitle>
+   848→          <CardDescription>
+   849→            Vérifiez les informations avant d&apos;envoyer votre activité.
+   850→          </CardDescription>
+   851→        </CardHeader>
+   852→        <CardContent className="space-y-6">
+   853→          {/* Informations principales */}
+   854→          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+   855→            <div>
+   856→              <p className="text-sm text-slate-500">Intitulé</p>
+   857→              <p className="font-semibold text-slate-900">{formData.intitule}</p>
+   858→            </div>
+   859→            <div>
+   860→              <p className="text-sm text-slate-500">Type</p>
+   861→              <Badge variant="secondary">
+   862→                {typesActivite.find(t => t.value === formData.typeActivite)?.emoji}{' '}
+   863→                {typesActivite.find(t => t.value === formData.typeActivite)?.label}
+   864→              </Badge>
+   865→            </div>
+   866→            <div>
+   867→              <p className="text-sm text-slate-500">Date</p>
+   868→              <p className="font-medium text-slate-900 flex items-center gap-2">
+   869→                <CalendarIcon className="w-4 h-4 text-[#F77F00]" />
+   870→                {formatDate(formData.dateActivite)}
+   871→                {formData.heureDebut && ` à ${formData.heureDebut}`}
+   872→                {formData.heureFin && ` - ${formData.heureFin}`}
+   873→              </p>
+   874→            </div>
+   875→            <div>
+   876→              <p className="text-sm text-slate-500">Lieu</p>
+   877→              <p className="font-medium text-slate-900 flex items-center gap-2">
+   878→                <MapPin className="w-4 h-4 text-[#F77F00]" />
+   879→                {formData.lieu}
+   880→              </p>
+   881→            </div>
+   882→          </div>
+   883→
+   884→          <Separator />
+   885→
+   886→          {/* Description */}
+   887→          <div>
+   888→            <p className="text-sm text-slate-500 mb-2">Objectif</p>
+   889→            <p className="text-slate-800 whitespace-pre-wrap">{formData.objectif}</p>
+   890→          </div>
+   891→          
+   892→          <div>
+   893→            <p className="text-sm text-slate-500 mb-2">Description</p>
+   894→            <p className="text-slate-800 whitespace-pre-wrap">{formData.description}</p>
+   895→          </div>
+   896→
+   897→          {formData.resultats && (
+   898→            <div>
+   899→              <p className="text-sm text-slate-500 mb-2">Résultats</p>
+   900→              <p className="text-slate-800 whitespace-pre-wrap">{formData.resultats}</p>
+   901→            </div>
+   902→          )}
+   903→
+   904→          <Separator />
+   905→
+   906→          {/* Bénéficiaires */}
+   907→          <div>
+   908→            <p className="text-sm text-slate-500 mb-3">Bénéficiaires</p>
+   909→            <div className="flex flex-wrap gap-4">
+   910→              <div className="bg-blue-50 px-4 py-2 rounded-lg">
+   911→                <p className="text-2xl font-bold text-blue-700">{formData.totalBeneficiaires}</p>
+   912→                <p className="text-xs text-blue-600">Total</p>
+   913→              </div>
+   914→              {formData.hommes && (
+   915→                <div className="bg-slate-100 px-4 py-2 rounded-lg">
+   916→                  <p className="text-xl font-bold text-slate-700">{formData.hommes}</p>
+   917→                  <p className="text-xs text-slate-600">Hommes</p>
+   918→                </div>
+   919→              )}
+   920→              {formData.femmes && (
+   921→                <div className="bg-slate-100 px-4 py-2 rounded-lg">
+   922→                  <p className="text-xl font-bold text-slate-700">{formData.femmes}</p>
+   923→                  <p className="text-xs text-slate-600">Femmes</p>
+   924→                </div>
+   925→              )}
+   926→              {formData.enfants && (
+   927→                <div className="bg-slate-100 px-4 py-2 rounded-lg">
+   928→                  <p className="text-xl font-bold text-slate-700">{formData.enfants}</p>
+   929→                  <p className="text-xs text-slate-600">Enfants</p>
+   930→                </div>
+   931→              )}
+   932→            </div>
+   933→          </div>
+   934→
+   935→          {/* Documents */}
+   936→          {formData.documentPreviews.length > 0 && (
+   937→            <>
+   938→              <Separator />
+   939→              <div>
+   940→                <p className="text-sm text-slate-500 mb-3">Documents joints ({formData.documents.length})</p>
+   941→                <div className="flex gap-3 overflow-x-auto pb-2">
+   942→                  {formData.documentPreviews.map((preview, i) => (
+   943→                    <img
+   944→                      key={i}
+   945→                      src={preview}
+   946→                      alt={`Doc ${i+1}`}
+   947→                      className="w-24 h-24 object-cover rounded-lg border border-slate-200"
+   948→                    />
+   949→                  ))}
+   950→                </div>
+   951→              </div>
+   952→            </>
+   953→          )}
+   954→        </CardContent>
+   955→      </Card>
+   956→    </div>
+   957→  )
+   958→
+   959→  // Helper pour formater la date
+   960→  function formatDate(dateStr: string): string {
+   961→    if (!dateStr) return ''
+   962→    const date = new Date(dateStr)
+   963→    return date.toLocaleDateString('fr-FR', {
+   964→      day: 'numeric',
+   965→      month: 'long',
+   966→      year: 'numeric',
+   967→    })
+   968→  }
+   969→
+   970→  return (
+   971→    <div className="max-w-4xl mx-auto space-y-6">
+   972→      {/* En-tête */}
+   973→      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+   974→        <div>
+   975→          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 flex items-center gap-2">
+   976→            <Sparkles className="w-7 h-7 text-[#F77F00]" />
+   977→            Nouvelle activité
+   978→          </h1>
+   979→          <p className="text-slate-500 mt-1">
+   980→            Remplissez le formulaire étape par étape.
+   981→          </p>
+   982→        </div>
+   983→        
+   984→        <div className="flex items-center gap-2">
+   985→          <Button
+   986→            variant="outline"
+   987→            size="sm"
+   988→            onClick={saveDraft}
+   989→            className="gap-2"
+   990→          >
+   991→            <Save className="w-4 h-4" />
+   992→            Sauvegarder
+   993→          </Button>
+   994→          
+   995→          {lastSaved && (
+   996→            <span className="text-xs text-slate-400 flex items-center gap-1">
+   997→              <Clock className="w-3 h-3" />
+   998→              Sauvé à {lastSaved.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+   999→            </span>
+  1000→          )}
+  1001→        </div>
+  1002→      </div>
+  1003→
+  1004→      {/* Barre de progression */}
+  1005→      <Card className="border-slate-200 overflow-hidden">
+  1006→        <CardContent className="p-4">
+  1007→          {/* Steps indicators */}
+  1008→          <div className="flex items-center justify-between mb-4">
+  1009→            {steps.map((step, index) => (
+  1010→              <React.Fragment key={step.id}>
+  1011→                <button
+  1012→                  onClick={() => {
+  1013→                    if (step.id <= currentStep || validateCurrentStep()) {
+  1014→                      setCurrentStep(step.id)
+  1015→                    }
+  1016→                  }}
+  1017→                  className={`flex flex-col items-center gap-1 transition-all ${
+  1018→                    currentStep >= step.id ? 'text-[#F77F00]' : 'text-slate-400'
+  1019→                  }`}
+  1020→                >
+  1021→                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${
+  1022→                    currentStep > step.id 
+  1023→                      ? 'bg-[#009E60] text-white' 
+  1024→                      : currentStep === step.id 
+  1025→                        ? 'bg-[#F77F00] text-white shadow-lg shadow-orange-500/30' 
+  1026→                        : 'bg-slate-100 text-slate-500'
+  1027→                  }`}>
+  1028→                    {currentStep > step.id ? (
+  1029→                      <CheckCircle2 className="w-5 h-5" />
+  1030→                    ) : (
+  1031→                      step.id
+  1032→                    )}
+  1033→                  </div>
+  1034→                  <span className="text-xs font-medium hidden sm:block">{step.title}</span>
+  1035→                </button>
+  1036→                
+  1037→                {index < steps.length - 1 && (
+  1038→                  <div className={`flex-1 h-0.5 mx-2 ${
+  1039→                    currentStep > step.id ? 'bg-[#009E60]' : 'bg-slate-200'
+  1040→                  }`} />
+  1041→                )}
+  1042→              </React.Fragment>
+  1043→            ))}
+  1044→          </div>
+  1045→
+  1046→          {/* Progress bar */}
+  1047→          <div className="space-y-1">
+  1048→            <div className="flex justify-between text-xs text-slate-500">
+  1049→              <span>Progression générale</span>
+  1050→              <span className="font-medium">{progress}%</span>
+  1051→            </div>
+  1052→            <Progress value={progress} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-[#F77F00] [&>div]:to-[#009E60]" />
+  1053→          </div>
+  1054→        </CardContent>
+  1055→      </Card>
+  1056→
+  1057→      {/* Contenu de l'étape actuelle ou preview */}
+  1058→      {!showPreview ? (
+  1059→        <Card className="border-slate-200">
+  1060→          <CardHeader className="pb-4">
+  1061→            <div className="flex items-center gap-3">
+  1062→              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+  1063→                currentStep === steps.findIndex(s => s.id === currentStep) + 1 
+  1064→                  ? 'bg-[#F77F00]/10' 
+  1065→                  : 'bg-slate-100'
+  1066→              }`}>
+  1067→                {React.createElement(steps[currentStep - 1].icon, { 
+  1068→                  className: `w-5 h-5 ${currentStep === steps[currentStep - 1].id ? 'text-[#F77F00]' : 'text-slate-500'}` 
+  1069→                })}
+  1070→              </div>
+  1071→              <div>
+  1072→                <CardTitle className="text-lg">
+  1073→                  Étape {currentStep} : {steps[currentStep - 1].title}
+  1074→                </CardTitle>
+  1075→                <CardDescription>{steps[currentStep - 1].description}</CardDescription>
+  1076→              </div>
+  1077→            </div>
+  1078→          </CardHeader>
+  1079→          
+  1080→          <CardContent>
+  1081→            {renderStepContent()}
+  1082→          </CardContent>
+  1083→        </Card>
+  1084→      ) : (
+  1085→        renderPreview()
+  1086→      )}
+  1087→
+  1088→      {/* Navigation */}
+  1089→      <div className="flex items-center justify-between pt-4">
+  1090→        <div>
+  1091→          {currentStep > 1 && !showPreview && (
+  1092→            <Button variant="outline" onClick={prevStep} className="gap-2">
+  1093→              <ChevronLeft className="w-4 h-4" />
+  1094→              Précédent
+  1095→            </Button>
+  1096→          )}
+  1097→          {showPreview && (
+  1098→            <Button variant="outline" onClick={() => setShowPreview(false)} className="gap-2">
+  1099→              Modifier
+  1100→            </Button>
+  1101→          )}
+  1102→        </div>
+  1103→
+  1104→        <div className="flex items-center gap-3">
+  1105→          {!showPreview ? (
+  1106→            <>
+  1107→              {currentStep < steps.length ? (
+  1108→                <Button onClick={nextStep} className="bg-[#F77F00] hover:bg-[#E67300] gap-2">
+  1109→                  Suivant
+  1110→                  <ChevronRight className="w-4 h-4" />
+  1111→                </Button>
+  1112→              ) : (
+  1113→                <Button 
+  1114→                  onClick={() => setShowPreview(true)} 
+  1115→                  className="bg-[#009E60] hover:bg-green-700 gap-2"
+  1116→                >
+  1117→                  <Eye className="w-4 h-4" />
+  1118→                  Prévisualiser
+  1119→                </Button>
+  1120→              )}
+  1121→            </>
+  1122→          ) : (
+  1123→            <Button 
+  1124→              onClick={handleSubmit} 
+  1125→              disabled={isSubmitting}
+  1126→              className="bg-[#009E60] hover:bg-green-700 gap-2 px-8"
+  1127→            >
+  1128→              {isSubmitting ? (
+  1129→                <>
+  1130→                  <Loader2 className="w-4 h-4 animate-spin" />
+  1131→                  Soumission en cours...
+  1132→                </>
+  1133→              ) : (
+  1134→                <>
+  1135→                  <Send className="w-4 h-4" />
+  1136→                  Soumettre l&apos;activité
+  1137→                </>
+  1138→              )}
+  1139→            </Button>
+  1140→          )}
+  1141→        </div>
+  1142→      </div>
+  1143→
+  1144→      {/* Lien annulation */}
+  1145→      <div className="text-center pt-4">
+  1146→        <Link href="/agent" className="text-sm text-slate-500 hover:text-[#F77F00] underline">
+  1147→          Annuler et revenir au tableau de bord
+  1148→        </Link>
+  1149→      </div>
+  1150→    </div>
+  1151→  )
+  1152→}
+  1153→
