@@ -11,6 +11,7 @@ import {
   Package,
   Users,
   Settings,
+  Key,
   ChevronLeft,
   ChevronRight,
   Shield,
@@ -53,6 +54,13 @@ const navigationItems = [
     title: 'Plans & Tarifs',
     href: '/admin/plans',
     icon: Package,
+    badge: null,
+    section: 'principal' as const
+  },
+  {
+    title: 'Codes d\'activation',
+    href: '/admin/codes-activation',
+    icon: Key,
     badge: null,
     section: 'principal' as const
   },

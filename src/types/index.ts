@@ -145,4 +145,212 @@ export interface Indicator {
   kind: 'QUANTITATIF' | 'QUALITATIF'
   unite?: string
   objectif?: number
+  axe?: string
+  category_id?: string
+  organization_id?: string
+  created_at?: string
+}
+
+// ===========================================
+// Types Incidents / Sinistres
+// ===========================================
+
+/** Gravité d'un incident */
+export type IncidentGravite = 'FAIBLE' | 'MOYENNE' | 'ELEVEE' | 'CRITIQUE'
+
+/** Statut d'un incident */
+export type IncidentStatut = 'EN_COURS' | 'CLOTURE'
+
+/** Type d'incident (référentiel) */
+export interface IncidentType {
+  id: string
+  nom: string
+  description?: string
+  code?: string
+  created_at?: string
+}
+
+/** Incident / Sinistre */
+export interface Incident {
+  id: string
+  created_at: string
+  updated_at?: string
+  organization_id: string
+  date: string
+  lieu: string
+  region: string
+  departement?: string
+  nature: string
+  type_id?: string
+  gravite: IncidentGravite
+  victimes: number
+  deces: number
+  actions_entreprises?: string
+  acteurs?: string[]
+  statut: IncidentStatut
+  cloture_le?: string
+  cloture_par?: string
+  motif_cloture?: string
+  created_by?: string
+  incident_type?: IncidentType
+}
+
+/** Filtres pour la liste des incidents */
+export interface IncidentFilters {
+  statut?: IncidentStatut | 'all'
+  gravite?: IncidentGravite | 'all'
+  date_debut?: string
+  date_fin?: string
+  search?: string
+  page?: number
+  limit?: number
+}
+
+/** Formulaire de création/modification d'incident */
+export interface IncidentFormData {
+  date: string
+  lieu: string
+  region: string
+  departement?: string
+  nature: string
+  incident_type_id?: string
+  gravite: IncidentGravite
+  victimes?: number
+  deces?: number
+  actions_entreprises?: string
+  acteurs?: string[]
+}
+
+// ===========================================
+// Types Indicateurs (étendus)
+// ===========================================
+
+/** Type d'indicateur */
+export type IndicatorKind = 'QUANTITATIF' | 'QUALITATIF'
+
+/** Valeur d'un indicateur */
+export interface IndicatorValue {
+  id: string
+  activity_id: string
+  indicator_id: string
+  valeur_numerique?: number
+  valeur_texte?: string
+  created_at: string
+  created_by?: string
+  activity?: Activity
+  indicator?: Indicator
+}
+
+/** Filtres pour les indicateurs */
+export interface IndicatorFilters {
+  axe?: string
+  kind?: IndicatorKind | 'all'
+  search?: string
+  organization_id?: string
+  global_only?: boolean
+  page?: number
+  limit?: number
+}
+
+/** Données de saisie groupée */
+export interface IndicatorBatchInput {
+  activity_id: string
+  values: {
+    indicator_id: string
+    valeur_numerique?: number
+    valeur_texte?: string
+  }[]
+}
+
+/** Statistiques indicateur */
+export interface IndicatorStats {
+  moyenne?: number
+  min?: number
+  max?: number
+  derniere_valeur?: string
+  nombre_valeurs: number
+}
+
+// ===========================================
+// CODES D'ACTIVATION
+// ===========================================
+
+/** Statut d'un code d'activation */
+export type CodeStatus = 'DISPONIBLE' | 'UTILISE' | 'EXPIRE' | 'EN_ATTENTE' | 'REVOQUE'
+
+/** Code d'activation */
+export interface ActivationCode {
+  id: string
+  code: string
+  organization_id?: string
+  plan_id?: string
+  email_proprietaire: string
+  duree_mois: number
+  expire_le: string
+  utilise: boolean
+  utilise_le?: string
+  cree_par: string
+  created_at: string
+  updated_at?: string
+  // Jointures optionnelles
+  plan?: SubscriptionPlan
+  organization?: Organization
+}
+
+// ===========================================
+// UTILISATEURS (PROFILS)
+// ===========================================
+
+/** Rôle étendu avec super admin */
+export type ExtendedOrgRole = 'SUPER_ADMIN' | 'PROPRIETAIRE' | 'AGENT' | 'LECTEUR'
+
+/** Profil utilisateur complet */
+export interface UserProfile {
+  id: string
+  nom_complet: string
+  telephone?: string
+  organization_id?: string
+  org_role: ExtendedOrgRole
+  is_super_admin: boolean
+  actif: boolean
+  avatar_url?: string
+  created_at: string
+  updated_at?: string
+  // Jointures
+  organization?: Organization
+  email?: string // Depuis auth.users
+}
+
+/** Filtres pour codes d'activation */
+export interface CodeFilters {
+  statut?: CodeStatus
+  search?: string
+  page?: number
+  limit?: number
+}
+
+/** Filtres pour utilisateurs */
+export interface UserFilters {
+  role?: ExtendedOrgRole
+  organization_id?: string
+  actif?: boolean
+  search?: string
+  page?: number
+  limit?: number
+}
+
+/** Stats des codes d'activation */
+export interface CodeStats {
+  total: number
+  utilises: number
+  expires: number
+  disponibles: number
+}
+
+/** Stats des utilisateurs */
+export interface UserStats {
+  total: number
+  superAdmins: number
+  actifs: number
+  inactifs: number
 }
