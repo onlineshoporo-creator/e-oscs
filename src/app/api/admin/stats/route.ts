@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase/admin'
+import { db } from '@/lib/db'
+
+/**
+ * API Stats Admin e-OSCS
+ * 
+ * Retourne les statistiques du tableau de bord admin.
+ * Utilise Prisma/SQLite (base locale) au lieu de Supabase.
+ */
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,73 +15,54 @@ export async function GET(request: NextRequest) {
 
     // If specific metric requested
     if (metric === 'pending_requests') {
-      const { count, error } = await supabaseAdmin
-        .from('subscription_requests')
-        .select('*', { count: 'exact', head: true })
-        .eq('statut', 'NOUVELLE')
-
-      if (error) throw error
-      return NextResponse.json({ count: count || 0 })
+      const count = await db.demandeAcces.count({
+        where: { statut: 'NOUVELLE' }
+      })
+      return NextResponse.json({ count })
     }
 
-    // Get all dashboard stats
-    const [
-      orgsResult,
-      pendingResult,
-      activeSubsResult,
-      revenueResult
-    ] = await Promise.all([
-      // Total organizations
-      supabaseAdmin
-        .from('organizations')
-        .select('*', { count: 'exact', head: true }),
-      
-      // Pending requests
-      supabaseAdmin
-        .from('subscription_requests')
-        .select('*', { count: 'exact', head: true })
-        .in('statut', ['NOUVELLE', 'EN_CONTACT']),
-      
-      // Active subscriptions
-      supabaseAdmin
-        .from('subscriptions')
-        .select('*', { count: 'exact', head: true })
-        .eq('statut', 'ACTIF'),
-      
-      // Monthly revenue from active subscriptions
-      supabaseAdmin
-        .from('subscriptions')
-        .select('montant')
-        .eq('statut', 'ACTIF')
-    ])
-
-    if (orgsResult.error) throw orgsResult.error
-    if (pendingResult.error) throw pendingResult.error
-    if (activeSubsResult.error) throw activeSubsResult.error
-
-    // Calculate monthly revenue
-    let monthlyRevenue = 0
-    if (!revenueResult.error && revenueResult.data) {
-      monthlyRevenue = revenueResult.data.reduce((sum, sub) => sum + (sub.montant || 0), 0)
-    }
-
-    // Get last month's data for trend calculation
+    // Get all dashboard stats from local database
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-    const [newOrgsLastMonth] = await Promise.all([
-      supabaseAdmin
-        .from('organizations')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', thirtyDaysAgo.toISOString())
+    const [
+      totalUsers,
+      pendingRequests,
+      activeUsers,
+      totalActivites,
+      recentUsers
+    ] = await Promise.all([
+      // Total utilisateurs
+      db.user.count(),
+      
+      // Demandes d'accès en attente
+      db.demandeAcces.count({
+        where: { statut: 'NOUVELLE' }
+      }),
+      
+      // Utilisateurs actifs
+      db.user.count({
+        where: { isActive: true }
+      }),
+      
+      // Total activités
+      db.activite.count(),
+      
+      // Nouveaux utilisateurs (30 derniers jours)
+      db.user.count({
+        where: {
+          createdAt: { gte: thirtyDaysAgo }
+        }
+      })
     ])
 
     return NextResponse.json({
-      totalOrganizations: orgsResult.count || 0,
-      pendingRequests: pendingResult.count || 0,
-      activeSubscriptions: activeSubsResult.count || 0,
-      monthlyRevenue,
-      newOrganizationsLastMonth: newOrgsLastMonth?.count || 0,
+      totalOrganizations: totalUsers,
+      pendingRequests,
+      activeSubscriptions: activeUsers,
+      monthlyRevenue: 0, // Pas encore implémenté
+      newOrganizationsLastMonth: recentUsers,
+      totalActivites,
       revenueTrend: 'up' as const,
       organizationsTrend: 'up' as const,
     })
