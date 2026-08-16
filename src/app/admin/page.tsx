@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { 
   Users,
   Building2,
-  Activity,
   CheckCircle2,
   Clock,
   Key,
@@ -13,137 +12,103 @@ import {
   TrendingDown,
   Minus,
   ArrowRight,
-  Eye,
-  Check,
-  X,
-  FileText,
+  DollarSign,
+  Target,
+  UserPlus,
   BarChart3,
   PieChart,
   Zap,
   Download,
   FileSearch,
   Shield,
-  AlertTriangle,
   Calendar,
   MoreHorizontal,
-  ChevronLeft,
-  ChevronRight,
   RefreshCw,
   QrCode,
-  ClipboardList
+  ClipboardList,
+  CreditCard,
+  Activity
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
-// Types pour les stats du dashboard
+// Types pour les stats du dashboard SaaS
 interface DashboardStats {
   totalUsers: number
-  totalOrganizations: number
-  monthlyActivities: number
-  validationRate: number
+  activeOrganizations: number
   pendingRequests: number
   codesGenerated: number
+  monthlyRevenue: number
+  conversionRate: number
+  newUsersThisMonth: number
+  newOrganizationsThisMonth: number
   usersTrend: 'up' | 'down' | 'stable'
   organizationsTrend: 'up' | 'down' | 'stable'
-  activitiesTrend: 'up' | 'down' | 'stable'
-  validationTrend: 'up' | 'down' | 'stable'
+  revenueTrend: 'up' | 'down' | 'stable'
+  conversionTrend: 'up' | 'down' | 'stable'
 }
 
-interface RecentActivity {
-  id: string
-  direction: string
-  activity: string
-  date: string
-  statut: 'VALIDEE' | 'BROUILLON' | 'EN_ATTENTE' | 'REJETEE'
-  user: string
-}
-
-interface MonthlyData {
+interface MonthlyRevenue {
   month: string
-  activities: number
-  validations: number
+  revenue: number
+  subscriptions: number
 }
 
-interface TopDirection {
-  name: string
+interface OrganizationType {
+  type: string
   count: number
   percentage: number
 }
 
-// Configuration des statuts
-const statusConfig: Record<string, { label: string; className: string; dotClass: string }> = {
-  VALIDEE: { 
-    label: 'Validée', 
-    className: 'bg-emerald-100 text-emerald-700 border-emerald-200', 
-    dotClass: 'bg-emerald-500' 
-  },
-  BROUILLON: { 
-    label: 'Brouillon', 
-    className: 'bg-slate-100 text-slate-600 border-slate-200', 
-    dotClass: 'bg-slate-400' 
-  },
-  EN_ATTENTE: { 
-    label: 'En attente', 
-    className: 'bg-amber-100 text-amber-700 border-amber-200', 
-    dotClass: 'bg-amber-500' 
-  },
-  REJETEE: { 
-    label: 'Rejetée', 
-    className: 'bg-red-100 text-red-700 border-red-200', 
-    dotClass: 'bg-red-500' 
-  },
+interface SystemEvent {
+  id: string
+  action: string
+  description: string
+  date: string
+  type: 'connexion' | 'code' | 'demande' | 'admin' | 'system'
 }
 
-// Données mock pour le développement
+// Données mock pour le développement SaaS
 const mockStats: DashboardStats = {
   totalUsers: 156,
-  totalOrganizations: 24,
-  monthlyActivities: 342,
-  validationRate: 87,
+  activeOrganizations: 24,
   pendingRequests: 12,
   codesGenerated: 89,
+  monthlyRevenue: 2850000,
+  conversionRate: 68,
+  newUsersThisMonth: 23,
+  newOrganizationsThisMonth: 4,
   usersTrend: 'up',
   organizationsTrend: 'up',
-  activitiesTrend: 'up',
-  validationTrend: 'up',
+  revenueTrend: 'up',
+  conversionTrend: 'up',
 }
 
-const mockMonthlyData: MonthlyData[] = [
-  { month: 'Sept', activities: 185, validations: 160 },
-  { month: 'Oct', activities: 220, validations: 195 },
-  { month: 'Nov', activities: 195, validations: 170 },
-  { month: 'Déc', activities: 280, validations: 245 },
-  { month: 'Jan', activities: 310, validations: 278 },
-  { month: 'Fév', activities: 342, validations: 298 },
+const mockMonthlyRevenue: MonthlyRevenue[] = [
+  { month: 'Sept', revenue: 1850000, subscriptions: 16 },
+  { month: 'Oct', revenue: 2100000, subscriptions: 18 },
+  { month: 'Nov', revenue: 2250000, subscriptions: 19 },
+  { month: 'Déc', revenue: 2450000, subscriptions: 21 },
+  { month: 'Jan', revenue: 2680000, subscriptions: 22 },
+  { month: 'Fév', revenue: 2850000, subscriptions: 24 },
 ]
 
-const mockTopDirections: TopDirection[] = [
-  { name: 'DR Lagune', count: 67, percentage: 100 },
-  { name: 'DR Bas-Sassandra', count: 54, percentage: 81 },
-  { name: 'DR Dix-Huit Montagnes', count: 48, percentage: 72 },
-  { name: 'DR Vallee Bandama', count: 42, percentage: 63 },
-  { name: 'DR Zanzan', count: 35, percentage: 52 },
+const mockOrgTypes: OrganizationType[] = [
+  { type: 'DR (Direction Régionale)', count: 14, percentage: 58 },
+  { type: 'DD (Direction Départementale)', count: 10, percentage: 42 },
 ]
 
-const mockRecentActivities: RecentActivity[] = [
-  { id: '1', direction: 'DR Lagune - Abidjan', activity: 'Formation continue en gestion', date: '2025-02-15', statut: 'VALIDEE', user: 'Kouadio Jean' },
-  { id: '2', direction: 'DR Bas-Sassandra', activity: 'Atelier planification Q1', date: '2025-02-14', statut: 'EN_ATTENTE', user: 'Yao Marie' },
-  { id: '3', direction: 'DR Dix-Huit Montagnes', activity: 'Réunion coordination mensuelle', date: '2025-02-14', statut: 'BROUILLON', user: 'Kone Alassane' },
-  { id: '4', direction: 'DR Vallee Bandama', activity: 'Audit interne qualité', date: '2025-02-13', statut: 'VALIDEE', user: 'Touré Fatou' },
-  { id: '5', direction: 'DR Zanzan', activity: 'Programme sensibilisation', date: '2025-02-13', statut: 'REJETEE', user: 'Diallo Ibrahim' },
-  { id: '6', direction: 'DR Lagune - Abidjan', activity: 'Evaluation performance', date: '2025-02-12', statut: 'VALIDEE', user: 'Baffet Amoin' },
-  { id: '7', direction: 'DR Sassandra-Marahoué', activity: 'Plan action annuel', date: '2025-02-12', statut: 'EN_ATTENTE', user: 'N\'Goran Paul' },
-  { id: '8', direction: 'DR Worodougou', activity: 'Session coaching équipe', date: '2025-02-11', statut: 'VALIDEE', user: 'Coulibaly Aminata' },
+const mockSystemEvents: SystemEvent[] = [
+  { id: '1', action: 'Nouvelle inscription', description: 'Un nouvel utilisateur a créé un compte', date: '2025-02-15T10:30:00', type: 'connexion' },
+  { id: '2', action: 'Code généré', description: "Code d'activation créé pour PRO", date: '2025-02-15T09:45:00', type: 'code' },
+  { id: '3', action: 'Demande reçue', description: 'Nouvelle demande d\'abonnement de DR Lôh-Djiboua', date: '2025-02-15T08:20:00', type: 'demande' },
+  { id: '4', action: 'Code activé', description: 'Code ESSENTIEL-789 activé par une organisation', date: '2025-02-14T17:30:00', type: 'code' },
+  { id: '5', action: 'Connexion admin', description: 'Super Admin connecté depuis Abidjan', date: '2025-02-14T14:15:00', type: 'admin' },
+  { id: '6', action: 'Sauvegarde auto', description: 'Sauvegarde de la base de données réussie', date: '2025-02-14T06:00:00', type: 'system' },
+  { id: '7', action: 'Plan modifié', description: 'Tarif plan INSTITUTIONNEL mis à jour', date: '2025-02-13T11:45:00', type: 'admin' },
+  { id: '8', action: 'Demande approuvée', description: 'Abonnement approuvé pour DD Yamoussoukro', date: '2025-02-13T10:00:00', type: 'demande' },
 ]
 
 // Composant Sparkline CSS
@@ -166,12 +131,10 @@ function Sparkline({ data, color = '#F77F00', trend }: { data: number[]; color?:
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      {/* Area fill */}
       <polygon
         points={`0,100 ${points} 100,100`}
         fill={`url(#gradient-${color.replace('#', '')})`}
       />
-      {/* Line */}
       <polyline
         points={points}
         fill="none"
@@ -180,7 +143,6 @@ function Sparkline({ data, color = '#F77F00', trend }: { data: number[]; color?:
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {/* Last point dot */}
       <circle cx="100" cy={100 - ((data[data.length - 1] - min) / range) * 100} r="3" fill={color} />
     </svg>
   )
@@ -200,6 +162,8 @@ interface KPICardProps {
   sparkColor?: string
   hasAlert?: boolean
   alertCount?: number
+  prefix?: string
+  suffix?: string
 }
 
 function KPICard({
@@ -209,25 +173,31 @@ function KPICard({
   trend,
   trendValue,
   description,
-  colorClass,
   iconBgClass,
   sparkData,
   sparkColor = '#F77F00',
   hasAlert = false,
   alertCount = 0,
+  prefix = '',
+  suffix = '',
 }: KPICardProps) {
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus
+  
+  // Determine gradient for accent bar
+  const getAccentGradient = () => {
+    if (iconBgClass.includes('orange')) return 'bg-gradient-to-r from-orange-500 to-amber-500'
+    if (iconBgClass.includes('green') || iconBgClass.includes('emerald')) return 'bg-gradient-to-r from-green-500 to-emerald-500'
+    if (iconBgClass.includes('blue')) return 'bg-gradient-to-r from-blue-500 to-cyan-500'
+    if (iconBgClass.includes('purple')) return 'bg-gradient-to-r from-purple-500 to-pink-500'
+    if (iconBgClass.includes('amber')) return 'bg-gradient-to-r from-amber-500 to-yellow-500'
+    if (iconBgClass.includes('slate')) return 'bg-gradient-to-r from-slate-400 to-slate-500'
+    return 'bg-gradient-to-r from-[#F77F00] to-amber-500'
+  }
   
   return (
     <Card className="group hover:shadow-xl transition-all duration-300 border-slate-200/80 hover:border-slate-300 bg-white/80 backdrop-blur-sm overflow-hidden relative">
       {/* Accent bar top */}
-      <div className={`absolute top-0 left-0 right-0 h-1 ${iconBgClass.split(' ')[1]?.includes('orange') ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 
-        iconBgClass.includes('green') ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
-        iconBgClass.includes('blue') ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
-        iconBgClass.includes('purple') ? 'bg-gradient-to-r from-purple-500 to-pink-500' :
-        iconBgClass.includes('red') ? 'bg-gradient-to-r from-red-500 to-rose-500' :
-        'bg-gradient-to-r from-slate-400 to-slate-500'
-      }`} />
+      <div className={`absolute top-0 left-0 right-0 h-1 ${getAccentGradient()}`} />
       
       <CardContent className="p-5 pt-6">
         <div className="flex items-start justify-between gap-4">
@@ -242,7 +212,9 @@ function KPICard({
             </div>
             
             <div className="flex items-baseline gap-2 flex-wrap">
-              <p className="text-3xl font-black text-slate-900 tracking-tight">{value}</p>
+              <p className="text-3xl font-black text-slate-900 tracking-tight">
+                {prefix}{value}{suffix}
+              </p>
               {trend && (
                 <span className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full ${
                   trend === 'up' ? 'text-emerald-700 bg-emerald-50 ring-1 ring-emerald-600/20' :
@@ -276,9 +248,16 @@ function KPICard({
   )
 }
 
-// Composant Bar Chart Horizontal (Activités par mois)
-function MonthlyBarChart({ data }: { data: MonthlyData[] }) {
-  const maxValue = Math.max(...data.map(d => d.activities))
+// Composant Bar Chart Horizontal (Revenus mensuels)
+function RevenueBarChart({ data }: { data: MonthlyRevenue[] }) {
+  const maxValue = Math.max(...data.map(d => d.revenue))
+  
+  const formatCurrency = (amount: number) => {
+    if (amount >= 1000000) {
+      return `${(amount / 1000000).toFixed(1)}M`
+    }
+    return `${(amount / 1000).toFixed(0)}K`
+  }
   
   return (
     <div className="space-y-3">
@@ -294,9 +273,9 @@ function MonthlyBarChart({ data }: { data: MonthlyData[] }) {
             </div>
             {/* Bar animation */}
             <div 
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#F77F00] to-[#FFA940] rounded-lg transition-all duration-700 ease-out group-hover:from-[#e67300] group-hover:to-[#F77F00] shadow-sm"
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#009E60] to-[#34D399] rounded-lg transition-all duration-700 ease-out group-hover:from-[#008C55] group-hover:to-[#009E60] shadow-sm"
               style={{ 
-                width: `${(item.activities / maxValue) * 100}%`,
+                width: `${(item.revenue / maxValue) * 100}%`,
                 animationDelay: `${index * 100}ms`
               }}
             >
@@ -304,7 +283,7 @@ function MonthlyBarChart({ data }: { data: MonthlyData[] }) {
             </div>
             {/* Value label */}
             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-700">
-              {item.activities}
+              {formatCurrency(item.revenue)} FCFA
             </span>
           </div>
         </div>
@@ -313,27 +292,24 @@ function MonthlyBarChart({ data }: { data: MonthlyData[] }) {
       {/* Legend */}
       <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-3">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-gradient-to-r from-[#F77F00] to-[#FFA940]" />
-          <span className="text-xs text-slate-500">Activités saisies</span>
+          <div className="w-3 h-3 rounded bg-gradient-to-r from-[#009E60] to-[#34D399]" />
+          <span className="text-xs text-slate-500">Revenus d'abonnements</span>
         </div>
         <span className="text-xs font-medium text-slate-600">
-          Total: {data.reduce((a, b) => a + b.activities, 0).toLocaleString()}
+          Total: {formatCurrency(data.reduce((a, b) => a + b.revenue, 0))} FCFA
         </span>
       </div>
     </div>
   )
 }
 
-// Composant Donut Chart CSS (Répartition par statut)
-function StatusDonutChart() {
+// Composant Donut Chart CSS (Répartition par type d'organisation)
+function OrganizationTypeDonut() {
   const data = [
-    { label: 'Validées', value: 298, color: '#009E60', percentage: 87 },
-    { label: 'En attente', value: 28, color: '#F59E0B', percentage: 8 },
-    { label: 'Brouillons', value: 12, color: '#94A3B8', percentage: 3 },
-    { label: 'Rejetées', value: 4, color: '#EF4444', percentage: 1 },
+    { label: 'Directions Régionales (DR)', count: 14, color: '#F77F00', percentage: 58 },
+    { label: 'Directions Départementales (DD)', count: 10, color: '#009E60', percentage: 42 },
   ]
   
-  // Calcul pour le donut SVG
   let cumulativePercentage = 0
   const radius = 45
   const circumference = 2 * Math.PI * radius
@@ -343,7 +319,7 @@ function StatusDonutChart() {
       {/* Donut SVG */}
       <div className="relative w-40 h-40">
         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-          {data.map((segment, index) => {
+          {data.map((segment) => {
             const strokeDasharray = `${(segment.percentage / 100) * circumference} ${circumference}`
             const strokeDashoffset = -(cumulativePercentage / 100) * circumference
             cumulativePercentage += segment.percentage
@@ -369,19 +345,19 @@ function StatusDonutChart() {
         </svg>
         {/* Center content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-black text-slate-900">87%</span>
-          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Validation</span>
+          <span className="text-2xl font-black text-slate-900">24</span>
+          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Total</span>
         </div>
       </div>
       
       {/* Legend */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 w-full">
+      <div className="grid grid-cols-1 gap-x-4 gap-y-2 w-full">
         {data.map((item) => (
           <div key={item.label} className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-slate-700 truncate">{item.label}</p>
-              <p className="text-[10px] text-slate-400">{item.value} ({item.percentage}%)</p>
+              <p className="text-[10px] text-slate-400">{item.count} ({item.percentage}%)</p>
             </div>
           </div>
         ))}
@@ -390,55 +366,42 @@ function StatusDonutChart() {
   )
 }
 
-// Composant Bar Chart Vertical (Top Directions)
-function TopDirectionsChart({ data }: { data: TopDirection[] }) {
-  const maxValue = Math.max(...data.map(d => d.count))
-  
-  return (
-    <div className="space-y-3">
-      {data.map((item, index) => (
-        <div key={item.name} className="group flex items-center gap-3">
-          <span className="text-xs font-medium text-slate-600 w-28 truncate text-right" title={item.name}>
-            {item.name.replace('DR ', '')}
-          </span>
-          <div className="flex-1 h-7 bg-slate-100/80 rounded-md overflow-hidden relative">
-            <div 
-              className="absolute inset-y-0 left-0 bg-gradient-to-t from-[#009E60] to-[#34D399] rounded-md transition-all duration-500 ease-out group-hover:from-[#008C55] group-hover:to-[#009E60]"
-              style={{ 
-                width: `${(item.count / maxValue) * 100}%`,
-                animationDelay: `${index * 80}ms`
-              }}
-            />
-          </div>
-          <span className="text-xs font-bold text-slate-700 w-8 text-right">{item.count}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
+// Composant Timeline Événements Système
+function SystemTimeline({ events }: { events: SystemEvent[] }) {
+  const eventTypeConfig = {
+    connexion: { icon: Users, bgClass: 'bg-blue-100 text-blue-600 ring-blue-200' },
+    code: { icon: Key, bgClass: 'bg-cyan-100 text-cyan-600 ring-cyan-200' },
+    demande: { icon: ClipboardList, bgClass: 'bg-orange-100 text-orange-600 ring-orange-200' },
+    admin: { icon: Shield, bgClass: 'bg-purple-100 text-purple-600 ring-purple-200' },
+    system: { icon: Activity, bgClass: 'bg-green-100 text-green-600 ring-green-200' },
+  }
 
-// Composant Timeline Activités Récentes
-function ActivityTimeline({ activities }: { activities: RecentActivity[] }) {
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    
+    if (diffHours < 1) return 'À l\'instant'
+    if (diffHours < 24) return `Il y a ${diffHours}h`
+    if (diffHours < 48) return 'Hier'
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  }
+  
   return (
     <div className="relative space-y-0">
       {/* Vertical line */}
       <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-slate-200" />
       
-      {activities.slice(0, 5).map((activity, index) => {
-        const status = statusConfig[activity.statut]
+      {events.slice(0, 5).map((event) => {
+        const config = eventTypeConfig[event.type]
+        const EventIcon = config.icon
+        
         return (
-          <div key={activity.id} className="relative flex gap-4 pb-5 last:pb-0 group">
+          <div key={event.id} className="relative flex gap-4 pb-5 last:pb-0 group">
             {/* Timeline dot */}
-            <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-              activity.statut === 'VALIDEE' ? 'bg-emerald-100 ring-2 ring-emerald-200' :
-              activity.statut === 'EN_ATTENTE' ? 'bg-amber-100 ring-2 ring-amber-200' :
-              activity.statut === 'REJETEE' ? 'bg-red-100 ring-2 ring-red-200' :
-              'bg-slate-100 ring-2 ring-slate-200'
-            }`}>
-              {activity.statut === 'VALIDEE' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-              {activity.statut === 'EN_ATTENTE' && <Clock className="w-3.5 h-3.5 text-amber-600" />}
-              {activity.statut === 'REJETEE' && <X className="w-3.5 h-3.5 text-red-600" />}
-              {activity.statut === 'BROUILLON' && <FileText className="w-3.5 h-3.5 text-slate-500" />}
+            <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${config.bgClass} ring-2`}>
+              <EventIcon className="w-3.5 h-3.5" />
             </div>
             
             {/* Content */}
@@ -446,19 +409,12 @@ function ActivityTimeline({ activities }: { activities: RecentActivity[] }) {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-slate-900 truncate group-hover:text-[#F77F00] transition-colors">
-                    {activity.activity}
+                    {event.action}
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5">{activity.direction}</p>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${status?.className}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full mr-1 ${status?.dotClass}`} />
-                      {status?.label}
-                    </Badge>
-                    <span className="text-[10px] text-slate-400">{activity.user}</span>
-                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5 truncate">{event.description}</p>
                 </div>
                 <span className="text-[10px] text-slate-400 whitespace-nowrap flex-shrink-0">
-                  {new Date(activity.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                  {formatDate(event.date)}
                 </span>
               </div>
             </div>
@@ -471,10 +427,8 @@ function ActivityTimeline({ activities }: { activities: RecentActivity[] }) {
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
+  const [systemEvents, setSystemEvents] = useState<SystemEvent[]>([])
   const [loading, setLoading] = useState(true)
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -485,27 +439,29 @@ export default function AdminDashboardPage() {
           const statsData = await statsRes.json()
           setStats({
             totalUsers: statsData.totalUsers || mockStats.totalUsers,
-            totalOrganizations: statsData.totalOrganizations || mockStats.totalOrganizations,
-            monthlyActivities: statsData.monthlyActivities || mockStats.monthlyActivities,
-            validationRate: statsData.validationRate || mockStats.validationRate,
+            activeOrganizations: statsData.activeOrganizations || mockStats.activeOrganizations,
             pendingRequests: statsData.pendingRequests || mockStats.pendingRequests,
             codesGenerated: statsData.codesGenerated || mockStats.codesGenerated,
+            monthlyRevenue: statsData.monthlyRevenue || mockStats.monthlyRevenue,
+            conversionRate: statsData.conversionRate || mockStats.conversionRate,
+            newUsersThisMonth: statsData.newUsersThisMonth || mockStats.newUsersThisMonth,
+            newOrganizationsThisMonth: statsData.newOrganizationsThisMonth || mockStats.newOrganizationsThisMonth,
             usersTrend: statsData.usersTrend || mockStats.usersTrend,
             organizationsTrend: statsData.organizationsTrend || mockStats.organizationsTrend,
-            activitiesTrend: statsData.activitiesTrend || mockStats.activitiesTrend,
-            validationTrend: statsData.validationTrend || mockStats.validationTrend,
+            revenueTrend: statsData.revenueTrend || mockStats.revenueTrend,
+            conversionTrend: statsData.conversionTrend || mockStats.conversionTrend,
           })
         } else {
           setStats(mockStats)
         }
 
-        // Use mock data for now (API can be connected later)
-        setRecentActivities(mockRecentActivities)
+        // Use mock events for now (API can be connected later)
+        setSystemEvents(mockSystemEvents)
       } catch (error) {
         console.error('Erreur lors du chargement des données:', error)
         // Fallback to mock data
         setStats(mockStats)
-        setRecentActivities(mockRecentActivities)
+        setSystemEvents(mockSystemEvents)
       } finally {
         setLoading(false)
       }
@@ -514,20 +470,21 @@ export default function AdminDashboardPage() {
     fetchDashboardData()
   }, [])
 
-  // Pagination logic
-  const totalPages = Math.ceil(recentActivities.length / itemsPerPage)
-  const paginatedActivities = recentActivities.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
-
   // Sparkline data for each KPI
   const usersSparkData = [120, 132, 138, 145, 150, 156]
   const orgsSparkData = [18, 19, 20, 21, 22, 24]
-  const activitiesSparkData = [220, 245, 268, 290, 315, 342]
-  const validationSparkData = [82, 83, 84, 85, 86, 87]
+  const revenueSparkData = [1850, 2100, 2250, 2450, 2680, 2850]
   const pendingSparkData = [18, 16, 15, 14, 13, 12]
   const codesSparkData = [45, 52, 58, 68, 78, 89]
+  const conversionSparkData = [55, 58, 62, 64, 66, 68]
+
+  // Format currency helper
+  const formatRevenue = (revenue: number) => {
+    if (revenue >= 1000000) {
+      return `${(revenue / 1000000).toFixed(1)}M`
+    }
+    return `${(revenue / 1000).toFixed(0)}K`
+  }
 
   if (loading) {
     return (
@@ -548,10 +505,10 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
-            Tableau de bord
+            Tableau de bord Super Admin
           </h1>
           <p className="text-slate-500 text-sm">
-            Vue d&apos;ensemble de la plateforme e-OSCS — Dernière mise à jour: {new Date().toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            Gestion de votre plateforme e-OSCS — Dernière mise à jour: {new Date().toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
@@ -562,13 +519,13 @@ export default function AdminDashboardPage() {
           <Button size="sm" asChild className="gap-2 bg-gradient-to-r from-[#F77F00] to-[#FFA940] hover:from-[#e67300] hover:to-[#F77F00] text-white shadow-lg shadow-orange-500/25">
             <Link href="/admin/demandes">
               <PlusIcon className="w-4 h-4" />
-              Nouvelle demande
+              Voir demandes
             </Link>
           </Button>
         </div>
       </div>
 
-      {/* KPI Cards Grid - 6 cards */}
+      {/* KPI Cards Grid - 6 cards SaaS Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <KPICard
           title="Total utilisateurs"
@@ -576,8 +533,7 @@ export default function AdminDashboardPage() {
           icon={Users}
           trend={stats?.usersTrend}
           trendValue="+8.3%"
-          description="vs mois dernier"
-          colorClass="text-blue-600"
+          description={`${stats?.newUsersThisMonth || 0} ce mois`}
           iconBgClass="bg-blue-100 text-blue-600"
           sparkData={usersSparkData}
           sparkColor="#3B82F6"
@@ -585,40 +541,39 @@ export default function AdminDashboardPage() {
         
         <KPICard
           title="Organisations actives"
-          value={stats?.totalOrganizations || 0}
+          value={stats?.activeOrganizations || 0}
           icon={Building2}
           trend={stats?.organizationsTrend}
           trendValue="+9.1%"
-          description="directions connectées"
-          colorClass="text-[#F77F00]"
+          description={`${stats?.newOrganizationsThisMonth || 0} nouvelles`}
           iconBgClass="bg-orange-100 text-[#F77F00]"
           sparkData={orgsSparkData}
           sparkColor="#F77F00"
         />
         
         <KPICard
-          title="Activités ce mois"
-          value={stats?.monthlyActivities?.toLocaleString() || 0}
-          icon={Activity}
-          trend={stats?.activitiesTrend}
-          trendValue="+10.4%"
-          description="total saisies"
-          colorClass="text-[#009E60]"
+          title="Revenus mensuels"
+          value={formatRevenue(stats?.monthlyRevenue || 0)}
+          prefix=""
+          suffix=" FCFA"
+          icon={DollarSign}
+          trend={stats?.revenueTrend}
+          trendValue="+7.8%"
+          description="abonnements actifs"
           iconBgClass="bg-emerald-100 text-[#009E60]"
-          sparkData={activitiesSparkData}
+          sparkData={revenueSparkData}
           sparkColor="#009E60"
         />
         
         <KPICard
-          title="Taux validation"
-          value={`${stats?.validationRate || 0}%`}
-          icon={CheckCircle2}
-          trend={stats?.validationTrend}
-          trendValue="+2.1%"
-          description="objectif: 90%"
-          colorClass="text-purple-600"
+          title="Taux conversion"
+          value={`${stats?.conversionRate || 0}%`}
+          icon={Target}
+          trend={stats?.conversionTrend}
+          trendValue="+3.2%"
+          description="demandes → abonnés"
           iconBgClass="bg-purple-100 text-purple-600"
-          sparkData={validationSparkData}
+          sparkData={conversionSparkData}
           sparkColor="#8B5CF6"
         />
         
@@ -629,7 +584,6 @@ export default function AdminDashboardPage() {
           trend="down"
           trendValue="-7.7%"
           description="à traiter"
-          colorClass="text-amber-600"
           iconBgClass="bg-amber-100 text-amber-600"
           sparkData={pendingSparkData}
           sparkColor="#F59E0B"
@@ -644,7 +598,6 @@ export default function AdminDashboardPage() {
           trend="up"
           trendValue="+14.1%"
           description="ce trimestre"
-          colorClass="text-cyan-600"
           iconBgClass="bg-cyan-100 text-cyan-600"
           sparkData={codesSparkData}
           sparkColor="#06B6D4"
@@ -657,185 +610,145 @@ export default function AdminDashboardPage() {
         {/* Left Column - Charts (2/3 width on XL) */}
         <div className="xl:col-span-2 space-y-6">
           
-          {/* Row: Monthly Activities + Status Distribution */}
+          {/* Row: Revenue Chart + Organization Type Distribution */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Monthly Bar Chart */}
+            {/* Revenue Bar Chart */}
             <Card className="border-slate-200/80 hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-[#F77F00]" />
-                  Activités par mois
+                  <CreditCard className="w-5 h-5 text-[#009E60]" />
+                  Revenus mensuels
                 </CardTitle>
-                <CardDescription>Évolution sur les 6 derniers mois</CardDescription>
+                <CardDescription>Évolution des abonnements sur 6 mois</CardDescription>
               </CardHeader>
               <CardContent>
-                <MonthlyBarChart data={mockMonthlyData} />
+                <RevenueBarChart data={mockMonthlyRevenue} />
               </CardContent>
             </Card>
 
-            {/* Status Donut Chart */}
+            {/* Organization Type Donut Chart */}
             <Card className="border-slate-200/80 hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                  <PieChart className="w-5 h-5 text-[#009E60]" />
-                  Répartition par statut
+                  <PieChart className="w-5 h-5 text-[#F77F00]" />
+                  Types d&apos;organisations
                 </CardTitle>
-                <CardDescription>Ce mois-ci</CardDescription>
+                <CardDescription>Répartition des abonnés</CardDescription>
               </CardHeader>
               <CardContent className="flex justify-center">
-                <StatusDonutChart />
+                <OrganizationTypeDonut />
               </CardContent>
             </Card>
           </div>
 
-          {/* Top Directions Chart */}
+          {/* Growth Stats Row */}
           <Card className="border-slate-200/80 hover:shadow-lg transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-[#009E60]" />
-                    Top directions les plus actives
+                    <TrendingUp className="w-5 h-5 text-[#009E60]" />
+                    Croissance de la plateforme
                   </CardTitle>
-                  <CardDescription>Basé sur les activités ce mois</CardDescription>
+                  <CardDescription>Statistiques de croissance ce mois</CardDescription>
                 </div>
-                <Button variant="ghost" size="sm" className="text-[#F77F00] hover:text-[#e67300] gap-1">
-                  Voir tout
-                  <ArrowRight className="w-4 h-4" />
+                <Button variant="ghost" size="sm" asChild className="text-[#F77F00] hover:text-[#e67300] gap-1">
+                  <Link href="/admin/rapports/statistiques">
+                    Voir détails
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <TopDirectionsChart data={mockTopDirections} />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
+                  <div className="flex items-center gap-3 mb-2">
+                    <UserPlus className="w-5 h-5 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">Nouveaux utilisateurs</span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-900">{stats?.newUsersThisMonth || 0}</p>
+                  <p className="text-xs text-blue-600 mt-1">+15% vs mois dernier</p>
+                </div>
+                
+                <div className="p-4 rounded-xl bg-orange-50 border border-orange-100">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Building2 className="w-5 h-5 text-orange-600" />
+                    <span className="text-sm font-medium text-orange-800">Nouvelles organisations</span>
+                  </div>
+                  <p className="text-2xl font-bold text-orange-900">{stats?.newOrganizationsThisMonth || 0}</p>
+                  <p className="text-xs text-orange-600 mt-1">+33% vs mois dernier</p>
+                </div>
+                
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+                  <div className="flex items-center gap-3 mb-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    <span className="text-sm font-medium text-emerald-800">Codes activés</span>
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-900">8</p>
+                  <p className="text-xs text-emerald-600 mt-1">Ce mois-ci</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Recent Activities Table */}
+          {/* Subscription Plans Overview */}
           <Card className="border-slate-200/80 hover:shadow-lg transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                    <ClipboardList className="w-5 h-5 text-[#F77F00]" />
-                    Activités récentes
+                    <Zap className="w-5 h-5 text-[#F77F00]" />
+                    Popularité des plans
                   </CardTitle>
-                  <CardDescription>Liste des dernières activités saisies</CardDescription>
+                  <CardDescription>Répartition des abonnés par plan tarifaire</CardDescription>
                 </div>
-                <Button variant="ghost" size="sm" className="text-[#F77F00] hover:text-[#e67300] gap-1">
-                  Exporter
-                  <Download className="w-4 h-4" />
+                <Button variant="ghost" size="sm" asChild className="text-[#F77F00] hover:text-[#e67300] gap-1">
+                  <Link href="/admin/plans">
+                    Gérer les plans
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              {paginatedActivities.length > 0 ? (
-                <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="hover:bg-transparent border-slate-200">
-                        <TableHead className="text-xs font-semibold text-slate-500 uppercase">Direction</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-500 uppercase">Activité</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-500 uppercase hidden md:table-cell">Utilisateur</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-500 uppercase hidden sm:table-cell">Date</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-500 uppercase">Statut</TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-slate-500 uppercase">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedActivities.map((activity) => {
-                        const status = statusConfig[activity.statut]
-                        return (
-                          <TableRow key={activity.id} className="group hover:bg-slate-50/50">
-                            <TableCell className="font-medium text-sm text-slate-900 max-w-[150px] truncate">
-                              {activity.direction.replace('DR ', '')}
-                            </TableCell>
-                            <TableCell className="text-sm text-slate-600 max-w-[180px] truncate">
-                              {activity.activity}
-                            </TableCell>
-                            <TableCell className="text-sm text-slate-500 hidden md:table-cell">
-                              {activity.user}
-                            </TableCell>
-                            <TableCell className="text-sm text-slate-500 hidden sm:table-cell">
-                              {new Date(activity.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className={`text-[11px] ${status?.className}`}>
-                                {status?.label}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600">
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                {activity.statut === 'EN_ATTENTE' && (
-                                  <>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-600">
-                                      <Check className="w-4 h-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600">
-                                      <X className="w-4 h-4" />
-                                    </Button>
-                                  </>
-                                )}
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600">
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                  
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-100">
-                      <p className="text-xs text-slate-500">
-                        Affichage {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, recentActivities.length)} sur {recentActivities.length}
-                      </p>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                          disabled={currentPage === 1}
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                        </Button>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                          <Button
-                            key={page}
-                            variant={currentPage === page ? "default" : "outline"}
-                            size="icon"
-                            className={`h-8 w-8 ${currentPage === page ? 'bg-[#F77F00] hover:bg-[#e67300]' : ''}`}
-                            onClick={() => setCurrentPage(page)}
-                          >
-                            {page}
-                          </Button>
-                        ))}
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                          disabled={currentPage === totalPages}
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </Button>
+              <div className="space-y-4">
+                {[
+                  { name: 'PRO', price: '25 000 FCFA/mois', subscribers: 12, percentage: 50, color: '#F77F00' },
+                  { name: 'INSTITUTIONNEL', price: '50 000 FCFA/mois', subscribers: 8, percentage: 33, color: '#009E60' },
+                  { name: 'ESSENTIEL', price: '10 000 FCFA/mois', subscribers: 4, percentage: 17, color: '#64748B' },
+                ].map((plan) => (
+                  <div key={plan.name} className="group">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded" style={{ backgroundColor: plan.color }} />
+                        <span className="text-sm font-medium text-slate-700">{plan.name}</span>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-slate-100">
+                          {plan.price}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-slate-900">{plan.subscribers} abonnés</span>
+                        <span className="text-xs text-slate-500 w-10 text-right">{plan.percentage}%</span>
                       </div>
                     </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-center py-12">
-                  <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500 font-medium">Aucune activité pour le moment</p>
-                  <p className="text-sm text-slate-400 mt-1">Les nouvelles activités apparaîtront ici</p>
-                </div>
-              )}
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-500 group-hover:opacity-80"
+                        style={{ 
+                          width: `${plan.percentage}%`,
+                          backgroundColor: plan.color 
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-sm">
+                <span className="text-slate-500">Total revenu potentiel mensuel</span>
+                <span className="font-bold text-slate-900">700 000 FCFA</span>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -843,35 +756,37 @@ export default function AdminDashboardPage() {
         {/* Right Column (1/3 width on XL) */}
         <div className="space-y-6">
           
-          {/* Activity Timeline */}
+          {/* System Events Timeline */}
           <Card className="border-slate-200/80 hover:shadow-lg transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-[#F77F00]" />
-                  Timeline récent
+                  Activités système
                 </CardTitle>
-                <Button variant="ghost" size="sm" className="text-[#F77F00] hover:text-[#e67300] gap-1 text-xs">
-                  Voir tout
-                  <ArrowRight className="w-3 h-3" />
+                <Button variant="ghost" size="sm" asChild className="text-[#F77F00] hover:text-[#e67300] gap-1 text-xs">
+                  <Link href="/admin/logs">
+                    Voir tout
+                    <ArrowRight className="w-3 h-3" />
+                  </Link>
                 </Button>
               </div>
-              <CardDescription>Les 5 dernières activités</CardDescription>
+              <CardDescription>Dernières actions sur la plateforme</CardDescription>
             </CardHeader>
             <CardContent>
-              <ActivityTimeline activities={mockRecentActivities} />
+              <SystemTimeline events={mockSystemEvents} />
             </CardContent>
           </Card>
 
           {/* Quick Actions Panel */}
-          <Card className="border-slate-200/80 bg-gradient-to-br from-[#0F172A] to-slate-800 text-white overflow-hidden">
+          <Card className="border-slate-200/80 bg-gradient-to-br from-[#0F172A] to-slate-800 text-white overflow-hidden relative">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#F77F00]/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             <CardHeader className="pb-3 relative">
               <CardTitle className="text-base font-semibold text-white flex items-center gap-2">
                 <Zap className="w-5 h-5 text-[#F77F00]" />
                 Actions rapides
               </CardTitle>
-              <CardDescription className="text-slate-400">Accès rapide aux fonctionnalités</CardDescription>
+              <CardDescription className="text-slate-400">Gestion de votre SaaS</CardDescription>
             </CardHeader>
             <CardContent className="relative space-y-2">
               <QuickActionButton
@@ -890,15 +805,15 @@ export default function AdminDashboardPage() {
                 color="blue"
               />
               <QuickActionButton
-                icon={Download}
-                label="Exporter les données"
-                href="#"
+                icon={BarChart3}
+                label="Rapports SaaS"
+                href="/admin/rapports"
                 color="green"
               />
               <QuickActionButton
                 icon={FileSearch}
-                label="Voir les logs système"
-                href="/admin/config"
+                label="Logs système"
+                href="/admin/logs"
                 color="purple"
               />
             </CardContent>
