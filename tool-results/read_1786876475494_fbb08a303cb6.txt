@@ -1,0 +1,802 @@
+     1→'use client'
+     2→
+     3→import React, { useState, useEffect, useCallback } from 'react'
+     4→import { 
+     5→  Search, 
+     6→  Building2, 
+     7→  Users, 
+     8→  MapPin,
+     9→  Phone,
+    10→  Mail,
+    11→  MoreHorizontal,
+    12→  Eye,
+    13→  Power,
+    14→  PowerOff,
+    15→  Filter,
+    16→  Grid3X3,
+    17→  List,
+    18→  RefreshCw,
+    19→  ChevronLeft,
+    20→  ChevronRight
+    21→} from 'lucide-react'
+    22→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+    23→import { Button } from '@/components/ui/button'
+    24→import { Badge } from '@/components/ui/badge'
+    25→import { Input } from '@/components/ui/input'
+    26→import {
+    27→  Select,
+    28→  SelectContent,
+    29→  SelectItem,
+    30→  SelectTrigger,
+    31→  SelectValue,
+    32→} from '@/components/ui/select'
+    33→import {
+    34→  Dialog,
+    35→  DialogContent,
+    36→  DialogDescription,
+    37→  DialogHeader,
+    38→  DialogTitle,
+    39→} from '@/components/ui/dialog'
+    40→import {
+    41→  DropdownMenu,
+    42→  DropdownMenuContent,
+    43→  DropdownMenuItem,
+    44→  DropdownMenuSeparator,
+    45→  DropdownMenuTrigger,
+    46→} from '@/components/ui/dropdown-menu'
+    47→import { Skeleton } from '@/components/ui/skeleton'
+    48→import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+    49→import { toast } from 'sonner'
+    50→
+    51→// Types
+    52→interface Organization {
+    53→  id: string
+    54→  created_at: string
+    55→  nom: string
+    56→  type_org: 'DR' | 'DD'
+    57→  region: string
+    58→  departement?: string
+    59→  telephone?: string
+    60→  email?: string
+    61→  logo_url?: string
+    62→  actif: boolean
+    63→  members_count?: number
+    64→  subscription?: {
+    65→    statut: string
+    66→    plan_nom: string
+    67→    date_fin: string
+    68→  }
+    69→}
+    70→
+    71→type ViewMode = 'grid' | 'list'
+    72→
+    73→interface Filters {
+    74→  search: string
+    75→  type: string
+    76→  region: string
+    77→  status: string
+    78→}
+    79→
+    80→interface Pagination {
+    81→  page: number
+    82→  limit: number
+    83→  total: number
+    84→  totalPages: number
+    85→}
+    86→
+    87→// Régions de Côte d'Ivoire
+    88→const regionsCI = [
+    89→  "Abidjan",
+    90→  "Lagune",
+    91→  "Denguele",
+    92→  "Folou",
+    93→  "Fromager",
+    94→  "Gôh",
+    95→  "Guémon",
+    96→  "Haut-Sassandra",
+    97→  "Iffou",
+    98→  "Lôh-Djiboua",
+    99→  "Marahoué",
+   100→  "Nawa",
+   101→  "Nzi",
+   102→  "San-Pedro",
+   103→  "Savanes",
+   104→  "Tonkpi",
+   105→  "Worodougou",
+   106→]
+   107→
+   108→export default function OrganisationsPage() {
+   109→  const [organizations, setOrganizations] = useState<Organization[]>([])
+   110→  const [loading, setLoading] = useState(true)
+   111→  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+   112→  const [filters, setFilters] = useState<Filters>({
+   113→    search: '',
+   114→    type: '',
+   115→    region: '',
+   116→    status: ''
+   117→  })
+   118→  const [pagination, setPagination] = useState<Pagination>({
+   119→    page: 1,
+   120→    limit: 12,
+   121→    total: 0,
+   122→    totalPages: 0
+   123→  })
+   124→  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null)
+   125→  const [dialogOpen, setDialogOpen] = useState(false)
+   126→  const [actionLoading, setActionLoading] = useState(false)
+   127→
+   128→  // Fetch organizations
+   129→  const fetchOrganizations = useCallback(async () => {
+   130→    setLoading(true)
+   131→    try {
+   132→      const params = new URLSearchParams({
+   133→        page: pagination.page.toString(),
+   134→        limit: pagination.limit.toString(),
+   135→        ...(filters.search && { search: filters.search }),
+   136→        ...(filters.type && { type_org: filters.type }),
+   137→        ...(filters.region && { region: filters.region }),
+   138→        ...(filters.status !== '' && { actif: filters.status === 'actif' ? 'true' : 'false' })
+   139→      })
+   140→
+   141→      const response = await fetch(`/api/admin/organisations?${params}`)
+   142→      if (response.ok) {
+   143→        const data = await response.json()
+   144→        setOrganizations(data.data || [])
+   145→        setPagination(prev => ({
+   146→          ...prev,
+   147→          total: data.total || 0,
+   148→          totalPages: Math.ceil((data.total || 0) / prev.limit)
+   149→        }))
+   150→      }
+   151→    } catch (error) {
+   152→      console.error('Erreur lors de la récupération des organisations:', error)
+   153→      toast.error('Erreur lors du chargement des organisations')
+   154→    } finally {
+   155→      setLoading(false)
+   156→    }
+   157→  }, [pagination.page, pagination.limit, filters])
+   158→
+   159→  useEffect(() => {
+   160→    fetchOrganizations()
+   161→  }, [fetchOrganizations])
+   162→
+   163→  // Toggle organization status
+   164→  const toggleOrgStatus = async (orgId: string, currentStatus: boolean) => {
+   165→    setActionLoading(true)
+   166→    try {
+   167→      const response = await fetch(`/api/admin/organisations/${orgId}/toggle-status`, {
+   168→        method: 'PATCH'
+   169→      })
+   170→
+   171→      if (response.ok) {
+   172→        toast.success(currentStatus 
+   173→          ? 'Organisation suspendue avec succès' 
+   174→          : 'Organisation réactivée avec succès'
+   175→        )
+   176→        fetchOrganizations()
+   177→        if (selectedOrg?.id === orgId) {
+   178→          setSelectedOrg(prev => prev ? { ...prev, actif: !currentStatus } : null)
+   179→        }
+   180→      } else {
+   181→        throw new Error('Erreur lors de la mise à jour')
+   182→      }
+   183→    } catch (error) {
+   184→      console.error(error)
+   185→      toast.error('Erreur lors de la modification du statut')
+   186→    } finally {
+   187→      setActionLoading(false)
+   188→    }
+   189→  }
+   190→
+   191→  const formatDate = (dateStr: string) => {
+   192→    return new Date(dateStr).toLocaleDateString('fr-FR', {
+   193→      day: 'numeric',
+   194→      month: 'short',
+   195→      year: 'numeric'
+   196→    })
+   197→  }
+   198→
+   199→  return (
+   200→    <div className="space-y-6">
+   201→      {/* Page header */}
+   202→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   203→        <div>
+   204→          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">Organisations</h1>
+   205→          <p className="text-slate-500 mt-1">Gérez les Directions Régionales et Départementales</p>
+   206→        </div>
+   207→        <div className="flex items-center gap-3">
+   208→          <Button variant="outline" onClick={fetchOrganizations} disabled={loading} className="gap-2">
+   209→            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+   210→            Actualiser
+   211→          </Button>
+   212→        </div>
+   213→      </div>
+   214→
+   215→      {/* Stats cards */}
+   216→      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+   217→        <Card className="border-slate-200">
+   218→          <CardContent className="p-4 flex items-center gap-4">
+   219→            <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
+   220→              <Building2 className="w-6 h-6" />
+   221→            </div>
+   222→            <div>
+   223→              <p className="text-2xl font-bold text-slate-900">{pagination.total}</p>
+   224→              <p className="text-xs text-slate-500">Total organisations</p>
+   225→            </div>
+   226→          </CardContent>
+   227→        </Card>
+   228→        <Card className="border-slate-200">
+   229→          <CardContent className="p-4 flex items-center gap-4">
+   230→            <div className="p-3 rounded-xl bg-green-100 text-green-600">
+   231→              <Power className="w-6 h-6" />
+   232→            </div>
+   233→            <div>
+   234→              <p className="text-2xl font-bold text-slate-900">--</p>
+   235→              <p className="text-xs text-slate-500">Actives</p>
+   236→            </div>
+   237→          </CardContent>
+   238→        </Card>
+   239→        <Card className="border-slate-200">
+   240→          <CardContent className="p-4 flex items-center gap-4">
+   241→            <div className="p-3 rounded-xl bg-orange-100 text-orange-600">
+   242→              <Building2 className="w-6 h-6" />
+   243→            </div>
+   244→            <div>
+   245→              <p className="text-2xl font-bold text-slate-900">DR</p>
+   246→              <p className="text-xs text-slate-500">Directions Régionales</p>
+   247→            </div>
+   248→          </CardContent>
+   249→        </Card>
+   250→        <Card className="border-slate-200">
+   251→          <CardContent className="p-4 flex items-center gap-4">
+   252→            <div className="p-3 rounded-xl bg-purple-100 text-purple-600">
+   253→              <Building2 className="w-6 h-6" />
+   254→            </div>
+   255→            <div>
+   256→              <p className="text-2xl font-bold text-slate-900">DD</p>
+   257→              <p className="text-xs text-slate-500">Directions Départementales</p>
+   258→            </div>
+   259→          </CardContent>
+   260→        </Card>
+   261→      </div>
+   262→
+   263→      {/* Filters & View toggle */}
+   264→      <Card className="border-slate-200">
+   265→        <CardContent className="p-4">
+   266→          <div className="flex flex-col md:flex-row gap-4">
+   267→            {/* Search */}
+   268→            <div className="relative flex-1">
+   269→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+   270→              <Input
+   271→                placeholder="Rechercher une organisation..."
+   272→                value={filters.search}
+   273→                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+   274→                className="pl-10 bg-white"
+   275→              />
+   276→            </div>
+   277→
+   278→            {/* Type filter */}
+   279→            <Select value={filters.type} onValueChange={(value) => setFilters(prev => ({ ...prev, type: value }))}>
+   280→              <SelectTrigger className="w-full md:w-[140px]">
+   281→                <SelectValue placeholder="Type" />
+   282→              </SelectTrigger>
+   283→              <SelectContent>
+   284→                <SelectItem value="">Tous types</SelectItem>
+   285→                <SelectItem value="DR">Direction Régionale</SelectItem>
+   286→                <SelectItem value="DD">Direction Départementale</SelectItem>
+   287→              </SelectContent>
+   288→            </Select>
+   289→
+   290→            {/* Region filter */}
+   291→            <Select value={filters.region} onValueChange={(value) => setFilters(prev => ({ ...prev, region: value }))}>
+   292→              <SelectTrigger className="w-full md:w-[180px]">
+   293→                <MapPin className="w-4 h-4 mr-2 text-slate-400" />
+   294→                <SelectValue placeholder="Région" />
+   295→              </SelectTrigger>
+   296→              <SelectContent>
+   297→                <SelectItem value="">Toutes régions</SelectItem>
+   298→                {regionsCI.map(region => (
+   299→                  <SelectItem key={region} value={region}>{region}</SelectItem>
+   300→                ))}
+   301→              </SelectContent>
+   302→            </Select>
+   303→
+   304→            {/* Status filter */}
+   305→            <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+   306→              <SelectTrigger className="w-full md:w-[140px]">
+   307→                <SelectValue placeholder="Statut" />
+   308→              </SelectTrigger>
+   309→              <SelectContent>
+   310→                <SelectItem value="">Tous statuts</SelectItem>
+   311→                <SelectItem value="actif">Actives</SelectItem>
+   312→                <SelectItem value="inactif">Inactives</SelectItem>
+   313→              </SelectContent>
+   314→            </Select>
+   315→
+   316→            {/* View mode toggle */}
+   317→            <div className="hidden md:flex items-center border border-slate-200 rounded-lg p-1">
+   318→              <Button
+   319→                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+   320→                size="icon"
+   321→                className="h-8 w-8"
+   322→                onClick={() => setViewMode('grid')}
+   323→              >
+   324→                <Grid3X3 className="w-4 h-4" />
+   325→              </Button>
+   326→              <Button
+   327→                variant={viewMode === 'list' ? 'default' : 'ghost'}
+   328→                size="icon"
+   329→                className="h-8 w-8"
+   330→                onClick={() => setViewMode('list')}
+   331→              >
+   332→                <List className="w-4 h-4" />
+   333→              </Button>
+   334→            </div>
+   335→          </div>
+   336→        </CardContent>
+   337→      </Card>
+   338→
+   339→      {/* Content */}
+   340→      {loading ? (
+   341→        viewMode === 'grid' ? (
+   342→          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   343→            {[...Array(6)].map((_, i) => (
+   344→              <Card key={i} className="border-slate-200">
+   345→                <CardContent className="p-6">
+   346→                  <Skeleton className="h-6 w-3/4 mb-4" />
+   347→                  <Skeleton className="h-4 w-1/2 mb-2" />
+   348→                  <Skeleton className="h-4 w-full mb-4" />
+   349→                  <div className="flex justify-between">
+   350→                    <Skeleton className="h-8 w-20" />
+   351→                    <Skeleton className="h-8 w-20" />
+   352→                  </div>
+   353→                </CardContent>
+   354→              </Card>
+   355→            ))}
+   356→          </div>
+   357→        ) : (
+   358→          <div className="space-y-3">
+   359→            {[...Array(5)].map((_, i) => (
+   360→              <Skeleton key={i} className="h-20 w-full" />
+   361→            ))}
+   362→          </div>
+   363→        )
+   364→      ) : organizations.length > 0 ? (
+   365→        <>
+   366→          {viewMode === 'grid' ? (
+   367→            /* Grid View */
+   368→            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   369→              {organizations.map((org) => (
+   370→                <Card key={org.id} className={`border-slate-200 hover:shadow-lg transition-all duration-300 group ${!org.actif ? 'opacity-60' : ''}`}>
+   371→                  <CardContent className="p-6">
+   372→                    <div className="flex items-start justify-between mb-4">
+   373→                      <div className="flex items-center gap-3">
+   374→                        <Avatar className="h-12 w-12 ring-2 ring-offset-2 ring-orange-100">
+   375→                          <AvatarFallback className={`${
+   376→                            org.type_org === 'DR' 
+   377→                              ? 'bg-gradient-to-br from-blue-500 to-blue-600' 
+   378→                              : 'bg-gradient-to-br from-purple-500 to-purple-600'
+   379→                          } text-white font-bold`}>
+   380→                            {org.nom.slice(0, 2).toUpperCase()}
+   381→                          </AvatarFallback>
+   382→                        </Avatar>
+   383→                        <div>
+   384→                          <h3 className="font-semibold text-slate-900 group-hover:text-orange-600 transition-colors line-clamp-1">
+   385→                            {org.nom}
+   386→                          </h3>
+   387→                          <Badge variant="outline" className={`text-[10px] mt-1 ${
+   388→                            org.type_org === 'DR' 
+   389→                              ? 'border-blue-200 text-blue-700 bg-blue-50' 
+   390→                              : 'border-purple-200 text-purple-700 bg-purple-50'
+   391→                          }`}>
+   392→                            {org.type_org}
+   393→                          </Badge>
+   394→                        </div>
+   395→                      </div>
+   396→                      
+   397→                      <DropdownMenu>
+   398→                        <DropdownMenuTrigger asChild>
+   399→                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+   400→                            <MoreHorizontal className="w-4 h-4 text-slate-400" />
+   401→                          </Button>
+   402→                        </DropdownMenuTrigger>
+   403→                        <DropdownMenuContent align="end">
+   404→                          <DropdownMenuItem onClick={() => { setSelectedOrg(org); setDialogOpen(true); }}>
+   405→                            <Eye className="mr-2 h-4 w-4" />
+   406→                            Voir détails
+   407→                          </DropdownMenuItem>
+   408→                          <DropdownMenuSeparator />
+   409→                          <DropdownMenuItem 
+   410→                            onClick={() => toggleOrgStatus(org.id, org.actif)}
+   411→                            disabled={actionLoading}
+   412→                            className={org.actif ? 'text-amber-600 focus:text-amber-600' : 'text-green-600 focus:text-green-600'}
+   413→                          >
+   414→                            {org.actif ? (
+   415→                              <>
+   416→                                <PowerOff className="mr-2 h-4 w-4" />
+   417→                                Suspendre
+   418→                              </>
+   419→                            ) : (
+   420→                              <>
+   421→                                <Power className="mr-2 h-4 w-4" />
+   422→                                Réactiver
+   423→                              </>
+   424→                            )}
+   425→                          </DropdownMenuItem>
+   426→                        </DropdownMenuContent>
+   427→                      </DropdownMenu>
+   428→                    </div>
+   429→
+   430→                    <div className="space-y-2 mb-4">
+   431→                      <div className="flex items-center gap-2 text-sm text-slate-600">
+   432→                        <MapPin className="w-4 h-4 text-slate-400" />
+   433→                        <span>{org.departement}, {org.region}</span>
+   434→                      </div>
+   435→                      {org.email && (
+   436→                        <div className="flex items-center gap-2 text-sm text-slate-600">
+   437→                          <Mail className="w-4 h-4 text-slate-400" />
+   438→                          <span className="truncate">{org.email}</span>
+   439→                        </div>
+   440→                      )}
+   441→                      {org.telephone && (
+   442→                        <div className="flex items-center gap-2 text-sm text-slate-600">
+   443→                          <Phone className="w-4 h-4 text-slate-400" />
+   444→                          <span>{org.telephone}</span>
+   445→                        </div>
+   446→                      )}
+   447→                    </div>
+   448→
+   449→                    <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+   450→                      <div className="flex items-center gap-2">
+   451→                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
+   452→                          org.actif 
+   453→                            ? 'bg-green-100 text-green-700' 
+   454→                            : 'bg-red-100 text-red-700'
+   455→                        }`}>
+   456→                          <span className={`w-1.5 h-1.5 rounded-full ${org.actif ? 'bg-green-500' : 'bg-red-500'}`} />
+   457→                          {org.actif ? 'Active' : 'Inactive'}
+   458→                        </span>
+   459→                      </div>
+   460→                      
+   461→                      {org.subscription && (
+   462→                        <Badge variant="secondary" className="text-[10px]">
+   463→                          {org.subscription.plan_nom}
+   464→                        </Badge>
+   465→                      )}
+   466→                    </div>
+   467→                  </CardContent>
+   468→                </Card>
+   469→              ))}
+   470→            </div>
+   471→          ) : (
+   472→            /* List View */
+   473→            <Card className="border-slate-200">
+   474→              <CardContent className="p-0">
+   475→                <table className="w-full">
+   476→                  <thead>
+   477→                    <tr className="border-b border-slate-200">
+   478→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Organisation</th>
+   479→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
+   480→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Localisation</th>
+   481→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Membres</th>
+   482→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Statut</th>
+   483→                      <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+   484→                    </tr>
+   485→                  </thead>
+   486→                  <tbody>
+   487→                    {organizations.map((org, index) => (
+   488→                      <tr 
+   489→                        key={org.id}
+   490→                        className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+   491→                          index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'
+   492→                        } ${!org.actif ? 'opacity-60' : ''}`}
+   493→                      >
+   494→                        <td className="py-4 px-4">
+   495→                          <div className="flex items-center gap-3">
+   496→                            <Avatar className="h-9 w-9">
+   497→                              <AvatarFallback className={`${
+   498→                                org.type_org === 'DR' 
+   499→                                  ? 'bg-gradient-to-br from-blue-500 to-blue-600' 
+   500→                                  : 'bg-gradient-to-br from-purple-500 to-purple-600'
+   501→                              } text-white text-xs font-bold`}>
+   502→                                {org.nom.slice(0, 2).toUpperCase()}
+   503→                              </AvatarFallback>
+   504→                            </Avatar>
+   505→                            <div>
+   506→                              <p className="font-medium text-slate-900">{org.nom}</p>
+   507→                              {org.email && (
+   508→                                <p className="text-xs text-slate-500">{org.email}</p>
+   509→                              )}
+   510→                            </div>
+   511→                          </div>
+   512→                        </td>
+   513→                        <td className="py-4 px-4">
+   514→                          <Badge variant="outline" className={`${
+   515→                            org.type_org === 'DR' 
+   516→                              ? 'border-blue-200 text-blue-700 bg-blue-50' 
+   517→                              : 'border-purple-200 text-purple-700 bg-purple-50'
+   518→                          }`}>
+   519→                            {org.type_org}
+   520→                          </Badge>
+   521→                        </td>
+   522→                        <td className="py-4 px-4">
+   523→                          <span className="text-sm text-slate-600 flex items-center gap-1">
+   524→                            <MapPin className="w-4 h-4 text-slate-400" />
+   525→                            {org.departement}, {org.region}
+   526→                          </span>
+   527→                        </td>
+   528→                        <td className="py-4 px-4">
+   529→                          <span className="text-sm text-slate-600 flex items-center gap-1">
+   530→                            <Users className="w-4 h-4 text-slate-400" />
+   531→                            {org.members_count || '--'}
+   532→                          </span>
+   533→                        </td>
+   534→                        <td className="py-4 px-4">
+   535→                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+   536→                            org.actif 
+   537→                              ? 'bg-green-100 text-green-700' 
+   538→                              : 'bg-red-100 text-red-700'
+   539→                          }`}>
+   540→                            <span className={`w-1.5 h-1.5 rounded-full ${org.actif ? 'bg-green-500' : 'bg-red-500'}`} />
+   541→                            {org.actif ? 'Active' : 'Inactive'}
+   542→                          </span>
+   543→                        </td>
+   544→                        <td className="py-4 px-4">
+   545→                          <div className="flex items-center justify-end gap-1">
+   546→                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSelectedOrg(org); setDialogOpen(true); }}>
+   547→                              <Eye className="w-4 h-4 text-slate-400" />
+   548→                            </Button>
+   549→                            <Button 
+   550→                              variant="ghost" 
+   551→                              size="icon" 
+   552→                              className={`h-8 w-8 ${org.actif ? 'text-amber-500 hover:text-amber-600 hover:bg-amber-50' : 'text-green-500 hover:text-green-600 hover:bg-green-50'}`}
+   553→                              onClick={() => toggleOrgStatus(org.id, org.actif)}
+   554→                              disabled={actionLoading}
+   555→                            >
+   556→                              {org.actif ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+   557→                            </Button>
+   558→                          </div>
+   559→                        </td>
+   560→                      </tr>
+   561→                    ))}
+   562→                  </tbody>
+   563→                </table>
+   564→              </CardContent>
+   565→            </Card>
+   566→          )}
+   567→
+   568→          {/* Pagination */}
+   569→          {pagination.totalPages > 1 && (
+   570→            <div className="flex items-center justify-between pt-4">
+   571→              <p className="text-sm text-slate-500">
+   572→                Affichage {(pagination.page - 1) * pagination.limit + 1}-{Math.min(pagination.page * pagination.limit, pagination.total)} sur {pagination.total}
+   573→              </p>
+   574→              <div className="flex items-center gap-2">
+   575→                <Button
+   576→                  variant="outline"
+   577→                  size="icon"
+   578→                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+   579→                  disabled={pagination.page <= 1}
+   580→                >
+   581→                  <ChevronLeft className="w-4 h-4" />
+   582→                </Button>
+   583→                
+   584→                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+   585→                  let pageNum: number
+   586→                  if (pagination.totalPages <= 5) {
+   587→                    pageNum = i + 1
+   588→                  } else if (pagination.page <= 3) {
+   589→                    pageNum = i + 1
+   590→                  } else if (pagination.page >= pagination.totalPages - 2) {
+   591→                    pageNum = pagination.totalPages - 4 + i
+   592→                  } else {
+   593→                    pageNum = pagination.page - 2 + i
+   594→                  }
+   595→                  
+   596→                  return (
+   597→                    <Button
+   598→                      key={pageNum}
+   599→                      variant={pagination.page === pageNum ? 'default' : 'outline'}
+   600→                      size="icon"
+   601→                      className="w-8 h-8"
+   602→                      onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+   603→                    >
+   604→                      {pageNum}
+   605→                    </Button>
+   606→                  )
+   607→                })}
+   608→                
+   609→                <Button
+   610→                  variant="outline"
+   611→                  size="icon"
+   612→                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+   613→                  disabled={pagination.page >= pagination.totalPages}
+   614→                >
+   615→                  <ChevronRight className="w-4 h-4" />
+   616→                </Button>
+   617→              </div>
+   618→            </div>
+   619→          )}
+   620→        </>
+   621→      ) : (
+   622→        <Card className="border-slate-200">
+   623→          <CardContent className="py-16 text-center">
+   624→            <Building2 className="w-16 h-16 text-slate-200 mx-auto mb-4" />
+   625→            <h3 className="text-lg font-semibold text-slate-700 mb-2">Aucune organisation trouvée</h3>
+   626→            <p className="text-slate-500 mb-4">
+   627→              {filters.search || filters.type || filters.region || filters.status
+   628→                ? 'Essayez de modifier vos filtres'
+   629→                : 'Les organisations apparaîtront ici une fois créées'}
+   630→            </p>
+   631→            {(filters.search || filters.type || filters.region || filters.status) && (
+   632→              <Button 
+   633→                variant="outline" 
+   634→                onClick={() => setFilters({ search: '', type: '', region: '', status: '' })}
+   635→              >
+   636→                Réinitialiser les filtres
+   637→              </Button>
+   638→            )}
+   639→          </CardContent>
+   640→        </Card>
+   641→      )}
+   642→
+   643→      {/* Organization Details Dialog */}
+   644→      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+   645→        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+   646→          <DialogHeader>
+   647→            <DialogTitle>Détails de l&apos;organisation</DialogTitle>
+   648→            <DialogDescription>
+   649→              {selectedOrg?.nom}
+   650→            </DialogDescription>
+   651→          </DialogHeader>
+   652→          
+   653→          {selectedOrg && (
+   654→            <div className="space-y-6 mt-4">
+   655→              {/* Header */}
+   656→              <div className="flex items-center gap-4 p-4 rounded-lg bg-slate-50">
+   657→                <Avatar className="h-16 w-16 ring-2 ring-offset-2 ring-orange-100">
+   658→                  <AvatarFallback className={`${
+   659→                    selectedOrg.type_org === 'DR' 
+   660→                      ? 'bg-gradient-to-br from-blue-500 to-blue-600' 
+   661→                      : 'bg-gradient-to-br from-purple-500 to-purple-600'
+   662→                  } text-white text-xl font-bold`}>
+   663→                    {selectedOrg.nom.slice(0, 2).toUpperCase()}
+   664→                  </AvatarFallback>
+   665→                </Avatar>
+   666→                <div className="flex-1">
+   667→                  <h3 className="font-semibold text-lg text-slate-900">{selectedOrg.nom}</h3>
+   668→                  <div className="flex items-center gap-2 mt-1">
+   669→                    <Badge variant="outline" className={`${
+   670→                      selectedOrg.type_org === 'DR' 
+   671→                        ? 'border-blue-200 text-blue-700 bg-blue-50' 
+   672→                        : 'border-purple-200 text-purple-700 bg-purple-50'
+   673→                    }`}>
+   674→                      {selectedOrg.type_org}
+   675→                    </Badge>
+   676→                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+   677→                      selectedOrg.actif 
+   678→                        ? 'bg-green-100 text-green-700' 
+   679→                        : 'bg-red-100 text-red-700'
+   680→                    }`}>
+   681→                      <span className={`w-1.5 h-1.5 rounded-full ${selectedOrg.actif ? 'bg-green-500' : 'bg-red-500'}`} />
+   682→                      {selectedOrg.actif ? 'Active' : 'Inactive'}
+   683→                    </span>
+   684→                  </div>
+   685→                </div>
+   686→              </div>
+   687→
+   688→              {/* Info sections */}
+   689→              <div className="space-y-4">
+   690→                <div className="space-y-3">
+   691→                  <h4 className="text-sm font-medium text-slate-700">Informations générales</h4>
+   692→                  
+   693→                  <div className="grid grid-cols-2 gap-3">
+   694→                    <div className="p-3 rounded-lg bg-slate-50 space-y-1">
+   695→                      <p className="text-xs text-slate-500">Région</p>
+   696→                      <p className="text-sm font-medium text-slate-900 flex items-center gap-1">
+   697→                        <MapPin className="w-4 h-4 text-slate-400" />
+   698→                        {selectedOrg.region}
+   699→                      </p>
+   700→                    </div>
+   701→                    <div className="p-3 rounded-lg bg-slate-50 space-y-1">
+   702→                      <p className="text-xs text-slate-500">Département</p>
+   703→                      <p className="text-sm font-medium text-slate-900">{selectedOrg.departement || '--'}</p>
+   704→                    </div>
+   705→                    <div className="p-3 rounded-lg bg-slate-50 space-y-1">
+   706→                      <p className="text-xs text-slate-500">Email</p>
+   707→                      <p className="text-sm font-medium text-slate-900 flex items-center gap-1 truncate">
+   708→                        <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
+   709→                        {selectedOrg.email || '--'}
+   710→                      </p>
+   711→                    </div>
+   712→                    <div className="p-3 rounded-lg bg-slate-50 space-y-1">
+   713→                      <p className="text-xs text-slate-500">Téléphone</p>
+   714→                      <p className="text-sm font-medium text-slate-900 flex items-center gap-1">
+   715→                        <Phone className="w-4 h-4 text-slate-400" />
+   716→                        {selectedOrg.telephone || '--'}
+   717→                      </p>
+   718→                    </div>
+   719→                  </div>
+   720→                </div>
+   721→
+   722→                {/* Subscription info */}
+   723→                {selectedOrg.subscription && (
+   724→                  <div className="space-y-3">
+   725→                    <h4 className="text-sm font-medium text-slate-700">Abonnement</h4>
+   726→                    <div className="p-4 rounded-lg bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100">
+   727→                      <div className="flex items-center justify-between">
+   728→                        <div>
+   729→                          <p className="font-medium text-slate-900">{selectedOrg.subscription.plan_nom}</p>
+   730→                          <p className="text-xs text-slate-500 mt-1">
+   731→                            Expire le {formatDate(selectedOrg.subscription.date_fin)}
+   732→                          </p>
+   733→                        </div>
+   734→                        <Badge variant="outline" className={
+   735→                          selectedOrg.subscription.statut === 'ACTIF' 
+   736→                            ? 'border-green-200 text-green-700 bg-green-50' 
+   737→                            : 'border-amber-200 text-amber-700 bg-amber-50'
+   738→                        }>
+   739→                          {selectedOrg.subscription.statut}
+   740→                        </Badge>
+   741→                      </div>
+   742→                    </div>
+   743→                  </div>
+   744→                )}
+   745→
+   746→                {/* Members count */}
+   747→                <div className="space-y-3">
+   748→                  <h4 className="text-sm font-medium text-slate-700">Utilisateurs</h4>
+   749→                  <div className="p-4 rounded-lg bg-slate-50 flex items-center gap-4">
+   750→                    <Users className="w-10 h-10 text-slate-400" />
+   751→                    <div>
+   752→                      <p className="text-2xl font-bold text-slate-900">{selectedOrg.members_count || 0}</p>
+   753→                      <p className="text-xs text-slate-500">membre(s) dans cette organisation</p>
+   754→                    </div>
+   755→                  </div>
+   756→                </div>
+   757→
+   758→                {/* Dates */}
+   759→                <div className="pt-4 border-t border-slate-200">
+   760→                  <p className="text-xs text-slate-500">
+   761→                    Créée le {formatDate(selectedOrg.created_at)}
+   762→                  </p>
+   763→                </div>
+   764→              </div>
+   765→
+   766→              {/* Actions */}
+   767→              <div className="flex gap-3 pt-4 border-t border-slate-200">
+   768→                <Button 
+   769→                  variant="outline" 
+   770→                  className="flex-1"
+   771→                  onClick={() => window.open(`mailto:${selectedOrg.email}`)}
+   772→                >
+   773→                  <Mail className="w-4 h-4 mr-2" />
+   774→                  Contacter
+   775→                </Button>
+   776→                <Button 
+   777→                  variant={selectedOrg.actif ? 'destructive' : 'default'}
+   778→                  className="flex-1"
+   779→                  onClick={() => toggleOrgStatus(selectedOrg.id, selectedOrg.actif)}
+   780→                  disabled={actionLoading}
+   781→                >
+   782→                  {selectedOrg.actif ? (
+   783→                    <>
+   784→                      <PowerOff className="w-4 h-4 mr-2" />
+   785→                      Suspendre
+   786→                    </>
+   787→                  ) : (
+   788→                    <>
+   789→                      <Power className="w-4 h-4 mr-2" />
+   790→                      Réactiver
+   791→                    </>
+   792→                  )}
+   793→                </Button>
+   794→              </div>
+   795→            </div>
+   796→          )}
+   797→        </DialogContent>
+   798→      </Dialog>
+   799→    </div>
+   800→  )
+   801→}
+   802→

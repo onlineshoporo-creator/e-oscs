@@ -17,7 +17,8 @@ import {
   List,
   RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Calendar
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -86,23 +87,21 @@ interface Pagination {
 
 // Régions de Côte d'Ivoire
 const regionsCI = [
+  "Toutes régions",
   "Abidjan",
-  "Lagune",
-  "Denguele",
-  "Folou",
-  "Fromager",
-  "Gôh",
-  "Guémon",
-  "Haut-Sassandra",
-  "Iffou",
-  "Lôh-Djiboua",
-  "Marahoué",
-  "Nawa",
-  "Nzi",
-  "San-Pedro",
-  "Savanes",
-  "Tonkpi",
+  "Lagunes",
+  "District d'Abidjan",
+  "Comoé",
+  "Denguélé",
+  "Gôh-Djiboua",
+  "Lacs",
+  "Montagnes",
+  "Sassandra-Marahoué",
+  "Vallée du Bandama",
   "Worodougou",
+  "Zanzan",
+  "San-Pédro",
+  "Yamoussoukro"
 ]
 
 export default function OrganisationsPage() {
@@ -124,6 +123,7 @@ export default function OrganisationsPage() {
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [stats, setStats] = useState({ total: 0, actives: 0, dr: 0, dd: 0 })
 
   // Fetch organizations
   const fetchOrganizations = useCallback(async () => {
@@ -134,23 +134,34 @@ export default function OrganisationsPage() {
         limit: pagination.limit.toString(),
         ...(filters.search && { search: filters.search }),
         ...(filters.type && { type_org: filters.type }),
-        ...(filters.region && { region: filters.region }),
+        ...(filters.region && filters.region !== 'Toutes régions' && { region: filters.region }),
         ...(filters.status !== '' && { actif: filters.status === 'actif' ? 'true' : 'false' })
       })
 
       const response = await fetch(`/api/admin/organisations?${params}`)
       if (response.ok) {
         const data = await response.json()
-        setOrganizations(data.data || [])
+        const orgs = data.data || []
+        setOrganizations(orgs)
         setPagination(prev => ({
           ...prev,
           total: data.total || 0,
           totalPages: Math.ceil((data.total || 0) / prev.limit)
         }))
+        
+        // Calculer les stats localement
+        setStats({
+          total: orgs.length,
+          actives: orgs.filter((o: Organization) => o.actif).length,
+          dr: orgs.filter((o: Organization) => o.type_org === 'DR').length,
+          dd: orgs.filter((o: Organization) => o.type_org === 'DD').length
+        })
+      } else {
+        toast.error('Erreur lors du chargement des organisations')
       }
     } catch (error) {
-      console.error('Erreur lors de la récupération des organisations:', error)
-      toast.error('Erreur lors du chargement des organisations')
+      console.error('Erreur:', error)
+      toast.error('Erreur de connexion au serveur')
     } finally {
       setLoading(false)
     }
@@ -160,12 +171,14 @@ export default function OrganisationsPage() {
     fetchOrganizations()
   }, [fetchOrganizations])
 
-  // Toggle organization status
+  // Toggle organization status - utiliser le bon endpoint
   const toggleOrgStatus = async (orgId: string, currentStatus: boolean) => {
     setActionLoading(true)
     try {
-      const response = await fetch(`/api/admin/organisations/${orgId}/toggle-status`, {
-        method: 'PATCH'
+      const response = await fetch(`/api/admin/organisations/${orgId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ toggleStatus: true })
       })
 
       if (response.ok) {
@@ -196,6 +209,18 @@ export default function OrganisationsPage() {
     })
   }
 
+  const getSubscriptionStatus = (org: Organization) => {
+    if (!org.subscription) return null
+    
+    const now = new Date()
+    const endDate = new Date(org.subscription.date_fin)
+    const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    
+    if (daysLeft <= 0) return { label: 'Expiré', className: 'bg-red-100 text-red-700 border-red-200' }
+    if (daysLeft <= 7) return { label: `Expire ${daysLeft}j`, className: 'bg-amber-100 text-amber-700 border-amber-200' }
+    return { label: org.subscription.plan_nom, className: 'bg-green-100 text-green-700 border-green-200' }
+  }
+
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -213,14 +238,14 @@ export default function OrganisationsPage() {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="border-slate-200">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
               <Building2 className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{pagination.total}</p>
+              <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
               <p className="text-xs text-slate-500">Total organisations</p>
             </div>
           </CardContent>
@@ -231,7 +256,7 @@ export default function OrganisationsPage() {
               <Power className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">--</p>
+              <p className="text-2xl font-bold text-slate-900">{stats.actives}</p>
               <p className="text-xs text-slate-500">Actives</p>
             </div>
           </CardContent>
@@ -242,7 +267,7 @@ export default function OrganisationsPage() {
               <Building2 className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">DR</p>
+              <p className="text-2xl font-bold text-slate-900">{stats.dr}</p>
               <p className="text-xs text-slate-500">Directions Régionales</p>
             </div>
           </CardContent>
@@ -253,7 +278,7 @@ export default function OrganisationsPage() {
               <Building2 className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">DD</p>
+              <p className="text-2xl font-bold text-slate-900">{stats.dd}</p>
               <p className="text-xs text-slate-500">Directions Départementales</p>
             </div>
           </CardContent>
@@ -277,7 +302,7 @@ export default function OrganisationsPage() {
 
             {/* Type filter */}
             <Select value={filters.type} onValueChange={(value) => setFilters(prev => ({ ...prev, type: value }))}>
-              <SelectTrigger className="w-full md:w-[140px]">
+              <SelectTrigger className="w-full md:w-[160px]">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
@@ -294,7 +319,6 @@ export default function OrganisationsPage() {
                 <SelectValue placeholder="Région" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toutes régions</SelectItem>
                 {regionsCI.map(region => (
                   <SelectItem key={region} value={region}>{region}</SelectItem>
                 ))}
@@ -318,7 +342,7 @@ export default function OrganisationsPage() {
               <Button
                 variant={viewMode === 'grid' ? 'default' : 'ghost'}
                 size="icon"
-                className="h-8 w-8"
+                className={`h-8 w-8 ${viewMode === 'grid' ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
                 onClick={() => setViewMode('grid')}
               >
                 <Grid3X3 className="w-4 h-4" />
@@ -326,7 +350,7 @@ export default function OrganisationsPage() {
               <Button
                 variant={viewMode === 'list' ? 'default' : 'ghost'}
                 size="icon"
-                className="h-8 w-8"
+                className={`h-8 w-8 ${viewMode === 'list' ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
                 onClick={() => setViewMode('list')}
               >
                 <List className="w-4 h-4" />
@@ -430,7 +454,7 @@ export default function OrganisationsPage() {
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center gap-2 text-sm text-slate-600">
                         <MapPin className="w-4 h-4 text-slate-400" />
-                        <span>{org.departement}, {org.region}</span>
+                        <span>{[org.departement, org.region].filter(Boolean).join(', ') || 'Non spécifié'}</span>
                       </div>
                       {org.email && (
                         <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -458,11 +482,14 @@ export default function OrganisationsPage() {
                         </span>
                       </div>
                       
-                      {org.subscription && (
-                        <Badge variant="secondary" className="text-[10px]">
-                          {org.subscription.plan_nom}
-                        </Badge>
-                      )}
+                      {(() => {
+                        const subStatus = getSubscriptionStatus(org)
+                        return subStatus ? (
+                          <Badge variant="outline" className={`text-[10px] ${subStatus.className}`}>
+                            {subStatus.label}
+                          </Badge>
+                        ) : null
+                      })()}
                     </div>
                   </CardContent>
                 </Card>
@@ -479,6 +506,7 @@ export default function OrganisationsPage() {
                       <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Localisation</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Membres</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Abonnement</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Statut</th>
                       <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -522,7 +550,7 @@ export default function OrganisationsPage() {
                         <td className="py-4 px-4">
                           <span className="text-sm text-slate-600 flex items-center gap-1">
                             <MapPin className="w-4 h-4 text-slate-400" />
-                            {org.departement}, {org.region}
+                            {[org.departement, org.region].filter(Boolean).join(', ') || '-'}
                           </span>
                         </td>
                         <td className="py-4 px-4">
@@ -530,6 +558,18 @@ export default function OrganisationsPage() {
                             <Users className="w-4 h-4 text-slate-400" />
                             {org.members_count || '--'}
                           </span>
+                        </td>
+                        <td className="py-4 px-4">
+                          {(() => {
+                            const subStatus = getSubscriptionStatus(org)
+                            return subStatus ? (
+                              <Badge variant="outline" className={`text-xs ${subStatus.className}`}>
+                                {subStatus.label}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-slate-400">-</span>
+                            )
+                          })()}
                         </td>
                         <td className="py-4 px-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -598,8 +638,8 @@ export default function OrganisationsPage() {
                       key={pageNum}
                       variant={pagination.page === pageNum ? 'default' : 'outline'}
                       size="icon"
-                      className="w-8 h-8"
                       onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+                      className={`h-8 w-8 ${pagination.page === pageNum ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
                     >
                       {pageNum}
                     </Button>
@@ -619,28 +659,26 @@ export default function OrganisationsPage() {
           )}
         </>
       ) : (
+        /* Empty state */
         <Card className="border-slate-200">
-          <CardContent className="py-16 text-center">
-            <Building2 className="w-16 h-16 text-slate-200 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-slate-700 mb-2">Aucune organisation trouvée</h3>
+          <CardContent className="py-12 text-center">
+            <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-slate-900 mb-1">Aucune organisation trouvée</h3>
             <p className="text-slate-500 mb-4">
-              {filters.search || filters.type || filters.region || filters.status
+              {filters.search || filters.type || (filters.region && filters.region !== 'Toutes régions') || filters.status
                 ? 'Essayez de modifier vos filtres'
-                : 'Les organisations apparaîtront ici une fois créées'}
+                : 'Les organisations créées apparaîtront ici'}
             </p>
-            {(filters.search || filters.type || filters.region || filters.status) && (
-              <Button 
-                variant="outline" 
-                onClick={() => setFilters({ search: '', type: '', region: '', status: '' })}
-              >
-                Réinitialiser les filtres
+            {(filters.search || filters.type || (filters.region && filters.region !== 'Toutes régions') || filters.status) && (
+              <Button variant="outline" onClick={() => setFilters({ search: '', type: '', region: '', status: '' })}>
+                Effacer les filtres
               </Button>
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* Organization Details Dialog */}
+      {/* Detail dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -652,14 +690,14 @@ export default function OrganisationsPage() {
           
           {selectedOrg && (
             <div className="space-y-6 mt-4">
-              {/* Header */}
+              {/* Header info */}
               <div className="flex items-center gap-4 p-4 rounded-lg bg-slate-50">
                 <Avatar className="h-16 w-16 ring-2 ring-offset-2 ring-orange-100">
                   <AvatarFallback className={`${
                     selectedOrg.type_org === 'DR' 
                       ? 'bg-gradient-to-br from-blue-500 to-blue-600' 
                       : 'bg-gradient-to-br from-purple-500 to-purple-600'
-                  } text-white text-xl font-bold`}>
+                  } text-white text-lg font-bold`}>
                     {selectedOrg.nom.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -685,99 +723,74 @@ export default function OrganisationsPage() {
                 </div>
               </div>
 
-              {/* Info sections */}
-              <div className="space-y-4">
+              {/* Info grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-slate-700">Informations générales</h4>
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-lg bg-slate-50 space-y-1">
-                      <p className="text-xs text-slate-500">Région</p>
-                      <p className="text-sm font-medium text-slate-900 flex items-center gap-1">
-                        <MapPin className="w-4 h-4 text-slate-400" />
-                        {selectedOrg.region}
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-50 space-y-1">
-                      <p className="text-xs text-slate-500">Département</p>
-                      <p className="text-sm font-medium text-slate-900">{selectedOrg.departement || '--'}</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-50 space-y-1">
-                      <p className="text-xs text-slate-500">Email</p>
-                      <p className="text-sm font-medium text-slate-900 flex items-center gap-1 truncate">
-                        <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        {selectedOrg.email || '--'}
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-50 space-y-1">
-                      <p className="text-xs text-slate-500">Téléphone</p>
-                      <p className="text-sm font-medium text-slate-900 flex items-center gap-1">
-                        <Phone className="w-4 h-4 text-slate-400" />
-                        {selectedOrg.telephone || '--'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Subscription info */}
-                {selectedOrg.subscription && (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-slate-700">Abonnement</h4>
-                    <div className="p-4 rounded-lg bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-slate-900">{selectedOrg.subscription.plan_nom}</p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            Expire le {formatDate(selectedOrg.subscription.date_fin)}
-                          </p>
-                        </div>
-                        <Badge variant="outline" className={
-                          selectedOrg.subscription.statut === 'ACTIF' 
-                            ? 'border-green-200 text-green-700 bg-green-50' 
-                            : 'border-amber-200 text-amber-700 bg-amber-50'
-                        }>
-                          {selectedOrg.subscription.statut}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Members count */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-slate-700">Utilisateurs</h4>
-                  <div className="p-4 rounded-lg bg-slate-50 flex items-center gap-4">
-                    <Users className="w-10 h-10 text-slate-400" />
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-slate-400 mt-0.5" />
                     <div>
-                      <p className="text-2xl font-bold text-slate-900">{selectedOrg.members_count || 0}</p>
-                      <p className="text-xs text-slate-500">membre(s) dans cette organisation</p>
+                      <p className="text-xs text-slate-500">Localisation</p>
+                      <p className="font-medium text-slate-900">
+                        {[selectedOrg.departement, selectedOrg.region].filter(Boolean).join(', ') || '-'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Mail className="w-5 h-5 text-slate-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-500">Email</p>
+                      <p className="font-medium text-slate-900">{selectedOrg.email || '-'}</p>
                     </div>
                   </div>
                 </div>
+                
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Phone className="w-5 h-5 text-slate-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-500">Téléphone</p>
+                      <p className="font-medium text-slate-900">{selectedOrg.telephone || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-500">Créée le</p>
+                      <p className="font-medium text-slate-900">{formatDate(selectedOrg.created_at)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                {/* Dates */}
-                <div className="pt-4 border-t border-slate-200">
-                  <p className="text-xs text-slate-500">
-                    Créée le {formatDate(selectedOrg.created_at)}
-                  </p>
+              {/* Subscription info */}
+              {selectedOrg.subscription && (
+                <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                  <p className="text-sm font-medium text-green-800 mb-2">Abonnement actif</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-green-700">{selectedOrg.subscription.plan_nom}</span>
+                    <span className="text-sm text-green-600">
+                      Jusqu&apos;au {formatDate(selectedOrg.subscription.date_fin)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Members count */}
+              <div className="flex items-center gap-4 p-4 rounded-lg bg-slate-50">
+                <Users className="w-5 h-5 text-slate-400" />
+                <div>
+                  <p className="text-xs text-slate-500">Nombre de membres</p>
+                  <p className="font-semibold text-slate-900">{selectedOrg.members_count || 0} membre(s)</p>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-slate-200">
+              <div className="flex gap-2 pt-4 border-t border-slate-200">
                 <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => window.open(`mailto:${selectedOrg.email}`)}
-                >
-                  <Mail className="w-4 h-4 mr-2" />
-                  Contacter
-                </Button>
-                <Button 
-                  variant={selectedOrg.actif ? 'destructive' : 'default'}
-                  className="flex-1"
                   onClick={() => toggleOrgStatus(selectedOrg.id, selectedOrg.actif)}
                   disabled={actionLoading}
+                  variant={selectedOrg.actif ? 'destructive' : 'default'}
+                  className={selectedOrg.actif ? '' : 'bg-green-600 hover:bg-green-700'}
                 >
                   {selectedOrg.actif ? (
                     <>

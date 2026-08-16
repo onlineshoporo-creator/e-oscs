@@ -1,6 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase/admin'
+/**
+ * API Demandes d'Abonnement - e-OSCS
+ * 
+ * Gestion des demandes d'abonnement avec stockage en mémoire (fallback Vercel)
+ */
 
+import { NextRequest, NextResponse } from 'next/server'
+import { inMemoryStore } from '@/lib/in-memory-store'
+
+// GET - Récupérer toutes les demandes
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -10,59 +17,39 @@ export async function GET(request: NextRequest) {
     const region = searchParams.get('region')
     const search = searchParams.get('search')
 
-    // Build query
-    let query = supabaseAdmin
-      .from('subscription_requests')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
+    // Récupérer toutes les demandes
+    let demandes = inMemoryStore.getDemandes()
 
-    // Apply filters
+    // Appliquer les filtres
     if (statut) {
-      query = query.eq('statut', statut)
+      demandes = demandes.filter(d => d.statut === statut)
     }
     if (region) {
-      query = query.ilike('region', `%${region}%`)
+      demandes = demandes.filter(d => 
+        d.region.toLowerCase().includes(region.toLowerCase())
+      )
     }
     if (search) {
-      query = query.or(`nom_complet.ilike.%${search}%,email.ilike.%${search}%,nom_organisation.ilike.%${search}%`)
+      const searchLower = search.toLowerCase()
+      demandes = demandes.filter(d => 
+        d.nom_complet.toLowerCase().includes(searchLower) ||
+        d.email.toLowerCase().includes(searchLower) ||
+        d.nom_organisation.toLowerCase().includes(searchLower)
+      )
     }
 
-    // Get total count first
-    const { count, error: countError } = await query
-
-    if (countError) throw countError
-
-    // Apply pagination
-    const from = (page - 1) * limit
-    const to = from + limit - 1
-
-    let paginatedQuery = supabaseAdmin
-      .from('subscription_requests')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .range(from, to)
-
-    // Re-apply filters for paginated query
-    if (statut) {
-      paginatedQuery = paginatedQuery.eq('statut', statut)
-    }
-    if (region) {
-      paginatedQuery = paginatedQuery.ilike('region', `%${region}%`)
-    }
-    if (search) {
-      paginatedQuery = paginatedQuery.or(`nom_complet.ilike.%${search}%,email.ilike.%${search}%,nom_organisation.ilike.%${search}%`)
-    }
-
-    const { data, error } = await paginatedQuery
-
-    if (error) throw error
+    // Pagination
+    const total = demandes.length
+    const totalPages = Math.ceil(total / limit)
+    const start = (page - 1) * limit
+    const paginatedDemandes = demandes.slice(start, start + limit)
 
     return NextResponse.json({
-      data: data || [],
-      total: count || 0,
+      data: paginatedDemandes,
+      total,
       page,
       limit,
-      totalPages: Math.ceil((count || 0) / limit)
+      totalPages
     })
 
   } catch (error) {
@@ -74,40 +61,82 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST - Créer une nouvelle demande
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    const { nom_complet, email, telephone, nom_organisation, type_org, region, departement, message } = body
+    const { 
+      nom_complet, 
+      email, 
+      telephone, 
+      whatsapp,
+      fonction,
+      nom_organisation, 
+      type_org, 
+      region, 
+      departement,
+      nb_collaborateurs,
+      message 
+    } = body
 
     // Validation
-    if (!nom_complet || !email || !telephone || !nom_organisation || !type_org || !region) {
+    if (!nom_complet?.trim()) {
       return NextResponse.json(
-        { error: 'Champs obligatoires manquants' },
+        { error: 'Le nom complet est requis' },
+        { status: 400 }
+      )
+    }
+    if (!email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json(
+        { error: 'L\'email est invalide' },
+        { status: 400 }
+      )
+    }
+    if (!telephone?.trim()) {
+      return NextResponse.json(
+        { error: 'Le téléphone est requis' },
+        { status: 400 }
+      )
+    }
+    if (!nom_organisation?.trim()) {
+      return NextResponse.json(
+        { error: 'Le nom de l\'organisation est requis' },
+        { status: 400 }
+      )
+    }
+    if (!type_org || !['DR', 'DD'].includes(type_org)) {
+      return NextResponse.json(
+        { error: 'Le type d\'organisation doit être DR ou DD' },
+        { status: 400 }
+      )
+    }
+    if (!region?.trim()) {
+      return NextResponse.json(
+        { error: 'La région est requise' },
         { status: 400 }
       )
     }
 
-    // Create subscription request
-    const { data, error } = await supabaseAdmin
-      .from('subscription_requests')
-      .insert({
-        nom_complet,
-        email,
-        telephone,
-        nom_organisation,
-        type_org,
-        region,
-        departement: departement || null,
-        message: message || null,
-        statut: 'NOUVELLE'
-      })
-      .select()
-      .single()
+    // Créer la demande
+    const demande = inMemoryStore.createDemande({
+      nom_complet: nom_complet.trim(),
+      email: email.trim(),
+      telephone: telephone.trim(),
+      whatsapp: whatsapp?.trim(),
+      fonction: fonction?.trim(),
+      nom_organisation: nom_organisation.trim(),
+      type_org,
+      region: region.trim(),
+      departement: departement?.trim(),
+      nb_collaborateurs: nb_collaborateurs,
+      message: message?.trim(),
+      statut: 'NOUVELLE'
+    })
 
-    if (error) throw error
+    console.log(`✅ Nouvelle demande d'abonnement: ${email} (${nom_organisation})`)
 
-    return NextResponse.json(data, { status: 201 })
+    return NextResponse.json(demande, { status: 201 })
 
   } catch (error) {
     console.error('Erreur création demande:', error)

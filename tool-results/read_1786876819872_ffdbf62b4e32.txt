@@ -1,0 +1,793 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import React, { useState, useEffect, useCallback } from 'react'
+     4→     4→import { 
+     5→     5→  Search, 
+     6→     6→  Filter, 
+     7→     7→  Eye, 
+     8→     8→  Phone, 
+     9→     9→  CheckCircle2, 
+    10→    10→  XCircle,
+    11→    11→  ChevronLeft,
+    12→    12→  ChevronRight,
+    13→    13→  MoreHorizontal,
+    14→    14→  Download,
+    15→    15→  RefreshCw,
+    16→    16→  MapPin,
+    17→    17→  Mail,
+    18→    18→  Calendar,
+    19→    19→  Building2,
+    20→    20→  User,
+    21→    21→  MessageSquare,
+    22→    22→  ClipboardList
+    23→    23→} from 'lucide-react'
+    24→    24→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+    25→    25→import { Button } from '@/components/ui/button'
+    26→    26→import { Badge } from '@/components/ui/badge'
+    27→    27→import { Input } from '@/components/ui/input'
+    28→    28→import {
+    29→    29→  Select,
+    30→    30→  SelectContent,
+    31→    31→  SelectItem,
+    32→    32→  SelectTrigger,
+    33→    33→  SelectValue,
+    34→    34→} from '@/components/ui/select'
+    35→    35→import {
+    36→    36→  Dialog,
+    37→    37→  DialogContent,
+    38→    38→  DialogDescription,
+    39→    39→  DialogHeader,
+    40→    40→  DialogTitle,
+    41→    41→  DialogTrigger,
+    42→    42→} from '@/components/ui/dialog'
+    43→    43→import {
+    44→    44→  DropdownMenu,
+    45→    45→  DropdownMenuContent,
+    46→    46→  DropdownMenuItem,
+    47→    47→  DropdownMenuSeparator,
+    48→    48→  DropdownMenuTrigger,
+    49→    49→} from '@/components/ui/dropdown-menu'
+    50→    50→import { Textarea } from '@/components/ui/textarea'
+    51→    51→import { Skeleton } from '@/components/ui/skeleton'
+    52→    52→import { toast } from 'sonner'
+    53→    53→
+    54→    54→// Types
+    55→    55→interface SubscriptionRequest {
+    56→    56→  id: string
+    57→    57→  created_at: string
+    58→    58→  nom_complet: string
+    59→    59→  email: string
+    60→    60→  telephone: string
+    61→    61→  nom_organisation: string
+    62→    62→  type_org: 'DR' | 'DD'
+    63→    63→  region: string
+    64→    64→  departement?: string
+    65→    65→  message?: string
+    66→    66→  statut: RequestStatus
+    67→    67→  notes_admin?: string
+    68→    68→}
+    69→    69→
+    70→    70→type RequestStatus = 
+    71→    71→  | 'NOUVELLE' 
+    72→    72→  | 'EN_CONTACT' 
+    73→    73→  | 'EN_ATTENTE_PAIEMENT' 
+    74→    74→  | 'AYEE' 
+    75→    75→  | 'REFUSEE' 
+    76→    76→  | 'CLOTUREE'
+    77→    77→
+    78→    78→interface Filters {
+    79→    79→  statut: string
+    80→    80→  region: string
+    81→    81→  search: string
+    82→    82→}
+    83→    83→
+    84→    84→interface Pagination {
+    85→    85→  page: number
+    86→    86→  limit: number
+    87→    87→  total: number
+    88→    88→  totalPages: number
+    89→    89→}
+    90→    90→
+    91→    91→// Configuration des statuts
+    92→    92→const statusConfig: Record<RequestStatus, { label: string; className: string; icon?: React.ElementType }> = {
+    93→    93→  NOUVELLE: { 
+    94→    94→    label: 'Nouvelle', 
+    95→    95→    className: 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200' 
+    96→    96→  },
+    97→    97→  EN_CONTACT: { 
+    98→    98→    label: 'En contact', 
+    99→    99→    className: 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200' 
+   100→   100→  },
+   101→   101→  EN_ATTENTE_PAIEMENT: { 
+   102→   102→    label: 'Attente paiement', 
+   103→   103→    className: 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' 
+   104→   104→  },
+   105→   105→  AYEE: { 
+   106→   106→    label: 'Approuvée', 
+   107→   107→    className: 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200',
+   108→   108→    icon: CheckCircle2 
+   109→   109→  },
+   110→   110→  REFUSEE: { 
+   111→   111→    label: 'Refusée', 
+   112→   112→    className: 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200',
+   113→   113→    icon: XCircle 
+   114→   114→  },
+   115→   115→  CLOTUREE: { 
+   116→   116→    label: 'Clôturée', 
+   117→   117→    className: 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200' 
+   118→   118→  },
+   119→   119→}
+   120→   120→
+   121→   121→// Régions de Côte d'Ivoire
+   122→   122→const regionsCI = [
+   123→   123→  'Toutes les régions',
+   124→   124→  "Abidjan",
+   125→   125→  "Lagune",
+   126→   126→  "Denguele",
+   127→   127→  "Folou",
+   128→   128→  "Fromager",
+   129→   129→  "Gôh",
+   130→   130→  "Guémon",
+   131→   131→  "Haut-Sassandra",
+   132→   132→  "Iffou",
+   133→   133→  "Lôh-Djiboua",
+   134→   134→  "Marahoué",
+   135→   135→  "Nawa",
+   136→   136→  "Nzi",
+   137→   137→  "San-Pedro",
+   138→   138→  "Savanes",
+   139→   139→  "Tonkpi",
+   140→   140→  "Worodougou",
+   141→   141→  "Bélier",
+   142→   142→  "Bounkani",
+   143→   143→  "Cavally",
+   144→   144→  "Gbêkè",
+   145→   145→  "Gboklè",
+   146→   146→  "Indénié-Djuablin",
+   147→   147→  "Kabadougou",
+   148→   148→  "Moronou",
+   149→   149→  "Potou",
+   150→   150→  "San-Pédro",
+   151→   151→  "Sud-Bandama",
+   152→   152→  "Sud-Comoé",
+   153→   153→  "Tchologo",
+   154→   154→  "Yamoussoukro",
+   155→   155→  "Zanzan",
+   156→   156→  "Zikisso"
+   157→   157→]
+   158→   158→
+   159→   159→export default function DemandesPage() {
+   160→   160→  const [requests, setRequests] = useState<SubscriptionRequest[]>([])
+   161→   161→  const [loading, setLoading] = useState(true)
+   162→   162→  const [filters, setFilters] = useState<Filters>({
+   163→   163→    statut: '',
+   164→   164→    region: '',
+   165→   165→    search: ''
+   166→   166→  })
+   167→   167→  const [pagination, setPagination] = useState<Pagination>({
+   168→   168→    page: 1,
+   169→   169→    limit: 10,
+   170→   170→    total: 0,
+   171→   171→    totalPages: 0
+   172→   172→  })
+   173→   173→  const [selectedRequest, setSelectedRequest] = useState<SubscriptionRequest | null>(null)
+   174→   174→  const [dialogOpen, setDialogOpen] = useState(false)
+   175→   175→  const [actionLoading, setActionLoading] = useState(false)
+   176→   176→  const [notesValue, setNotesValue] = useState('')
+   177→   177→
+   178→   178→  // Fetch requests
+   179→   179→  const fetchRequests = useCallback(async () => {
+   180→   180→    setLoading(true)
+   181→   181→    try {
+   182→   182→      const params = new URLSearchParams({
+   183→   183→        page: pagination.page.toString(),
+   184→   184→        limit: pagination.limit.toString(),
+   185→   185→        ...(filters.statut && { statut: filters.statut }),
+   186→   186→        ...(filters.region && filters.region !== 'Toutes les régions' && { region: filters.region }),
+   187→   187→        ...(filters.search && { search: filters.search })
+   188→   188→      })
+   189→   189→
+   190→   190→      const response = await fetch(`/api/admin/demandes?${params}`)
+   191→   191→      if (response.ok) {
+   192→   192→        const data = await response.json()
+   193→   193→        setRequests(data.data || [])
+   194→   194→        setPagination(prev => ({
+   195→   195→          ...prev,
+   196→   196→          total: data.total || 0,
+   197→   197→          totalPages: Math.ceil((data.total || 0) / prev.limit)
+   198→   198→        }))
+   199→   199→      }
+   200→   200→    } catch (error) {
+   201→   201→      console.error('Erreur lors de la récupération des demandes:', error)
+   202→   202→      toast.error('Erreur lors du chargement des demandes')
+   203→   203→    } finally {
+   204→   204→      setLoading(false)
+   205→   205→    }
+   206→   206→  }, [pagination.page, pagination.limit, filters])
+   207→   207→
+   208→   208→  useEffect(() => {
+   209→   209→    fetchRequests()
+   210→   210→  }, [fetchRequests])
+   211→   211→
+   212→   212→  // Actions sur une demande
+   213→   213→  const handleStatusUpdate = async (requestId: string, newStatus: RequestStatus, notes?: string) => {
+   214→   214→    setActionLoading(true)
+   215→   215→    try {
+   216→   216→      const response = await fetch(`/api/admin/demandes/${requestId}`, {
+   217→   217→        method: 'PATCH',
+   218→   218→        headers: { 'Content-Type': 'application/json' },
+   219→   219→        body: JSON.stringify({ statut: newStatus, notes_admin: notes || '' })
+   220→   220→      })
+   221→   221→
+   222→   222→      if (response.ok) {
+   223→   223→        toast.success(`Demande ${statusConfig[newStatus].label.toLowerCase()} avec succès`)
+   224→   224→        fetchRequests()
+   225→   225→        if (selectedRequest?.id === requestId) {
+   226→   226→          setSelectedRequest(prev => prev ? { ...prev, statut: newStatus, notes_admin: notes } : null)
+   227→   227→        }
+   228→   228→      } else {
+   229→   229→        throw new Error('Erreur lors de la mise à jour')
+   230→   230→      }
+   231→   231→    } catch (error) {
+   232→   232→      console.error(error)
+   233→   233→      toast.error('Erreur lors de la mise à jour du statut')
+   234→   234→    } finally {
+   235→   235→      setActionLoading(false)
+   236→   236→    }
+   237→   237→  }
+   238→   238→
+   239→   239→  // Approve request (create org + user + subscription)
+   240→   240→  const handleApproveRequest = async (requestId: string) => {
+   241→   241→    setActionLoading(true)
+   242→   242→    try {
+   243→   243→      const response = await fetch(`/api/admin/demandes/${requestId}/approve`, {
+   244→   244→        method: 'POST'
+   245→   245→      })
+   246→   246→
+   247→   247→      if (response.ok) {
+   248→   248→        toast.success('Organisation créée et abonnement activé avec succès')
+   249→   249→        setDialogOpen(false)
+   250→   250→        fetchRequests()
+   251→   251→      } else {
+   252→   252→        const error = await response.json()
+   253→   253→        throw new Error(error.message || 'Erreur lors de l\'approbation')
+   254→   254→      }
+   255→   255→    } catch (error) {
+   256→   256→      console.error(error)
+   257→   257→      toast.error(error instanceof Error ? error.message : 'Erreur lors de l\'approbation')
+   258→   258→    } finally {
+   259→   259→      setActionLoading(false)
+   260→   260→    }
+   261→   261→  }
+   262→   262→
+   263→   263→  const formatDate = (dateStr: string) => {
+   264→   264→    return new Date(dateStr).toLocaleDateString('fr-FR', {
+   265→   265→      day: 'numeric',
+   266→   266→      month: 'short',
+   267→   267→      year: 'numeric',
+   268→   268→      hour: '2-digit',
+   269→   269→      minute: '2-digit'
+   270→   270→    })
+   271→   271→  }
+   272→   272→
+   273→   273→  return (
+   274→   274→    <div className="space-y-6">
+   275→   275→      {/* Page header */}
+   276→   276→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   277→   277→        <div>
+   278→   278→          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">Demandes d&apos;abonnement</h1>
+   279→   279→          <p className="text-slate-500 mt-1">Gérez les demandes d&apos;accès à la plateforme e-OSCS</p>
+   280→   280→        </div>
+   281→   281→        <div className="flex items-center gap-3">
+   282→   282→          <Button variant="outline" onClick={fetchRequests} disabled={loading} className="gap-2">
+   283→   283→            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+   284→   284→            Actualiser
+   285→   285→          </Button>
+   286→   286→          <Button variant="outline" className="gap-2">
+   287→   287→            <Download className="w-4 h-4" />
+   288→   288→            Exporter
+   289→   289→          </Button>
+   290→   290→        </div>
+   291→   291→      </div>
+   292→   292→
+   293→   293→      {/* Stats cards */}
+   294→   294→      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+   295→   295→        {Object.entries(statusConfig).map(([key, config]) => (
+   296→   296→          <Card key={key} className={`border-slate-200 ${filters.statut === key ? 'ring-2 ring-orange-500' : ''}`}>
+   297→   297→            <CardContent className="p-4 cursor-pointer hover:bg-slate-50 transition-colors" 
+   298→   298→              onClick={() => setFilters(prev => ({ ...prev, statut: prev.statut === key ? '' : key }))}>
+   299→   299→              <p className="text-xs text-slate-500 mb-1">{config.label}s</p>
+   300→   300→              <p className="text-2xl font-bold text-slate-900">--</p>
+   301→   301→            </CardContent>
+   302→   302→          </Card>
+   303→   303→        ))}
+   304→   304→      </div>
+   305→   305→
+   306→   306→      {/* Filters */}
+   307→   307→      <Card className="border-slate-200">
+   308→   308→        <CardContent className="p-4">
+   309→   309→          <div className="flex flex-col md:flex-row gap-4">
+   310→   310→            {/* Search */}
+   311→   311→            <div className="relative flex-1">
+   312→   312→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+   313→   313→              <Input
+   314→   314→                placeholder="Rechercher par nom, email ou organisation..."
+   315→   315→                value={filters.search}
+   316→   316→                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+   317→   317→                className="pl-10 bg-white"
+   318→   318→              />
+   319→   319→            </div>
+   320→   320→
+   321→   321→            {/* Status filter */}
+   322→   322→            <Select value={filters.statut} onValueChange={(value) => setFilters(prev => ({ ...prev, statut: value }))}>
+   323→   323→              <SelectTrigger className="w-full md:w-[180px]">
+   324→   324→                <Filter className="w-4 h-4 mr-2 text-slate-400" />
+   325→   325→                <SelectValue placeholder="Statut" />
+   326→   326→              </SelectTrigger>
+   327→   327→              <SelectContent>
+   328→   328→                <SelectItem value="">Tous les statuts</SelectItem>
+   329→   329→                {Object.entries(statusConfig).map(([key, config]) => (
+   330→   330→                  <SelectItem key={key} value={key}>{config.label}</SelectItem>
+   331→   331→                ))}
+   332→   332→              </SelectContent>
+   333→   333→            </Select>
+   334→   334→
+   335→   335→            {/* Region filter */}
+   336→   336→            <Select value={filters.region} onValueChange={(value) => setFilters(prev => ({ ...prev, region: value }))}>
+   337→   337→              <SelectTrigger className="w-full md:w-[200px]">
+   338→   338→                <MapPin className="w-4 h-4 mr-2 text-slate-400" />
+   339→   339→                <SelectValue placeholder="Région" />
+   340→   340→              </SelectTrigger>
+   341→   341→              <SelectContent>
+   342→   342→                {regionsCI.map(region => (
+   343→   343→                  <SelectItem key={region} value={region}>{region}</SelectItem>
+   344→   344→                ))}
+   345→   345→              </SelectContent>
+   346→   346→            </Select>
+   347→   347→          </div>
+   348→   348→        </CardContent>
+   349→   349→      </Card>
+   350→   350→
+   351→   351→      {/* Table */}
+   352→   352→      <Card className="border-slate-200">
+   353→   353→        <CardHeader className="pb-4">
+   354→   354→          <div className="flex items-center justify-between">
+   355→   355→            <div>
+   356→   356→              <CardTitle className="text-lg font-semibold text-slate-900">
+   357→   357→                Liste des demandes
+   358→   358→              </CardTitle>
+   359→   359→              <CardDescription>
+   360→   360→                {pagination.total} demande(s) trouvée(s)
+   361→   361→              </CardDescription>
+   362→   362→            </div>
+   363→   363→          </div>
+   364→   364→        </CardHeader>
+   365→   365→        <CardContent>
+   366→   366→          {loading ? (
+   367→   367→            <div className="space-y-3">
+   368→   368→              {[...Array(5)].map((_, i) => (
+   369→   369→                <Skeleton key={i} className="h-20 w-full" />
+   370→   370→              ))}
+   371→   371→            </div>
+   372→   372→          ) : requests.length > 0 ? (
+   373→   373→            <>
+   374→   374→              {/* Desktop Table */}
+   375→   375→              <div className="hidden md:block overflow-x-auto">
+   376→   376→                <table className="w-full">
+   377→   377→                  <thead>
+   378→   378→                    <tr className="border-b border-slate-200">
+   379→   379→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+   380→   380→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Demandeur</th>
+   381→   381→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Organisation</th>
+   382→   382→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
+   383→   383→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Région</th>
+   384→   384→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Statut</th>
+   385→   385→                      <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+   386→   386→                    </tr>
+   387→   387→                  </thead>
+   388→   388→                  <tbody>
+   389→   389→                    {requests.map((request, index) => {
+   390→   390→                      const status = statusConfig[request.statut]
+   391→   391→                      return (
+   392→   392→                        <tr 
+   393→   393→                          key={request.id} 
+   394→   394→                          className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+   395→   395→                            index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'
+   396→   396→                          }`}
+   397→   397→                        >
+   398→   398→                          <td className="py-4 px-4">
+   399→   399→                            <div className="flex items-center gap-2 text-sm text-slate-600">
+   400→   400→                              <Calendar className="w-4 h-4 text-slate-400" />
+   401→   401→                              {formatDate(request.created_at)}
+   402→   402→                            </div>
+   403→   403→                          </td>
+   404→   404→                          <td className="py-4 px-4">
+   405→   405→                            <div>
+   406→   406→                              <p className="font-medium text-slate-900 flex items-center gap-2">
+   407→   407→                                <User className="w-4 h-4 text-slate-400" />
+   408→   408→                                {request.nom_complet}
+   409→   409→                              </p>
+   410→   410→                              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+   411→   411→                                <Mail className="w-3 h-3" />
+   412→   412→                                {request.email}
+   413→   413→                              </p>
+   414→   414→                            </div>
+   415→   415→                          </td>
+   416→   416→                          <td className="py-4 px-4">
+   417→   417→                            <p className="font-medium text-slate-900 flex items-center gap-2">
+   418→   418→                              <Building2 className="w-4 h-4 text-slate-400" />
+   419→   419→                              {request.nom_organisation}
+   420→   420→                            </p>
+   421→   421→                          </td>
+   422→   422→                          <td className="py-4 px-4">
+   423→   423→                            <Badge variant="outline" className="font-mono text-xs">
+   424→   424→                              {request.type_org}
+   425→   425→                            </Badge>
+   426→   426→                          </td>
+   427→   427→                          <td className="py-4 px-4">
+   428→   428→                            <span className="text-sm text-slate-600 flex items-center gap-1">
+   429→   429→                              <MapPin className="w-4 h-4 text-slate-400" />
+   430→   430→                              {request.region}
+   431→   431→                            </span>
+   432→   432→                          </td>
+   433→   433→                          <td className="py-4 px-4">
+   434→   434→                            <Badge variant="outline" className={`${status.className} text-xs`}>
+   435→   435→                              {status.icon && <status.icon className="w-3 h-3 mr-1" />}
+   436→   436→                              {status.label}
+   437→   437→                            </Badge>
+   438→   438→                          </td>
+   439→   439→                          <td className="py-4 px-4">
+   440→   440→                            <div className="flex items-center justify-end gap-1">
+   441→   441→                              <Dialog open={dialogOpen && selectedRequest?.id === request.id} onOpenChange={(open) => {
+   442→   442→                                setDialogOpen(open)
+   443→   443→                                if (open) {
+   444→   444→                                  setSelectedRequest(request)
+   445→   445→                                  setNotesValue(request.notes_admin || '')
+   446→   446→                                }
+   447→   447→                              }}>
+   448→   448→                                <DialogTrigger asChild>
+   449→   449→                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+   450→   450→                                    <Eye className="w-4 h-4 text-slate-400" />
+   451→   451→                                  </Button>
+   452→   452→                                </DialogTrigger>
+   453→   453→                                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+   454→   454→                                  <DialogHeader>
+   455→   455→                                    <DialogTitle>Détails de la demande</DialogTitle>
+   456→   456→                                    <DialogDescription>
+   457→   457→                                      Demande #{request.id.slice(0, 8)}...
+   458→   458→                                    </DialogDescription>
+   459→   459→                                  </DialogHeader>
+   460→   460→                                  
+   461→   461→                                  {selectedRequest && (
+   462→   462→                                    <div className="space-y-6 mt-4">
+   463→   463→                                      {/* Status badge */}
+   464→   464→                                      <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50">
+   465→   465→                                        <span className="text-sm text-slate-600">Statut actuel</span>
+   466→   466→                                        <Badge variant="outline" className={statusConfig[selectedRequest.statut].className}>
+   467→   467→                                          {statusConfig[selectedRequest.statut].label}
+   468→   468→                                        </Badge>
+   469→   469→                                      </div>
+   470→   470→
+   471→   471→                                      {/* Info grid */}
+   472→   472→                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   473→   473→                                        <div className="space-y-3">
+   474→   474→                                          <div className="flex items-start gap-3">
+   475→   475→                                            <User className="w-5 h-5 text-slate-400 mt-0.5" />
+   476→   476→                                            <div>
+   477→   477→                                              <p className="text-xs text-slate-500">Demandeur</p>
+   478→   478→                                              <p className="font-medium text-slate-900">{selectedRequest.nom_complet}</p>
+   479→   479→                                            </div>
+   480→   480→                                          </div>
+   481→   481→                                          <div className="flex items-start gap-3">
+   482→   482→                                            <Mail className="w-5 h-5 text-slate-400 mt-0.5" />
+   483→   483→                                            <div>
+   484→   484→                                              <p className="text-xs text-slate-500">Email</p>
+   485→   485→                                              <p className="font-medium text-slate-900">{selectedRequest.email}</p>
+   486→   486→                                            </div>
+   487→   487→                                          </div>
+   488→   488→                                          <div className="flex items-start gap-3">
+   489→   489→                                            <Phone className="w-5 h-5 text-slate-400 mt-0.5" />
+   490→   490→                                            <div>
+   491→   491→                                              <p className="text-xs text-slate-500">Téléphone</p>
+   492→   492→                                              <p className="font-medium text-slate-900">{selectedRequest.telephone}</p>
+   493→   493→                                            </div>
+   494→   494→                                          </div>
+   495→   495→                                        </div>
+   496→   496→                                        
+   497→   497→                                        <div className="space-y-3">
+   498→   498→                                          <div className="flex items-start gap-3">
+   499→   499→                                            <Building2 className="w-5 h-5 text-slate-400 mt-0.5" />
+   500→   500→                                            <div>
+   501→   501→                                              <p className="text-xs text-slate-500">Organisation</p>
+   502→   502→                                              <p className="font-medium text-slate-900">{selectedRequest.nom_organisation}</p>
+   503→   503→                                            </div>
+   504→   504→                                          </div>
+   505→   505→                                          <div className="flex items-start gap-3">
+   506→   506→                                            <MapPin className="w-5 h-5 text-slate-400 mt-0.5" />
+   507→   507→                                            <div>
+   508→   508→                                              <p className="text-xs text-slate-500">Localisation</p>
+   509→   509→                                              <p className="font-medium text-slate-900">
+   510→   510→                                                {selectedRequest.departement}, {selectedRequest.region}
+   511→   511→                                              </p>
+   512→   512→                                            </div>
+   513→   513→                                          </div>
+   514→   514→                                          <div className="flex items-start gap-3">
+   515→   515→                                            <Building2 className="w-5 h-5 text-slate-400 mt-0.5" />
+   516→   516→                                            <div>
+   517→   517→                                              <p className="text-xs text-slate-500">Type</p>
+   518→   518→                                              <Badge variant="outline" className="font-mono">
+   519→   519→                                                {selectedRequest.type_org}
+   520→   520→                                              </Badge>
+   521→   521→                                            </div>
+   522→   522→                                          </div>
+   523→   523→                                        </div>
+   524→   524→                                      </div>
+   525→   525→
+   526→   526→                                      {/* Message */}
+   527→   527→                                      {selectedRequest.message && (
+   528→   528→                                        <div className="space-y-2">
+   529→   529→                                          <label className="text-xs font-medium text-slate-500 flex items-center gap-2">
+   530→   530→                                            <MessageSquare className="w-4 h-4" />
+   531→   531→                                            Message
+   532→   532→                                          </label>
+   533→   533→                                          <div className="p-3 rounded-lg bg-slate-50 text-sm text-slate-700 whitespace-pre-wrap">
+   534→   534→                                            {selectedRequest.message}
+   535→   535→                                          </div>
+   536→   536→                                        </div>
+   537→   537→                                      )}
+   538→   538→
+   539→   539→                                      {/* Admin Notes */}
+   540→   540→                                      <div className="space-y-2">
+   541→   541→                                        <label className="text-xs font-medium text-slate-500">
+   542→   542→                                          Notes administrateur
+   543→   543→                                        </label>
+   544→   544→                                        <Textarea
+   545→   545→                                          value={notesValue}
+   546→   546→                                          onChange={(e) => setNotesValue(e.target.value)}
+   547→   547→                                          placeholder="Ajoutez des notes internes..."
+   548→   548→                                          rows={3}
+   549→   549→                                        />
+   550→   550→                                      </div>
+   551→   551→
+   552→   552→                                      {/* Actions */}
+   553→   553→                                      <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-200">
+   554→   554→                                        <Button 
+   555→   555→                                          variant="outline" 
+   556→   556→                                          size="sm" 
+   557→   557→                                          className="gap-2"
+   558→   558→                                          onClick={() => window.open(`tel:${selectedRequest.telephone}`, '_self')}
+   559→   559→                                        >
+   560→   560→                                          <Phone className="w-4 h-4" />
+   561→   561→                                          Contacter
+   562→   562→                                        </Button>
+   563→   563→                                        <Button 
+   564→   564→                                          variant="outline" 
+   565→   565→                                          size="sm" 
+   566→   566→                                          className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+   567→   567→                                          onClick={() => handleStatusUpdate(selectedRequest.id, 'EN_CONTACT', notesValue)}
+   568→   568→                                          disabled={actionLoading}
+   569→   569→                                        >
+   570→   570→                                          Marquer en contact
+   571→   571→                                        </Button>
+   572→   572→                                        <Button 
+   573→   573→                                          size="sm" 
+   574→   574→                                          className="gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+   575→   575→                                          onClick={() => handleApproveRequest(selectedRequest.id)}
+   576→   576→                                          disabled={actionLoading || selectedRequest.statut === 'AYEE'}
+   577→   577→                                        >
+   578→   578→                                          <CheckCircle2 className="w-4 h-4" />
+   579→   579→                                          Approuver & Créer
+   580→   580→                                        </Button>
+   581→   581→                                        <Button 
+   582→   582→                                          variant="destructive" 
+   583→   583→                                          size="sm" 
+   584→   584→                  className="gap-2"
+   585→   585→                                          onClick={() => handleStatusUpdate(selectedRequest.id, 'REFUSEE', notesValue)}
+   586→   586→                                          disabled={actionLoading || selectedRequest.statut === 'REFUSEE'}
+   587→   587→                                        >
+   588→   588→                                          <XCircle className="w-4 h-4" />
+   589→   589→                                          Refuser
+   590→   590→                                        </Button>
+   591→   591→                                      </div>
+   592→   592→                                    </div>
+   593→   593→                                  )}
+   594→   594→                                </DialogContent>
+   595→   595→                              </Dialog>
+   596→   596→
+   597→   597→                              {/* Quick actions dropdown */}
+   598→   598→                              <DropdownMenu>
+   599→   599→                                <DropdownMenuTrigger asChild>
+   600→   600→                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+   601→   601→                                    <MoreHorizontal className="w-4 h-4 text-slate-400" />
+   602→   602→                                  </Button>
+   603→   603→                                </DropdownMenuTrigger>
+   604→   604→                                <DropdownMenuContent align="end">
+   605→   605→                                  <DropdownMenuItem onClick={() => {
+   606→   606→                                    setSelectedRequest(request)
+   607→   607→                                    setNotesValue(request.notes_admin || '')
+   608→   608→                                    setDialogOpen(true)
+   609→   609→                                  }}>
+   610→   610→                                    <Eye className="mr-2 h-4 w-4" />
+   611→   611→                                    Voir détails
+   612→   612→                                  </DropdownMenuItem>
+   613→   613→                                  <DropdownMenuItem onClick={() => window.open(`mailto:${request.email}`)}>
+   614→   614→                                    <Mail className="mr-2 h-4 w-4" />
+   615→   615→                                    Envoyer un email
+   616→   616→                                  </DropdownMenuItem>
+   617→   617→                                  <DropdownMenuItem onClick={() => window.open(`tel:${request.telephone}`)}>
+   618→   618→                                    <Phone className="mr-2 h-4 w-4" />
+   619→   619→                                    Appeler
+   620→   620→                                  </DropdownMenuItem>
+   621→   621→                                  <DropdownMenuSeparator />
+   622→   622→                                  <DropdownMenuItem 
+   623→   623→                                    className="text-blue-600"
+   624→   624→                                    onClick={() => handleStatusUpdate(request.id, 'EN_CONTACT')}
+   625→   625→                                    disabled={request.statut === 'AYEE'}
+   626→   626→                                  >
+   627→   627→                                    Marquer en contact
+   628→   628→                                  </DropdownMenuItem>
+   629→   629→                                  <DropdownMenuItem 
+   630→   630→                                    className="text-green-600"
+   631→   631→                                    onClick={() => handleApproveRequest(request.id)}
+   632→   632→                                    disabled={request.statut === 'AYEE' || actionLoading}
+   633→   633→                                  >
+   634→   634→                                    <CheckCircle2 className="mr-2 h-4 w-4" />
+   635→   635→                                    Approuver
+   636→   636→                                  </DropdownMenuItem>
+   637→   637→                                  <DropdownMenuSeparator />
+   638→   638→                                  <DropdownMenuItem 
+   639→   639→                                    className="text-red-600 focus:text-red-600"
+   640→   640→                                    onClick={() => handleStatusUpdate(request.id, 'REFUSEE')}
+   641→   641→                                    disabled={request.statut === 'REFUSEE'}
+   642→   642→                                  >
+   643→   643→                                    <XCircle className="mr-2 h-4 w-4" />
+   644→   644→                                    Refuser
+   645→   645→                                  </DropdownMenuItem>
+   646→   646→                                </DropdownMenuContent>
+   647→   647→                              </DropdownMenu>
+   648→   648→                            </div>
+   649→   649→                          </td>
+   650→   650→                        </tr>
+   651→   651→                      )
+   652→   652→                    })}
+   653→   653→                  </tbody>
+   654→   654→                </table>
+   655→   655→              </div>
+   656→   656→
+   657→   657→              {/* Mobile Cards */}
+   658→   658→              <div className="md:hidden space-y-3">
+   659→   659→                {requests.map((request) => {
+   660→   660→                  const status = statusConfig[request.statut]
+   661→   661→                  return (
+   662→   662→                    <div key={request.id} className="p-4 rounded-xl bg-white border border-slate-200 space-y-3">
+   663→   663→                      <div className="flex items-start justify-between">
+   664→   664→                        <div className="flex items-center gap-3">
+   665→   665→                          <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+   666→   666→                            <Building2 className="w-5 h-5 text-orange-600" />
+   667→   667→                          </div>
+   668→   668→                          <div>
+   669→   669→                            <p className="font-medium text-slate-900">{request.nom_organisation}</p>
+   670→   670→                            <p className="text-xs text-slate-500">{request.nom_complet}</p>
+   671→   671→                          </div>
+   672→   672→                        </div>
+   673→   673→                        <Badge variant="outline" className={`${status.className} text-[10px]`}>
+   674→   674→                          {status.label}
+   675→   675→                        </Badge>
+   676→   676→                      </div>
+   677→   677→                      
+   678→   678→                      <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+   679→   679→                        <span className="flex items-center gap-1">
+   680→   680→                          <MapPin className="w-3 h-3" />
+   681→   681→                          {request.region}
+   682→   682→                        </span>
+   683→   683→                        <Badge variant="secondary" className="text-[10px]">{request.type_org}</Badge>
+   684→   684→                        <span>{formatDate(request.created_at)}</span>
+   685→   685→                      </div>
+   686→   686→
+   687→   687→                      <div className="flex gap-2 pt-2 border-t border-slate-100">
+   688→   688→                        <Button 
+   689→   689→                          variant="outline" 
+   690→   690→                          size="sm" 
+   691→   691→                          className="flex-1 text-xs"
+   692→   692→                          onClick={() => {
+   693→   693→                            setSelectedRequest(request)
+   694→   694→                            setNotesValue(request.notes_admin || '')
+   695→   695→                            setDialogOpen(true)
+   696→   696→                          }}
+   697→   697→                        >
+   698→   698→                          <Eye className="w-3 h-3 mr-1" />
+   699→   699→                          Détails
+   700→   700→                        </Button>
+   701→   701→                        <Button 
+   702→   702→                          size="sm" 
+   703→   703→                          className="flex-1 text-xs bg-green-600 hover:bg-green-700"
+   704→   704→                          onClick={() => handleApproveRequest(request.id)}
+   705→   705→                          disabled={request.statut === 'AYEE'}
+   706→   706→                        >
+   707→   707→                          <CheckCircle2 className="w-3 h-3 mr-1" />
+   708→   708→                          Approuver
+   709→   709→                        </Button>
+   710→   710→                      </div>
+   711→   711→                    </div>
+   712→   712→                  )
+   713→   713→                })}
+   714→   714→              </div>
+   715→   715→
+   716→   716→              {/* Pagination */}
+   717→   717→              {pagination.totalPages > 1 && (
+   718→   718→                <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-200">
+   719→   719→                  <p className="text-sm text-slate-500">
+   720→   720→                    Affichage {(pagination.page - 1) * pagination.limit + 1}-{Math.min(pagination.page * pagination.limit, pagination.total)} sur {pagination.total}
+   721→   721→                  </p>
+   722→   722→                  <div className="flex items-center gap-2">
+   723→   723→                    <Button
+   724→   724→                      variant="outline"
+   725→   725→                      size="icon"
+   726→   726→                      onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+   727→   727→                      disabled={pagination.page <= 1}
+   728→   728→                    >
+   729→   729→                      <ChevronLeft className="w-4 h-4" />
+   730→   730→                    </Button>
+   731→   731→                    
+   732→   732→                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+   733→   733→                      let pageNum: number
+   734→   734→                      if (pagination.totalPages <= 5) {
+   735→   735→                        pageNum = i + 1
+   736→   736→                      } else if (pagination.page <= 3) {
+   737→   737→                        pageNum = i + 1
+   738→   738→                      } else if (pagination.page >= pagination.totalPages - 2) {
+   739→   739→                        pageNum = pagination.totalPages - 4 + i
+   740→   740→                      } else {
+   741→   741→                        pageNum = pagination.page - 2 + i
+   742→   742→                      }
+   743→   743→                      
+   744→   744→                      return (
+   745→   745→                        <Button
+   746→   746→                          key={pageNum}
+   747→   747→                          variant={pagination.page === pageNum ? 'default' : 'outline'}
+   748→   748→                          size="icon"
+   749→   749→                          className="w-8 h-8"
+   750→   750→                          onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+   751→   751→                        >
+   752→   752→                          {pageNum}
+   753→   753→                        </Button>
+   754→   754→                      )
+   755→   755→                    })}
+   756→   756→                    
+   757→   757→                    <Button
+   758→   758→                      variant="outline"
+   759→   759→                      size="icon"
+   760→   760→                      onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+   761→   761→                      disabled={pagination.page >= pagination.totalPages}
+   762→   762→                    >
+   763→   763→                      <ChevronRight className="w-4 h-4" />
+   764→   764→                    </Button>
+   765→   765→                  </div>
+   766→   766→                </div>
+   767→   767→              )}
+   768→   768→            </>
+   769→   769→          ) : (
+   770→   770→            <div className="text-center py-16">
+   771→   771→              <ClipboardList className="w-16 h-16 text-slate-200 mx-auto mb-4" />
+   772→   772→              <h3 className="text-lg font-semibold text-slate-700 mb-2">Aucune demande trouvée</h3>
+   773→   773→              <p className="text-slate-500 mb-4">
+   774→   774→                {filters.search || filters.statut || filters.region 
+   775→   775→                  ? 'Essayez de modifier vos filtres' 
+   776→   776→                  : 'Les nouvelles demandes apparaîtront ici'}
+   777→   777→              </p>
+   778→   778→              {(filters.search || filters.statut || filters.region) && (
+   779→   779→                <Button 
+   780→   780→                  variant="outline" 
+   781→   781→                  onClick={() => setFilters({ statut: '', region: '', search: '' })}
+   782→   782→                >
+   783→   783→                  Réinitialiser les filtres
+   784→   784→                </Button>
+   785→   785→              )}
+   786→   786→            </div>
+   787→   787→          )}
+   788→   788→        </CardContent>
+   789→   789→      </Card>
+   790→   790→    </div>
+   791→   791→  )
+   792→   792→}
+   793→   793→

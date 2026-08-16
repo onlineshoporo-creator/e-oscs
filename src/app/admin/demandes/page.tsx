@@ -19,7 +19,10 @@ import {
   Building2,
   User,
   MessageSquare,
-  ClipboardList
+  ClipboardList,
+  Send,
+  Clock,
+  AlertCircle
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -58,22 +61,20 @@ interface SubscriptionRequest {
   nom_complet: string
   email: string
   telephone: string
+  whatsapp?: string
+  fonction?: string
   nom_organisation: string
   type_org: 'DR' | 'DD'
   region: string
   departement?: string
+  nb_collaborateurs?: string
   message?: string
   statut: RequestStatus
   notes_admin?: string
+  admin_updated_at?: string
 }
 
-type RequestStatus = 
-  | 'NOUVELLE' 
-  | 'EN_CONTACT' 
-  | 'EN_ATTENTE_PAIEMENT' 
-  | 'AYEE' 
-  | 'REFUSEE' 
-  | 'CLOTUREE'
+type RequestStatus = 'NOUVELLE' | 'EN_CONTACT' | 'APPROUVEE' | 'REJETEE' | 'CONVERTIE'
 
 interface Filters {
   statut: string
@@ -88,72 +89,52 @@ interface Pagination {
   totalPages: number
 }
 
-// Configuration des statuts
+// Configuration des statuts - cohérente avec l'API
 const statusConfig: Record<RequestStatus, { label: string; className: string; icon?: React.ElementType }> = {
   NOUVELLE: { 
     label: 'Nouvelle', 
-    className: 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200' 
+    className: 'bg-slate-100 text-slate-700 border-slate-200',
+    icon: Clock
   },
   EN_CONTACT: { 
     label: 'En contact', 
-    className: 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200' 
+    className: 'bg-blue-100 text-blue-700 border-blue-200',
+    icon: Send
   },
-  EN_ATTENTE_PAIEMENT: { 
-    label: 'Attente paiement', 
-    className: 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' 
-  },
-  AYEE: { 
+  APPROUVEE: { 
     label: 'Approuvée', 
-    className: 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200',
-    icon: CheckCircle2 
+    className: 'bg-green-100 text-green-700 border-green-200',
+    icon: CheckCircle2
   },
-  REFUSEE: { 
-    label: 'Refusée', 
-    className: 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200',
-    icon: XCircle 
+  REJETEE: { 
+    label: 'Rejetée', 
+    className: 'bg-red-100 text-red-700 border-red-200',
+    icon: XCircle
   },
-  CLOTUREE: { 
-    label: 'Clôturée', 
-    className: 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200' 
-  },
+  CONVERTIE: { 
+    label: 'Convertie (Client)', 
+    className: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    icon: CheckCircle2
+  }
 }
 
 // Régions de Côte d'Ivoire
 const regionsCI = [
   'Toutes les régions',
   "Abidjan",
-  "Lagune",
-  "Denguele",
-  "Folou",
-  "Fromager",
-  "Gôh",
-  "Guémon",
-  "Haut-Sassandra",
-  "Iffou",
-  "Lôh-Djiboua",
-  "Marahoué",
-  "Nawa",
-  "Nzi",
-  "San-Pedro",
-  "Savanes",
-  "Tonkpi",
+  "Lagunes",
+  "District d'Abidjan",
+  "Comoé",
+  "Denguélé",
+  "Gôh-Djiboua",
+  "Lacs",
+  "Montagnes",
+  "Sassandra-Marahoué",
+  "Vallée du Bandama",
   "Worodougou",
-  "Bélier",
-  "Bounkani",
-  "Cavally",
-  "Gbêkè",
-  "Gboklè",
-  "Indénié-Djuablin",
-  "Kabadougou",
-  "Moronou",
-  "Potou",
-  "San-Pédro",
-  "Sud-Bandama",
-  "Sud-Comoé",
-  "Tchologo",
-  "Yamoussoukro",
   "Zanzan",
-  "Zikisso"
+  "San-Pédro",
+  "Yamoussoukro"
 ]
 
 export default function DemandesPage() {
@@ -174,6 +155,7 @@ export default function DemandesPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [notesValue, setNotesValue] = useState('')
+  const [stats, setStats] = useState<Record<string, number>>({})
 
   // Fetch requests
   const fetchRequests = useCallback(async () => {
@@ -196,10 +178,21 @@ export default function DemandesPage() {
           total: data.total || 0,
           totalPages: Math.ceil((data.total || 0) / prev.limit)
         }))
+        
+        // Calculer les stats localement
+        const allRequests = data.data || []
+        const statsObj: Record<string, number> = {}
+        Object.keys(statusConfig).forEach(key => {
+          statsObj[key] = allRequests.filter((r: SubscriptionRequest) => r.statut === key).length
+        })
+        statsObj['total'] = data.total || 0
+        setStats(statsObj)
+      } else {
+        toast.error('Erreur lors du chargement des demandes')
       }
     } catch (error) {
-      console.error('Erreur lors de la récupération des demandes:', error)
-      toast.error('Erreur lors du chargement des demandes')
+      console.error('Erreur:', error)
+      toast.error('Erreur de connexion au serveur')
     } finally {
       setLoading(false)
     }
@@ -236,25 +229,25 @@ export default function DemandesPage() {
     }
   }
 
-  // Approve request (create org + user + subscription)
+  // Approve request (create org + subscription)
   const handleApproveRequest = async (requestId: string) => {
     setActionLoading(true)
     try {
-      const response = await fetch(`/api/admin/demandes/${requestId}/approve`, {
+      const response = await fetch(`/api/admin/demandes/${requestId}`, {
         method: 'POST'
       })
 
       if (response.ok) {
-        toast.success('Organisation créée et abonnement activé avec succès')
+        toast.success('Organisation créée et abonnement activé avec succès !')
         setDialogOpen(false)
         fetchRequests()
       } else {
         const error = await response.json()
-        throw new Error(error.message || 'Erreur lors de l\'approbation')
+        throw new Error(error.message || "Erreur lors de l'approbation")
       }
     } catch (error) {
       console.error(error)
-      toast.error(error instanceof Error ? error.message : 'Erreur lors de l\'approbation')
+      toast.error(error instanceof Error ? error.message : "Erreur lors de l'approbation")
     } finally {
       setActionLoading(false)
     }
@@ -270,6 +263,19 @@ export default function DemandesPage() {
     })
   }
 
+  const getRelativeTime = (dateStr: string) => {
+    const now = new Date()
+    const date = new Date(dateStr)
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 60) return `Il y a ${diffMins} min`
+    if (diffHours < 24) return `Il y a ${diffHours}h`
+    return `Il y a ${diffDays}j`
+  }
+
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -283,7 +289,7 @@ export default function DemandesPage() {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Actualiser
           </Button>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => toast.info('Export CSV bientôt disponible')}>
             <Download className="w-4 h-4" />
             Exporter
           </Button>
@@ -291,13 +297,29 @@ export default function DemandesPage() {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+        {/* Total */}
+        <Card className={`border-slate-200 ${!filters.statut ? 'ring-2 ring-orange-500' : ''}`}>
+          <CardContent 
+            className="p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+            onClick={() => setFilters(prev => ({ ...prev, statut: '' }))}
+          >
+            <p className="text-xs text-slate-500 mb-1">Total</p>
+            <p className="text-2xl font-bold text-slate-900">{stats['total'] ?? '--'}</p>
+          </CardContent>
+        </Card>
+        
         {Object.entries(statusConfig).map(([key, config]) => (
           <Card key={key} className={`border-slate-200 ${filters.statut === key ? 'ring-2 ring-orange-500' : ''}`}>
-            <CardContent className="p-4 cursor-pointer hover:bg-slate-50 transition-colors" 
-              onClick={() => setFilters(prev => ({ ...prev, statut: prev.statut === key ? '' : key }))}>
-              <p className="text-xs text-slate-500 mb-1">{config.label}s</p>
-              <p className="text-2xl font-bold text-slate-900">--</p>
+            <CardContent 
+              className="p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+              onClick={() => setFilters(prev => ({ ...prev, statut: prev.statut === key ? '' : key }))}
+            >
+              <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                {config.icon && <config.icon className="w-3 h-3" />}
+                {config.label}s
+              </p>
+              <p className="text-2xl font-bold text-slate-900">{stats[key] ?? '--'}</p>
             </CardContent>
           </Card>
         ))}
@@ -398,8 +420,9 @@ export default function DemandesPage() {
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-2 text-sm text-slate-600">
                               <Calendar className="w-4 h-4 text-slate-400" />
-                              {formatDate(request.created_at)}
+                              <span>{formatDate(request.created_at)}</span>
                             </div>
+                            <span className="text-xs text-slate-400 ml-6">{getRelativeTime(request.created_at)}</span>
                           </td>
                           <td className="py-4 px-4">
                             <div>
@@ -420,7 +443,7 @@ export default function DemandesPage() {
                             </p>
                           </td>
                           <td className="py-4 px-4">
-                            <Badge variant="outline" className="font-mono text-xs">
+                            <Badge variant="outline" className="font-mono text-xs bg-orange-50 text-orange-700 border-orange-200">
                               {request.type_org}
                             </Badge>
                           </td>
@@ -438,6 +461,7 @@ export default function DemandesPage() {
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex items-center justify-end gap-1">
+                              {/* View details */}
                               <Dialog open={dialogOpen && selectedRequest?.id === request.id} onOpenChange={(open) => {
                                 setDialogOpen(open)
                                 if (open) {
@@ -447,14 +471,14 @@ export default function DemandesPage() {
                               }}>
                                 <DialogTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <Eye className="w-4 h-4 text-slate-400" />
+                                    <Eye className="w-4 h-4 text-slate-400 hover:text-orange-600" />
                                   </Button>
                                 </DialogTrigger>
                                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                                   <DialogHeader>
                                     <DialogTitle>Détails de la demande</DialogTitle>
                                     <DialogDescription>
-                                      Demande #{request.id.slice(0, 8)}...
+                                      Demande #{request.id.slice(-8)}
                                     </DialogDescription>
                                   </DialogHeader>
                                   
@@ -492,6 +516,24 @@ export default function DemandesPage() {
                                               <p className="font-medium text-slate-900">{selectedRequest.telephone}</p>
                                             </div>
                                           </div>
+                                          {selectedRequest.whatsapp && (
+                                            <div className="flex items-start gap-3">
+                                              <Phone className="w-5 h-5 text-green-500 mt-0.5" />
+                                              <div>
+                                                <p className="text-xs text-slate-500">WhatsApp</p>
+                                                <p className="font-medium text-slate-900">{selectedRequest.whatsapp}</p>
+                                              </div>
+                                            </div>
+                                          )}
+                                          {selectedRequest.fonction && (
+                                            <div className="flex items-start gap-3">
+                                              <ClipboardList className="w-5 h-5 text-slate-400 mt-0.5" />
+                                              <div>
+                                                <p className="text-xs text-slate-500">Fonction</p>
+                                                <p className="font-medium text-slate-900">{selectedRequest.fonction}</p>
+                                              </div>
+                                            </div>
+                                          )}
                                         </div>
                                         
                                         <div className="space-y-3">
@@ -505,19 +547,30 @@ export default function DemandesPage() {
                                           <div className="flex items-start gap-3">
                                             <MapPin className="w-5 h-5 text-slate-400 mt-0.5" />
                                             <div>
-                                              <p className="text-xs text-slate-500">Localisation</p>
+                                              <p className="text-xs text-slate-500">Type / Région</p>
                                               <p className="font-medium text-slate-900">
-                                                {selectedRequest.departement}, {selectedRequest.region}
+                                                <Badge variant="outline" className="mr-2 bg-orange-50 text-orange-700 border-orange-200">
+                                                  {selectedRequest.type_org}
+                                                </Badge>
+                                                {selectedRequest.region}
+                                                {selectedRequest.departement && ` - ${selectedRequest.departement}`}
                                               </p>
                                             </div>
                                           </div>
+                                          {selectedRequest.nb_collaborateurs && (
+                                            <div className="flex items-start gap-3">
+                                              <UsersIcon className="w-5 h-5 text-slate-400 mt-0.5" />
+                                              <div>
+                                                <p className="text-xs text-slate-500">Collaborateurs</p>
+                                                <p className="font-medium text-slate-900">{selectedRequest.nb_collaborateurs}</p>
+                                              </div>
+                                            </div>
+                                          )}
                                           <div className="flex items-start gap-3">
-                                            <Building2 className="w-5 h-5 text-slate-400 mt-0.5" />
+                                            <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
                                             <div>
-                                              <p className="text-xs text-slate-500">Type</p>
-                                              <Badge variant="outline" className="font-mono">
-                                                {selectedRequest.type_org}
-                                              </Badge>
+                                              <p className="text-xs text-slate-500">Reçue le</p>
+                                              <p className="font-medium text-slate-900">{formatDate(selectedRequest.created_at)}</p>
                                             </div>
                                           </div>
                                         </div>
@@ -525,22 +578,18 @@ export default function DemandesPage() {
 
                                       {/* Message */}
                                       {selectedRequest.message && (
-                                        <div className="space-y-2">
-                                          <label className="text-xs font-medium text-slate-500 flex items-center gap-2">
-                                            <MessageSquare className="w-4 h-4" />
-                                            Message
-                                          </label>
-                                          <div className="p-3 rounded-lg bg-slate-50 text-sm text-slate-700 whitespace-pre-wrap">
-                                            {selectedRequest.message}
-                                          </div>
+                                        <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                                          <p className="text-xs text-blue-600 mb-1 flex items-center gap-1">
+                                            <MessageSquare className="w-3 h-3" />
+                                            Message du demandeur
+                                          </p>
+                                          <p className="text-sm text-blue-900">{selectedRequest.message}</p>
                                         </div>
                                       )}
 
-                                      {/* Admin Notes */}
+                                      {/* Admin notes */}
                                       <div className="space-y-2">
-                                        <label className="text-xs font-medium text-slate-500">
-                                          Notes administrateur
-                                        </label>
+                                        <label className="text-sm font-medium text-slate-700">Notes administrateur</label>
                                         <Textarea
                                           value={notesValue}
                                           onChange={(e) => setNotesValue(e.target.value)}
@@ -550,45 +599,110 @@ export default function DemandesPage() {
                                       </div>
 
                                       {/* Actions */}
-                                      <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-200">
+                                      <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-200">
+                                        {selectedRequest.statut === 'NOUVELLE' && (
+                                          <>
+                                            <Button 
+                                              onClick={() => handleStatusUpdate(selectedRequest.id, 'EN_CONTACT', notesValue)}
+                                              disabled={actionLoading}
+                                              size="sm"
+                                              className="bg-blue-600 hover:bg-blue-700"
+                                            >
+                                              <Send className="w-4 h-4 mr-1" />
+                                              Contacter
+                                            </Button>
+                                            <Button 
+                                              onClick={() => handleApproveRequest(selectedRequest.id)}
+                                              disabled={actionLoading}
+                                              size="sm"
+                                              className="bg-green-600 hover:bg-green-700"
+                                            >
+                                              <CheckCircle2 className="w-4 h-4 mr-1" />
+                                              Approuver & Créer org.
+                                            </Button>
+                                            <Button 
+                                              onClick={() => handleStatusUpdate(selectedRequest.id, 'REJETEE', notesValue)}
+                                              disabled={actionLoading}
+                                              variant="destructive"
+                                              size="sm"
+                                            >
+                                              <XCircle className="w-4 h-4 mr-1" />
+                                              Rejeter
+                                            </Button>
+                                          </>
+                                        )}
+                                        
+                                        {selectedRequest.statut === 'EN_CONTACT' && (
+                                          <>
+                                            <Button 
+                                              onClick={() => handleApproveRequest(selectedRequest.id)}
+                                              disabled={actionLoading}
+                                              size="sm"
+                                              className="bg-green-600 hover:bg-green-700"
+                                            >
+                                              <CheckCircle2 className="w-4 h-4 mr-1" />
+                                              Approuver
+                                            </Button>
+                                            <Button 
+                                              onClick={() => handleStatusUpdate(selectedRequest.id, 'APPROUVEE', notesValue)}
+                                              disabled={actionLoading}
+                                              size="sm"
+                                            >
+                                              Approuver (en attente)
+                                            </Button>
+                                            <Button 
+                                              onClick={() => handleStatusUpdate(selectedRequest.id, 'REJETEE', notesValue)}
+                                              disabled={actionLoading}
+                                              variant="destructive"
+                                              size="sm"
+                                            >
+                                              <XCircle className="w-4 h-4 mr-1" />
+                                              Rejeter
+                                            </Button>
+                                          </>
+                                        )}
+
+                                        {(selectedRequest.statut === 'APPROUVEE' || selectedRequest.statut === 'REJETEE') && (
+                                          <Button 
+                                            onClick={() => handleStatusUpdate(selectedRequest.id, 'NOUVELLE', notesValue)}
+                                            disabled={actionLoading}
+                                            variant="outline"
+                                            size="sm"
+                                          >
+                                            Réouvrir
+                                          </Button>
+                                        )}
+
+                                        {selectedRequest.statut === 'CONVERTIE' && (
+                                          <div className="text-sm text-green-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" />
+                                            Cette demande a été convertie en organisation active
+                                          </div>
+                                        )}
+
                                         <Button 
-                                          variant="outline" 
-                                          size="sm" 
-                                          className="gap-2"
-                                          onClick={() => window.open(`tel:${selectedRequest.telephone}`, '_self')}
-                                        >
-                                          <Phone className="w-4 h-4" />
-                                          Contacter
-                                        </Button>
-                                        <Button 
-                                          variant="outline" 
-                                          size="sm" 
-                                          className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50"
-                                          onClick={() => handleStatusUpdate(selectedRequest.id, 'EN_CONTACT', notesValue)}
+                                          onClick={() => handleStatusUpdate(selectedRequest.id, selectedRequest.statut, notesValue)}
                                           disabled={actionLoading}
+                                          variant="outline"
+                                          size="sm"
+                                          className="ml-auto"
                                         >
-                                          Marquer en contact
-                                        </Button>
-                                        <Button 
-                                          size="sm" 
-                                          className="gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-                                          onClick={() => handleApproveRequest(selectedRequest.id)}
-                                          disabled={actionLoading || selectedRequest.statut === 'AYEE'}
-                                        >
-                                          <CheckCircle2 className="w-4 h-4" />
-                                          Approuver & Créer
-                                        </Button>
-                                        <Button 
-                                          variant="destructive" 
-                                          size="sm" 
-                  className="gap-2"
-                                          onClick={() => handleStatusUpdate(selectedRequest.id, 'REFUSEE', notesValue)}
-                                          disabled={actionLoading || selectedRequest.statut === 'REFUSEE'}
-                                        >
-                                          <XCircle className="w-4 h-4" />
-                                          Refuser
+                                          Sauvegarder les notes
                                         </Button>
                                       </div>
+
+                                      {/* Existing admin notes */}
+                                      {selectedRequest.notes_admin && (
+                                        <div className="mt-4 p-3 rounded bg-amber-50 border border-amber-200">
+                                          <p className="text-xs text-amber-600 mb-1">Notes précédentes:</p>
+                                          <p className="text-sm text-amber-900">{selectedRequest.notes_admin}</p>
+                                          {selectedRequest.admin_updated_at && (
+                                            <p className="text-xs text-amber-500 mt-1">
+                                              Mis à jour: {formatDate(selectedRequest.admin_updated_at)}
+                                            </p>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </DialogContent>
@@ -607,42 +721,38 @@ export default function DemandesPage() {
                                     setNotesValue(request.notes_admin || '')
                                     setDialogOpen(true)
                                   }}>
-                                    <Eye className="mr-2 h-4 w-4" />
+                                    <Eye className="w-4 h-4 mr-2" />
                                     Voir détails
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => window.open(`mailto:${request.email}`)}>
-                                    <Mail className="mr-2 h-4 w-4" />
-                                    Envoyer un email
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => window.open(`tel:${request.telephone}`)}>
-                                    <Phone className="mr-2 h-4 w-4" />
-                                    Appeler
-                                  </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    className="text-blue-600"
-                                    onClick={() => handleStatusUpdate(request.id, 'EN_CONTACT')}
-                                    disabled={request.statut === 'AYEE'}
-                                  >
-                                    Marquer en contact
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    className="text-green-600"
-                                    onClick={() => handleApproveRequest(request.id)}
-                                    disabled={request.statut === 'AYEE' || actionLoading}
-                                  >
-                                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                                    Approuver
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    className="text-red-600 focus:text-red-600"
-                                    onClick={() => handleStatusUpdate(request.id, 'REFUSEE')}
-                                    disabled={request.statut === 'REFUSEE'}
-                                  >
-                                    <XCircle className="mr-2 h-4 w-4" />
-                                    Refuser
-                                  </DropdownMenuItem>
+                                  {request.statut === 'NOUVELLE' && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => handleStatusUpdate(request.id, 'EN_CONTACT')}>
+                                        <Send className="w-4 h-4 mr-2 text-blue-600" />
+                                        Marquer en contact
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleApproveRequest(request.id)} className="text-green-600">
+                                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                                        Approuver
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleStatusUpdate(request.id, 'REJETEE')} className="text-red-600">
+                                        <XCircle className="w-4 h-4 mr-2" />
+                                        Rejeter
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                  {request.statut === 'EN_CONTACT' && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => handleApproveRequest(request.id)} className="text-green-600">
+                                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                                        Approuver
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleStatusUpdate(request.id, 'REJETEE')} className="text-red-600">
+                                        <XCircle className="w-4 h-4 mr-2" />
+                                        Rejeter
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
@@ -654,111 +764,90 @@ export default function DemandesPage() {
                 </table>
               </div>
 
-              {/* Mobile Cards */}
+              {/* Mobile cards */}
               <div className="md:hidden space-y-3">
                 {requests.map((request) => {
                   const status = statusConfig[request.statut]
                   return (
-                    <div key={request.id} className="p-4 rounded-xl bg-white border border-slate-200 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-                            <Building2 className="w-5 h-5 text-orange-600" />
-                          </div>
+                    <Card key={request.id} className="border-slate-200">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-3">
                           <div>
-                            <p className="font-medium text-slate-900">{request.nom_organisation}</p>
-                            <p className="text-xs text-slate-500">{request.nom_complet}</p>
+                            <p className="font-medium text-slate-900">{request.nom_complet}</p>
+                            <p className="text-sm text-slate-500">{request.nom_organisation}</p>
                           </div>
+                          <Badge variant="outline" className={`${status.className} text-xs`}>
+                            {status.label}
+                          </Badge>
                         </div>
-                        <Badge variant="outline" className={`${status.className} text-[10px]`}>
-                          {status.label}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-2 text-xs text-slate-500">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {request.region}
-                        </span>
-                        <Badge variant="secondary" className="text-[10px]">{request.type_org}</Badge>
-                        <span>{formatDate(request.created_at)}</span>
-                      </div>
-
-                      <div className="flex gap-2 pt-2 border-t border-slate-100">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex-1 text-xs"
-                          onClick={() => {
-                            setSelectedRequest(request)
-                            setNotesValue(request.notes_admin || '')
-                            setDialogOpen(true)
-                          }}
-                        >
-                          <Eye className="w-3 h-3 mr-1" />
-                          Détails
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          className="flex-1 text-xs bg-green-600 hover:bg-green-700"
-                          onClick={() => handleApproveRequest(request.id)}
-                          disabled={request.statut === 'AYEE'}
-                        >
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
-                          Approuver
-                        </Button>
-                      </div>
-                    </div>
+                        <div className="space-y-1 text-sm text-slate-600">
+                          <p className="flex items-center gap-1">
+                            <Mail className="w-3 h-3" />{request.email}
+                          </p>
+                          <p className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" />{request.telephone}
+                          </p>
+                          <p className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />{request.region}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                          <span className="text-xs text-slate-400">{getRelativeTime(request.created_at)}</span>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedRequest(request)
+                              setNotesValue(request.notes_admin || '')
+                              setDialogOpen(true)
+                            }}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Détails
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
                   )
                 })}
               </div>
 
               {/* Pagination */}
               {pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-200">
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200">
                   <p className="text-sm text-slate-500">
-                    Affichage {(pagination.page - 1) * pagination.limit + 1}-{Math.min(pagination.page * pagination.limit, pagination.total)} sur {pagination.total}
+                    Page {pagination.page} sur {pagination.totalPages}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                      onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
                       disabled={pagination.page <= 1}
+                      className="h-8 w-8"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
-                    
-                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                      let pageNum: number
-                      if (pagination.totalPages <= 5) {
-                        pageNum = i + 1
-                      } else if (pagination.page <= 3) {
-                        pageNum = i + 1
-                      } else if (pagination.page >= pagination.totalPages - 2) {
-                        pageNum = pagination.totalPages - 4 + i
-                      } else {
-                        pageNum = pagination.page - 2 + i
-                      }
-                      
+                    {[...Array(Math.min(5, pagination.totalPages))].map((_, i) => {
+                      const pageNum = i + 1
                       return (
                         <Button
                           key={pageNum}
                           variant={pagination.page === pageNum ? 'default' : 'outline'}
                           size="icon"
-                          className="w-8 h-8"
-                          onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+                          onClick={() => setPagination(p => ({ ...p, page: pageNum }))}
+                          className={`h-8 w-8 ${pagination.page === pageNum ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
                         >
                           {pageNum}
                         </Button>
                       )
                     })}
-                    
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                      onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
                       disabled={pagination.page >= pagination.totalPages}
+                      className="h-8 w-8"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </Button>
@@ -767,20 +856,18 @@ export default function DemandesPage() {
               )}
             </>
           ) : (
-            <div className="text-center py-16">
-              <ClipboardList className="w-16 h-16 text-slate-200 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-slate-700 mb-2">Aucune demande trouvée</h3>
+            /* Empty state */
+            <div className="text-center py-12">
+              <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-900 mb-1">Aucune demande trouvée</h3>
               <p className="text-slate-500 mb-4">
-                {filters.search || filters.statut || filters.region 
-                  ? 'Essayez de modifier vos filtres' 
-                  : 'Les nouvelles demandes apparaîtront ici'}
+                {filters.statut || filters.search || (filters.region && filters.region !== 'Toutes les régions')
+                  ? 'Essayez de modifier vos filtres'
+                  : 'Les nouvelles demandes d\'abonnement apparaîtront ici'}
               </p>
-              {(filters.search || filters.statut || filters.region) && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => setFilters({ statut: '', region: '', search: '' })}
-                >
-                  Réinitialiser les filtres
+              {(filters.statut || filters.search || (filters.region && filters.region !== 'Toutes les régions')) && (
+                <Button variant="outline" onClick={() => setFilters({ statut: '', region: '', search: '' })}>
+                  Effacer les filtres
                 </Button>
               )}
             </div>
@@ -788,5 +875,17 @@ export default function DemandesPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+// Icon component for users count
+function UsersIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
   )
 }

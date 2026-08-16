@@ -33,6 +33,42 @@ export function RequestFormSection() {
     message: "",
   });
 
+  // Mapper les valeurs du formulaire vers les champs de l'API
+  const mapToApiPayload = () => {
+    return {
+      nom_complet: formData.nom,
+      email: formData.email,
+      telephone: formData.telephone,
+      whatsapp: formData.whatsapp || undefined,
+      fonction: formData.fonction || undefined,
+      nom_organisation: formData.nomDirection,
+      type_org: (formData.typeStructure === 'dr' ? 'DR' : formData.typeStructure === 'dd' ? 'DD' : 'DR') as 'DR' | 'DD',
+      region: mapRegion(formData.region),
+      departement: formData.departement || undefined,
+      nb_collaborateurs: formData.nbCollaborateurs || undefined,
+      message: formData.message || undefined
+    };
+  };
+
+  // Mapper les régions du formulaire vers les régions CI
+  const mapRegion = (regionValue: string): string => {
+    const regionMap: Record<string, string> = {
+      'lagunes': 'Lagunes',
+      'district-abidjan': "District d'Abidjan",
+      'comoe': 'Comoé',
+      'denkiala': 'Denguélé',
+      'goh-djiboua': 'Gôh-Djiboua',
+      'lac-lac': 'Lacs',
+      'montagnes': 'Montagnes',
+      'sassandra-marahoue': 'Sassandra-Marahoué',
+      'vallee-bandama': 'Vallée du Bandama',
+      'worodougou': 'Worodougou',
+      'zanzan': 'Zanzan',
+      'autre': 'Autre'
+    };
+    return regionMap[regionValue] || regionValue;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -42,11 +78,38 @@ export function RequestFormSection() {
       return;
     }
     
+    if (!formData.typeStructure) {
+      showError("Type de structure requis", "Veuillez sélectionner un type de structure.");
+      return;
+    }
+    
+    if (!formData.region) {
+      showError("Région requise", "Veuillez sélectionner une région.");
+      return;
+    }
+    
     setIsSubmitting(true);
 
     try {
-      // Simuler l'envoi du formulaire
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Appel réel à l'API
+      const payload = mapToApiPayload();
+      
+      const response = await fetch('/api/admin/demandes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
+        throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      console.log('✅ Demande envoyée:', data);
 
       // Afficher la notification de succès
       showSuccess(
@@ -58,9 +121,10 @@ export function RequestFormSection() {
       setIsSubmitting(false);
       setIsSuccess(true);
     } catch (err) {
+      console.error('❌ Erreur envoi demande:', err);
       showError(
         "Erreur lors de l'envoi",
-        "Une erreur est survenue. Veuillez réessayer ou nous contacter directement.",
+        err instanceof Error ? err.message : "Une erreur est survenue. Veuillez réessayer ou nous contacter directement.",
         {
           action: {
             label: "Réessayer",
@@ -268,7 +332,7 @@ export function RequestFormSection() {
                       <SelectItem value="vallee-bandama">Vallée du Bandama</SelectItem>
                       <SelectItem value="worodougou">Worodougou</SelectItem>
                       <SelectItem value="zanzan">Zanzan</SelectItem>
-                      <SelectItem value="autr">Autre</SelectItem>
+                      <SelectItem value="autre">Autre</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

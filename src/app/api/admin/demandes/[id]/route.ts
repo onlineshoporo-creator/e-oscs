@@ -1,7 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase/admin'
+/**
+ * API Demandes d'Abonnement [id] - e-OSCS
+ * 
+ * Gestion individuelle des demandes avec stockage en mémoire (fallback Vercel)
+ */
 
-// GET /api/admin/demandes/[id] - Get request details
+import { NextRequest, NextResponse } from 'next/server'
+import { inMemoryStore } from '@/lib/in-memory-store'
+
+// GET /api/admin/demandes/[id] - Récupérer une demande spécifique
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -9,22 +15,16 @@ export async function GET(
   try {
     const { id } = await params
 
-    const { data, error } = await supabaseAdmin
-      .from('subscription_requests')
-      .select('*')
-      .eq('id', id)
-      .single()
+    const demande = inMemoryStore.getDemande(id)
 
-    if (error) throw error
-
-    if (!data) {
+    if (!demande) {
       return NextResponse.json(
         { error: 'Demande non trouvée' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json(demande)
 
   } catch (error) {
     console.error('Erreur récupération demande:', error)
@@ -35,7 +35,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/admin/demandes/[id] - Update request status
+// PATCH /api/admin/demandes/[id] - Mettre à jour le statut d'une demande
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -46,31 +46,33 @@ export async function PATCH(
     
     const { statut, notes_admin } = body
 
-    // Validate status
-    const validStatuses = ['NOUVELLE', 'EN_CONTACT', 'EN_ATTENTE_PAIEMENT', 'AYEE', 'REFUSEE', 'CLOTUREE']
+    // Valider le statut
+    const validStatuses = ['NOUVELLE', 'EN_CONTACT', 'APPROUVEE', 'REJETEE', 'CONVERTIE']
     if (statut && !validStatuses.includes(statut)) {
       return NextResponse.json(
-        { error: 'Statut invalide' },
+        { error: 'Statut invalide. Valeurs possibles: ' + validStatuses.join(', ') },
         { status: 400 }
       )
     }
 
-    // Build update object
+    // Construire l'objet de mise à jour
     const updateData: Record<string, unknown> = {}
     if (statut) updateData.statut = statut
     if (notes_admin !== undefined) updateData.notes_admin = notes_admin
 
-    // Update the request
-    const { data, error } = await supabaseAdmin
-      .from('subscription_requests')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single()
+    // Mettre à jour la demande
+    const updated = inMemoryStore.updateDemande(id, updateData)
 
-    if (error) throw error
+    if (!updated) {
+      return NextResponse.json(
+        { error: 'Demande non trouvée' },
+        { status: 404 }
+      )
+    }
 
-    return NextResponse.json(data)
+    console.log(`✅ Demande ${id} mise à jour: ${statut}`)
+
+    return NextResponse.json(updated)
 
   } catch (error) {
     console.error('Erreur mise à jour demande:', error)
@@ -81,7 +83,7 @@ export async function PATCH(
   }
 }
 
-// POST /api/admin/demandes/[id]/approve - Approve request and create org + subscription
+// POST /api/admin/demandes/[id]/approve - Approuver une demande et créer organisation
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -89,121 +91,91 @@ export async function POST(
   try {
     const { id } = await params
     
-    // Get the request details
-    const { data: requestData, error: fetchError } = await supabaseAdmin
-      .from('subscription_requests')
-      .select('*')
-      .eq('id', id)
-      .single()
-
-    if (fetchError || !requestData) {
+    // Récupérer les détails de la demande
+    const demande = inMemoryStore.getDemande(id)
+    
+    if (!demande) {
       return NextResponse.json(
         { error: 'Demande non trouvée' },
         { status: 404 }
       )
     }
 
-    // Check if already approved
-    if (requestData.statut === 'AYEE') {
+    // Vérifier si déjà approuvée
+    if (demande.statut === 'CONVERTIE') {
       return NextResponse.json(
-        { error: 'Cette demande a déjà été approuvée' },
+        { error: 'Cette demande a déjà été convertie en organisation' },
         { status: 400 }
       )
     }
 
-    // Get default plan (ESSENTIEL or first available)
-    const { data: defaultPlan, error: planError } = await supabaseAdmin
-      .from('subscription_plans')
-      .select('*')
-      .eq('code', 'ESSENTIEL')
-      .eq('actif', true)
-      .limit(1)
-      .single()
-
-    if (planError || !defaultPlan) {
-      // Try to get any active plan
-      const { data: anyPlan } = await supabaseAdmin
-        .from('subscription_plans')
-        .select('*')
-        .eq('actif', true)
-        .order('ordre', { ascending: true })
-        .limit(1)
-        .single()
-      
-      if (!anyPlan) {
-        return NextResponse.json(
-          { error: 'Aucun plan d\'abonnement disponible' },
-          { status: 400 }
-        )
-      }
-      
-      // Use anyPlan instead of defaultPlan
-      Object.assign(defaultPlan!, anyPlan)
-    }
-
-    // Create organization
-    const { data: organization, error: orgError } = await supabaseAdmin
-      .from('organizations')
-      .insert({
-        nom: requestData.nom_organisation,
-        type_org: requestData.type_org,
-        region: requestData.region,
-        departement: requestData.departement,
-        telephone: requestData.telephone,
-        email: requestData.email,
-        actif: true
-      })
-      .select()
-      .single()
-
-    if (orgError) throw orgError
-
-    // Calculate subscription dates
-    const dateDebut = new Date()
-    const dateFin = new Date()
-    dateFin.setMonth(dateFin.getMonth() + 1)
-
-    // Create subscription
-    const { data: subscription, error: subError } = await supabaseAdmin
-      .from('subscriptions')
-      .insert({
-        organization_id: organization.id,
-        plan_id: defaultPlan!.id,
-        date_debut: dateDebut.toISOString(),
-        date_fin: dateFin.toISOString(),
-        duree_mois: 1,
+    // Créer l'organisation à partir de la demande
+    const organization = inMemoryStore.createOrganisation({
+      nom: demande.nom_organisation,
+      type_org: demande.type_org,
+      region: demande.region,
+      departement: demande.departement,
+      telephone: demande.telephone,
+      email: demande.email,
+      actif: true,
+      subscription: {
         statut: 'ACTIF',
-        montant: defaultPlan!.prix_mensuel,
-        confirme_le: new Date().toISOString(),
-        notes: `Créé automatiquement depuis la demande #${id.slice(0, 8)}`
-      })
-      .select()
-      .single()
+        plan_nom: 'Plan Essentiel',
+        date_fin: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      members_count: 1
+    })
 
-    if (subError) throw subError
+    // Mettre à jour le statut de la demande
+    inMemoryStore.updateDemande(id, {
+      statut: 'CONVERTIE',
+      notes_admin: `Convertie en organisation le ${new Date().toLocaleDateString('fr-FR')}. Org ID: ${organization.id}`
+    })
 
-    // Update request status to AYEE
-    const { error: updateError } = await supabaseAdmin
-      .from('subscription_requests')
-      .update({
-        statut: 'AYEE',
-        notes_admin: `Approuvée le ${new Date().toLocaleDateString('fr-FR')}. Organisation créée: ${organization.id}`
-      })
-      .eq('id', id)
-
-    if (updateError) throw updateError
+    console.log(`✅ Demande ${id} approuvée → Organisation ${organization.id} créée`)
 
     return NextResponse.json({
       success: true,
-      message: 'Organisation et abonnement créés avec succès',
+      message: 'Organisation créée avec succès',
       organization,
-      subscription
+      subscription: organization.subscription
     })
 
   } catch (error) {
     console.error('Erreur approbation demande:', error)
     return NextResponse.json(
-      { error: 'Erreur lors de l\'approbation de la demande' },
+      { error: "Erreur lors de l'approbation de la demande" },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE /api/admin/demandes/[id] - Supprimer une demande
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    
+    const demande = inMemoryStore.getDemande(id)
+    
+    if (!demande) {
+      return NextResponse.json(
+        { error: 'Demande non trouvée' },
+        { status: 404 }
+      )
+    }
+
+    // Suppression logique via le store (on pourrait ajouter une méthode delete)
+    inMemoryStore.updateDemande(id, { statut: 'REJETEE', notes_admin: 'Demande supprimée par admin' })
+
+    return NextResponse.json({ success: true, message: 'Demande supprimée' })
+
+  } catch (error) {
+    console.error('Erreur suppression demande:', error)
+    return NextResponse.json(
+      { error: 'Erreur lors de la suppression de la demande' },
       { status: 500 }
     )
   }

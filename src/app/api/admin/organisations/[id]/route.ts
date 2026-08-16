@@ -1,68 +1,109 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase/admin'
+/**
+ * API Organisations [id] - e-OSCS
+ * 
+ * Gestion individuelle des organisations avec stockage en mémoire (fallback Vercel)
+ */
 
-// PATCH /api/admin/organisations/[id]/toggle-status - Toggle organization active status
-export async function PATCH(
+import { NextRequest, NextResponse } from 'next/server'
+import { inMemoryStore } from '@/lib/in-memory-store'
+
+// GET /api/admin/organisations/[id] - Récupérer une organisation spécifique
+export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
 
-    // Get current status
-    const { data: org, error: fetchError } = await supabaseAdmin
-      .from('organizations')
-      .select('actif, nom')
-      .eq('id', id)
-      .single()
+    const org = inMemoryStore.getOrganisation(id)
 
-    if (fetchError || !org) {
+    if (!org) {
       return NextResponse.json(
         { error: 'Organisation non trouvée' },
         { status: 404 }
       )
     }
 
-    // Toggle status
-    const newStatus = !org.actif
-
-    const { data, error: updateError } = await supabaseAdmin
-      .from('organizations')
-      .update({ 
-        actif: newStatus,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (updateError) throw updateError
-
-    // If deactivating, also suspend active subscriptions
-    if (!newStatus) {
-      await supabaseAdmin
-        .from('subscriptions')
-        .update({ statut: 'SUSPENDU' })
-        .eq('organization_id', id)
-        .eq('statut', 'ACTIF')
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `Organisation ${newStatus ? 'réactivée' : 'suspendue'} avec succès`,
-      data
-    })
+    return NextResponse.json(org)
 
   } catch (error) {
-    console.error('Erreur toggle statut organisation:', error)
+    console.error('Erreur récupération organisation:', error)
     return NextResponse.json(
-      { error: 'Erreur lors de la modification du statut' },
+      { error: 'Erreur lors de la récupération de l\'organisation' },
       { status: 500 }
     )
   }
 }
 
-// DELETE /api/admin/organisations/[id] - Delete an organization
+// PATCH /api/admin/organisations/[id] - Mettre à jour une organisation (toggle statut, etc.)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const body = await request.json()
+
+    // Récupérer l'organisation actuelle
+    const org = inMemoryStore.getOrganisation(id)
+
+    if (!org) {
+      return NextResponse.json(
+        { error: 'Organisation non trouvée' },
+        { status: 404 }
+      )
+    }
+
+    // Si c'est un toggle de statut
+    if (body.toggleStatus !== undefined) {
+      const newStatus = !org.actif
+      const updated = inMemoryStore.updateOrganisation(id, { actif: newStatus })
+      
+      // Notification
+      inMemoryStore.createNotification({
+        type: 'organisation_activee',
+        titre: newStatus ? 'Organisation réactivée' : 'Organisation suspendue',
+        description: `${org.nom} est maintenant ${newStatus ? 'active' : 'suspendue'}`,
+        lue: false,
+        lien: '/admin/organisations'
+      })
+
+      console.log(`✅ Organisation ${id} ${newStatus ? 'réactivée' : 'suspendue'}`)
+
+      return NextResponse.json({
+        success: true,
+        message: `Organisation ${newStatus ? 'réactivée' : 'suspendue'} avec succès`,
+        data: updated
+      })
+    }
+
+    // Mise à jour générique
+    const allowedFields = ['nom', 'type_org', 'region', 'departement', 'telephone', 'email', 'actif']
+    const updateData: Record<string, unknown> = {}
+    
+    for (const field of allowedFields) {
+      if (body[field] !== undefined) {
+        updateData[field] = body[field]
+      }
+    }
+
+    const updated = inMemoryStore.updateOrganisation(id, updateData)
+
+    return NextResponse.json({
+      success: true,
+      data: updated
+    })
+
+  } catch (error) {
+    console.error('Erreur mise à jour organisation:', error)
+    return NextResponse.json(
+      { error: 'Erreur lors de la mise à jour de l\'organisation' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE /api/admin/organisations/[id] - Supprimer une organisation
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -70,33 +111,27 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    // Check if organization exists
-    const { data: org, error: fetchError } = await supabaseAdmin
-      .from('organizations')
-      .select('*')
-      .eq('id', id)
-      .single()
-
-    if (fetchError || !org) {
+    // Vérifier si l'organisation existe
+    const org = inMemoryStore.getOrganisation(id)
+    
+    if (!org) {
       return NextResponse.json(
         { error: 'Organisation non trouvée' },
         { status: 404 }
       )
     }
 
-    // Delete related subscriptions first
-    await supabaseAdmin
-      .from('subscriptions')
-      .delete()
-      .eq('organization_id', id)
+    // Supprimer l'organisation
+    const deleted = inMemoryStore.deleteOrganisation(id)
+    
+    if (!deleted) {
+      return NextResponse.json(
+        { error: 'Erreur lors de la suppression' },
+        { status: 500 }
+      )
+    }
 
-    // Delete the organization
-    const { error: deleteError } = await supabaseAdmin
-      .from('organizations')
-      .delete()
-      .eq('id', id)
-
-    if (deleteError) throw deleteError
+    console.log(`✅ Organisation ${id} supprimée`)
 
     return NextResponse.json({
       success: true,

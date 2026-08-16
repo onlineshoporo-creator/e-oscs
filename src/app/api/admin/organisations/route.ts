@@ -1,6 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase/admin'
+/**
+ * API Organisations - e-OSCS
+ * 
+ * Gestion des organisations avec stockage en mémoire (fallback Vercel)
+ */
 
+import { NextRequest, NextResponse } from 'next/server'
+import { inMemoryStore } from '@/lib/in-memory-store'
+
+// GET - Récupérer toutes les organisations
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -11,97 +18,41 @@ export async function GET(request: NextRequest) {
     const region = searchParams.get('region')
     const actif = searchParams.get('actif')
 
-    // Build query
-    let query = supabaseAdmin
-      .from('organizations')
-      .select('*', { count: 'exact' })
-      .order('nom', { ascending: true })
+    // Récupérer toutes les organisations
+    let orgs = inMemoryStore.getOrganisations()
 
-    // Apply filters
+    // Appliquer les filtres
     if (search) {
-      query = query.or(`nom.ilike.%${search}%,email.ilike.%${search}%`)
+      const searchLower = search.toLowerCase()
+      orgs = orgs.filter(o => 
+        o.nom.toLowerCase().includes(searchLower) ||
+        (o.email && o.email.toLowerCase().includes(searchLower))
+      )
     }
     if (type_org) {
-      query = query.eq('type_org', type_org)
+      orgs = orgs.filter(o => o.type_org === type_org)
     }
     if (region) {
-      query = query.ilike('region', `%${region}%`)
+      orgs = orgs.filter(o => 
+        o.region.toLowerCase().includes(region.toLowerCase())
+      )
     }
     if (actif !== null && actif !== undefined && actif !== '') {
-      query = query.eq('actif', actif === 'true')
+      orgs = orgs.filter(o => o.actif === (actif === 'true'))
     }
 
-    // Get total count
-    const { count, error: countError } = await query
-
-    if (countError) throw countError
-
-    // Apply pagination
-    const from = (page - 1) * limit
-    const to = from + limit - 1
-
-    let paginatedQuery = supabaseAdmin
-      .from('organizations')
-      .select('*')
-      .order('nom', { ascending: true })
-      .range(from, to)
-
-    // Re-apply filters for paginated query
-    if (search) {
-      paginatedQuery = paginatedQuery.or(`nom.ilike.%${search}%,email.ilike.%${search}%`)
-    }
-    if (type_org) {
-      paginatedQuery = paginatedQuery.eq('type_org', type_org)
-    }
-    if (region) {
-      paginatedQuery = paginatedQuery.ilike('region', `%${region}%`)
-    }
-    if (actif !== null && actif !== undefined && actif !== '') {
-      paginatedQuery = paginatedQuery.eq('actif', actif === 'true')
-    }
-
-    const { data, error } = await paginatedQuery
-
-    if (error) throw error
-
-    // Enrich data with subscription info and member counts
-    const enrichedData = await Promise.all((data || []).map(async (org) => {
-      // Get active subscription
-      const { data: subscription } = await supabaseAdmin
-        .from('subscriptions')
-        .select(`
-          *,
-          plan:subscription_plans(nom)
-        `)
-        .eq('organization_id', org.id)
-        .eq('statut', 'ACTIF')
-        .order('date_fin', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      // Get member count (from profiles table)
-      const { count: membersCount } = await supabaseAdmin
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('organization_id', org.id)
-
-      return {
-        ...org,
-        members_count: membersCount || 0,
-        subscription: subscription ? {
-          statut: subscription.statut,
-          plan_nom: subscription.plan?.nom || 'Inconnu',
-          date_fin: subscription.date_fin
-        } : null
-      }
-    }))
+    // Pagination
+    const total = orgs.length
+    const totalPages = Math.ceil(total / limit)
+    const start = (page - 1) * limit
+    const paginatedOrgs = orgs.slice(start, start + limit)
 
     return NextResponse.json({
-      data: enrichedData,
-      total: count || 0,
+      data: paginatedOrgs,
+      total,
       page,
       limit,
-      totalPages: Math.ceil((count || 0) / limit)
+      totalPages
     })
 
   } catch (error) {
@@ -113,6 +64,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST - Créer une nouvelle organisation
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -120,44 +72,44 @@ export async function POST(request: NextRequest) {
     const { nom, type_org, region, departement, telephone, email } = body
 
     // Validation
-    if (!nom || !type_org || !region) {
+    if (!nom?.trim()) {
       return NextResponse.json(
-        { error: 'Champs obligatoires manquants: nom, type_org, region' },
+        { error: 'Le nom est requis' },
+        { status: 400 }
+      )
+    }
+    if (!type_org || !['DR', 'DD'].includes(type_org)) {
+      return NextResponse.json(
+        { error: "Le type d'organisation doit être DR ou DD" },
+        { status: 400 }
+      )
+    }
+    if (!region?.trim()) {
+      return NextResponse.json(
+        { error: 'La région est requise' },
         { status: 400 }
       )
     }
 
-    // Validate type_org
-    if (!['DR', 'DD'].includes(type_org)) {
-      return NextResponse.json(
-        { error: 'type_org doit être DR ou DD' },
-        { status: 400 }
-      )
-    }
+    // Créer l'organisation
+    const org = inMemoryStore.createOrganisation({
+      nom: nom.trim(),
+      type_org,
+      region: region.trim(),
+      departement: departement?.trim(),
+      telephone: telephone?.trim(),
+      email: email?.trim(),
+      actif: true
+    })
 
-    // Create organization
-    const { data, error } = await supabaseAdmin
-      .from('organizations')
-      .insert({
-        nom,
-        type_org,
-        region,
-        departement: departement || null,
-        telephone: telephone || null,
-        email: email || null,
-        actif: true
-      })
-      .select()
-      .single()
+    console.log(`✅ Nouvelle organisation créée: ${nom} (${type_org})`)
 
-    if (error) throw error
-
-    return NextResponse.json(data, { status: 201 })
+    return NextResponse.json(org, { status: 201 })
 
   } catch (error) {
     console.error('Erreur création organisation:', error)
     return NextResponse.json(
-      { error: 'Erreur lors de la création de l\'organisation' },
+      { error: "Erreur lors de la création de l'organisation" },
       { status: 500 }
     )
   }
