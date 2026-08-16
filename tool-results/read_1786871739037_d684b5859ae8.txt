@@ -1,0 +1,1015 @@
+     1→'use client'
+     2→
+     3→import React, { useState, useEffect } from 'react'
+     4→import Link from 'next/link'
+     5→import { 
+     6→  Users,
+     7→  Building2,
+     8→  Activity,
+     9→  CheckCircle2,
+    10→  Clock,
+    11→  Key,
+    12→  TrendingUp,
+    13→  TrendingDown,
+    14→  Minus,
+    15→  ArrowRight,
+    16→  Eye,
+    17→  Check,
+    18→  X,
+    19→  FileText,
+    20→  BarChart3,
+    21→  PieChart,
+    22→  Zap,
+    23→  Download,
+    24→  FileSearch,
+    25→  Shield,
+    26→  AlertTriangle,
+    27→  Calendar,
+    28→  MoreHorizontal,
+    29→  ChevronLeft,
+    30→  ChevronRight,
+    31→  RefreshCw,
+    32→  QrCode,
+    33→  ClipboardList
+    34→} from 'lucide-react'
+    35→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+    36→import { Button } from '@/components/ui/button'
+    37→import { Badge } from '@/components/ui/badge'
+    38→import { Skeleton } from '@/components/ui/skeleton'
+    39→import {
+    40→  Table,
+    41→  TableBody,
+    42→  TableCell,
+    43→  TableHead,
+    44→  TableHeader,
+    45→  TableRow,
+    46→} from '@/components/ui/table'
+    47→
+    48→// Types pour les stats du dashboard
+    49→interface DashboardStats {
+    50→  totalUsers: number
+    51→  totalOrganizations: number
+    52→  monthlyActivities: number
+    53→  validationRate: number
+    54→  pendingRequests: number
+    55→  codesGenerated: number
+    56→  usersTrend: 'up' | 'down' | 'stable'
+    57→  organizationsTrend: 'up' | 'down' | 'stable'
+    58→  activitiesTrend: 'up' | 'down' | 'stable'
+    59→  validationTrend: 'up' | 'down' | 'stable'
+    60→}
+    61→
+    62→interface RecentActivity {
+    63→  id: string
+    64→  direction: string
+    65→  activity: string
+    66→  date: string
+    67→  statut: 'VALIDEE' | 'BROUILLON' | 'EN_ATTENTE' | 'REJETEE'
+    68→  user: string
+    69→}
+    70→
+    71→interface MonthlyData {
+    72→  month: string
+    73→  activities: number
+    74→  validations: number
+    75→}
+    76→
+    77→interface TopDirection {
+    78→  name: string
+    79→  count: number
+    80→  percentage: number
+    81→}
+    82→
+    83→// Configuration des statuts
+    84→const statusConfig: Record<string, { label: string; className: string; dotClass: string }> = {
+    85→  VALIDEE: { 
+    86→    label: 'Validée', 
+    87→    className: 'bg-emerald-100 text-emerald-700 border-emerald-200', 
+    88→    dotClass: 'bg-emerald-500' 
+    89→  },
+    90→  BROUILLON: { 
+    91→    label: 'Brouillon', 
+    92→    className: 'bg-slate-100 text-slate-600 border-slate-200', 
+    93→    dotClass: 'bg-slate-400' 
+    94→  },
+    95→  EN_ATTENTE: { 
+    96→    label: 'En attente', 
+    97→    className: 'bg-amber-100 text-amber-700 border-amber-200', 
+    98→    dotClass: 'bg-amber-500' 
+    99→  },
+   100→  REJETEE: { 
+   101→    label: 'Rejetée', 
+   102→    className: 'bg-red-100 text-red-700 border-red-200', 
+   103→    dotClass: 'bg-red-500' 
+   104→  },
+   105→}
+   106→
+   107→// Données mock pour le développement
+   108→const mockStats: DashboardStats = {
+   109→  totalUsers: 156,
+   110→  totalOrganizations: 24,
+   111→  monthlyActivities: 342,
+   112→  validationRate: 87,
+   113→  pendingRequests: 12,
+   114→  codesGenerated: 89,
+   115→  usersTrend: 'up',
+   116→  organizationsTrend: 'up',
+   117→  activitiesTrend: 'up',
+   118→  validationTrend: 'up',
+   119→}
+   120→
+   121→const mockMonthlyData: MonthlyData[] = [
+   122→  { month: 'Sept', activities: 185, validations: 160 },
+   123→  { month: 'Oct', activities: 220, validations: 195 },
+   124→  { month: 'Nov', activities: 195, validations: 170 },
+   125→  { month: 'Déc', activities: 280, validations: 245 },
+   126→  { month: 'Jan', activities: 310, validations: 278 },
+   127→  { month: 'Fév', activities: 342, validations: 298 },
+   128→]
+   129→
+   130→const mockTopDirections: TopDirection[] = [
+   131→  { name: 'DR Lagune', count: 67, percentage: 100 },
+   132→  { name: 'DR Bas-Sassandra', count: 54, percentage: 81 },
+   133→  { name: 'DR Dix-Huit Montagnes', count: 48, percentage: 72 },
+   134→  { name: 'DR Vallee Bandama', count: 42, percentage: 63 },
+   135→  { name: 'DR Zanzan', count: 35, percentage: 52 },
+   136→]
+   137→
+   138→const mockRecentActivities: RecentActivity[] = [
+   139→  { id: '1', direction: 'DR Lagune - Abidjan', activity: 'Formation continue en gestion', date: '2025-02-15', statut: 'VALIDEE', user: 'Kouadio Jean' },
+   140→  { id: '2', direction: 'DR Bas-Sassandra', activity: 'Atelier planification Q1', date: '2025-02-14', statut: 'EN_ATTENTE', user: 'Yao Marie' },
+   141→  { id: '3', direction: 'DR Dix-Huit Montagnes', activity: 'Réunion coordination mensuelle', date: '2025-02-14', statut: 'BROUILLON', user: 'Kone Alassane' },
+   142→  { id: '4', direction: 'DR Vallee Bandama', activity: 'Audit interne qualité', date: '2025-02-13', statut: 'VALIDEE', user: 'Touré Fatou' },
+   143→  { id: '5', direction: 'DR Zanzan', activity: 'Programme sensibilisation', date: '2025-02-13', statut: 'REJETEE', user: 'Diallo Ibrahim' },
+   144→  { id: '6', direction: 'DR Lagune - Abidjan', activity: 'Evaluation performance', date: '2025-02-12', statut: 'VALIDEE', user: 'Baffet Amoin' },
+   145→  { id: '7', direction: 'DR Sassandra-Marahoué', activity: 'Plan action annuel', date: '2025-02-12', statut: 'EN_ATTENTE', user: 'N\'Goran Paul' },
+   146→  { id: '8', direction: 'DR Worodougou', activity: 'Session coaching équipe', date: '2025-02-11', statut: 'VALIDEE', user: 'Coulibaly Aminata' },
+   147→]
+   148→
+   149→// Composant Sparkline CSS
+   150→function Sparkline({ data, color = '#F77F00', trend }: { data: number[]; color?: string; trend?: 'up' | 'down' | 'stable' }) {
+   151→  const max = Math.max(...data)
+   152→  const min = Math.min(...data)
+   153→  const range = max - min || 1
+   154→  
+   155→  const points = data.map((value, index) => {
+   156→    const x = (index / (data.length - 1)) * 100
+   157→    const y = 100 - ((value - min) / range) * 100
+   158→    return `${x},${y}`
+   159→  }).join(' ')
+   160→  
+   161→  return (
+   162→    <svg viewBox="0 0 100 40" className="w-full h-10 overflow-visible" preserveAspectRatio="none">
+   163→      <defs>
+   164→        <linearGradient id={`gradient-${color.replace('#', '')}`} x1="0%" y1="0%" x2="0%" y2="100%">
+   165→          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+   166→          <stop offset="100%" stopColor={color} stopOpacity="0" />
+   167→        </linearGradient>
+   168→      </defs>
+   169→      {/* Area fill */}
+   170→      <polygon
+   171→        points={`0,100 ${points} 100,100`}
+   172→        fill={`url(#gradient-${color.replace('#', '')})`}
+   173→      />
+   174→      {/* Line */}
+   175→      <polyline
+   176→        points={points}
+   177→        fill="none"
+   178→        stroke={color}
+   179→        strokeWidth="2"
+   180→        strokeLinecap="round"
+   181→        strokeLinejoin="round"
+   182→      />
+   183→      {/* Last point dot */}
+   184→      <circle cx="100" cy={100 - ((data[data.length - 1] - min) / range) * 100} r="3" fill={color} />
+   185→    </svg>
+   186→  )
+   187→}
+   188→
+   189→// Composant KPI Card enrichi
+   190→interface KPICardProps {
+   191→  title: string
+   192→  value: string | number
+   193→  icon: React.ElementType
+   194→  trend?: 'up' | 'down' | 'stable'
+   195→  trendValue?: string
+   196→  description?: string
+   197→  colorClass: string
+   198→  iconBgClass: string
+   199→  sparkData?: number[]
+   200→  sparkColor?: string
+   201→  hasAlert?: boolean
+   202→  alertCount?: number
+   203→}
+   204→
+   205→function KPICard({
+   206→  title,
+   207→  value,
+   208→  icon: Icon,
+   209→  trend,
+   210→  trendValue,
+   211→  description,
+   212→  colorClass,
+   213→  iconBgClass,
+   214→  sparkData,
+   215→  sparkColor = '#F77F00',
+   216→  hasAlert = false,
+   217→  alertCount = 0,
+   218→}: KPICardProps) {
+   219→  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus
+   220→  
+   221→  return (
+   222→    <Card className="group hover:shadow-xl transition-all duration-300 border-slate-200/80 hover:border-slate-300 bg-white/80 backdrop-blur-sm overflow-hidden relative">
+   223→      {/* Accent bar top */}
+   224→      <div className={`absolute top-0 left-0 right-0 h-1 ${iconBgClass.split(' ')[1]?.includes('orange') ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 
+   225→        iconBgClass.includes('green') ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+   226→        iconBgClass.includes('blue') ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
+   227→        iconBgClass.includes('purple') ? 'bg-gradient-to-r from-purple-500 to-pink-500' :
+   228→        iconBgClass.includes('red') ? 'bg-gradient-to-r from-red-500 to-rose-500' :
+   229→        'bg-gradient-to-r from-slate-400 to-slate-500'
+   230→      }`} />
+   231→      
+   232→      <CardContent className="p-5 pt-6">
+   233→        <div className="flex items-start justify-between gap-4">
+   234→          <div className="space-y-3 flex-1 min-w-0">
+   235→            <div className="flex items-center gap-2">
+   236→              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</p>
+   237→              {hasAlert && alertCount > 0 && (
+   238→                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold animate-pulse">
+   239→                  {alertCount > 99 ? '99+' : alertCount}
+   240→                </span>
+   241→              )}
+   242→            </div>
+   243→            
+   244→            <div className="flex items-baseline gap-2 flex-wrap">
+   245→              <p className="text-3xl font-black text-slate-900 tracking-tight">{value}</p>
+   246→              {trend && (
+   247→                <span className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full ${
+   248→                  trend === 'up' ? 'text-emerald-700 bg-emerald-50 ring-1 ring-emerald-600/20' :
+   249→                  trend === 'down' ? 'text-red-700 bg-red-50 ring-1 ring-red-600/20' :
+   250→                  'text-slate-600 bg-slate-100 ring-1 ring-slate-300'
+   251→                }`}>
+   252→                  <TrendIcon className="w-3 h-3" />
+   253→                  {trendValue}
+   254→                </span>
+   255→              )}
+   256→            </div>
+   257→            
+   258→            {description && (
+   259→              <p className="text-xs text-slate-400 leading-relaxed">{description}</p>
+   260→            )}
+   261→            
+   262→            {/* Sparkline */}
+   263→            {sparkData && sparkData.length > 0 && (
+   264→              <div className="w-24 h-10 -ml-1 opacity-60 group-hover:opacity-100 transition-opacity">
+   265→                <Sparkline data={sparkData} color={sparkColor} trend={trend} />
+   266→              </div>
+   267→            )}
+   268→          </div>
+   269→          
+   270→          <div className={`p-3 rounded-2xl ${iconBgClass} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg`}>
+   271→            <Icon className="w-6 h-6" />
+   272→          </div>
+   273→        </div>
+   274→      </CardContent>
+   275→    </Card>
+   276→  )
+   277→}
+   278→
+   279→// Composant Bar Chart Horizontal (Activités par mois)
+   280→function MonthlyBarChart({ data }: { data: MonthlyData[] }) {
+   281→  const maxValue = Math.max(...data.map(d => d.activities))
+   282→  
+   283→  return (
+   284→    <div className="space-y-3">
+   285→      {data.map((item, index) => (
+   286→        <div key={item.month} className="group flex items-center gap-3">
+   287→          <span className="text-xs font-medium text-slate-500 w-9 text-right">{item.month}</span>
+   288→          <div className="flex-1 relative h-8 bg-slate-100/80 rounded-lg overflow-hidden">
+   289→            {/* Background grid lines */}
+   290→            <div className="absolute inset-0 flex">
+   291→              {[25, 50, 75].map((percent) => (
+   292→                <div key={percent} className="h-full border-l border-slate-200/50" style={{ left: `${percent}%` }} />
+   293→              ))}
+   294→            </div>
+   295→            {/* Bar animation */}
+   296→            <div 
+   297→              className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#F77F00] to-[#FFA940] rounded-lg transition-all duration-700 ease-out group-hover:from-[#e67300] group-hover:to-[#F77F00] shadow-sm"
+   298→              style={{ 
+   299→                width: `${(item.activities / maxValue) * 100}%`,
+   300→                animationDelay: `${index * 100}ms`
+   301→              }}
+   302→            >
+   303→              <div className="absolute inset-0 bg-white/10 rounded-lg" />
+   304→            </div>
+   305→            {/* Value label */}
+   306→            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-700">
+   307→              {item.activities}
+   308→            </span>
+   309→          </div>
+   310→        </div>
+   311→      ))}
+   312→      
+   313→      {/* Legend */}
+   314→      <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-3">
+   315→        <div className="flex items-center gap-2">
+   316→          <div className="w-3 h-3 rounded bg-gradient-to-r from-[#F77F00] to-[#FFA940]" />
+   317→          <span className="text-xs text-slate-500">Activités saisies</span>
+   318→        </div>
+   319→        <span className="text-xs font-medium text-slate-600">
+   320→          Total: {data.reduce((a, b) => a + b.activities, 0).toLocaleString()}
+   321→        </span>
+   322→      </div>
+   323→    </div>
+   324→  )
+   325→}
+   326→
+   327→// Composant Donut Chart CSS (Répartition par statut)
+   328→function StatusDonutChart() {
+   329→  const data = [
+   330→    { label: 'Validées', value: 298, color: '#009E60', percentage: 87 },
+   331→    { label: 'En attente', value: 28, color: '#F59E0B', percentage: 8 },
+   332→    { label: 'Brouillons', value: 12, color: '#94A3B8', percentage: 3 },
+   333→    { label: 'Rejetées', value: 4, color: '#EF4444', percentage: 1 },
+   334→  ]
+   335→  
+   336→  // Calcul pour le donut SVG
+   337→  let cumulativePercentage = 0
+   338→  const radius = 45
+   339→  const circumference = 2 * Math.PI * radius
+   340→  
+   341→  return (
+   342→    <div className="flex flex-col items-center gap-4">
+   343→      {/* Donut SVG */}
+   344→      <div className="relative w-40 h-40">
+   345→        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+   346→          {data.map((segment, index) => {
+   347→            const strokeDasharray = `${(segment.percentage / 100) * circumference} ${circumference}`
+   348→            const strokeDashoffset = -(cumulativePercentage / 100) * circumference
+   349→            cumulativePercentage += segment.percentage
+   350→            
+   351→            return (
+   352→              <circle
+   353→                key={segment.label}
+   354→                cx="50"
+   355→                cy="50"
+   356→                r={radius}
+   357→                fill="none"
+   358→                stroke={segment.color}
+   359→                strokeWidth="12"
+   360→                strokeDasharray={strokeDasharray}
+   361→                strokeDashoffset={strokeDashoffset}
+   362→                className="transition-all duration-500 hover:opacity-80"
+   363→                style={{
+   364→                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+   365→                }}
+   366→              />
+   367→            )
+   368→          })}
+   369→        </svg>
+   370→        {/* Center content */}
+   371→        <div className="absolute inset-0 flex flex-col items-center justify-center">
+   372→          <span className="text-2xl font-black text-slate-900">87%</span>
+   373→          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Validation</span>
+   374→        </div>
+   375→      </div>
+   376→      
+   377→      {/* Legend */}
+   378→      <div className="grid grid-cols-2 gap-x-4 gap-y-2 w-full">
+   379→        {data.map((item) => (
+   380→          <div key={item.label} className="flex items-center gap-2">
+   381→            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+   382→            <div className="flex-1 min-w-0">
+   383→              <p className="text-xs font-medium text-slate-700 truncate">{item.label}</p>
+   384→              <p className="text-[10px] text-slate-400">{item.value} ({item.percentage}%)</p>
+   385→            </div>
+   386→          </div>
+   387→        ))}
+   388→      </div>
+   389→    </div>
+   390→  )
+   391→}
+   392→
+   393→// Composant Bar Chart Vertical (Top Directions)
+   394→function TopDirectionsChart({ data }: { data: TopDirection[] }) {
+   395→  const maxValue = Math.max(...data.map(d => d.count))
+   396→  
+   397→  return (
+   398→    <div className="space-y-3">
+   399→      {data.map((item, index) => (
+   400→        <div key={item.name} className="group flex items-center gap-3">
+   401→          <span className="text-xs font-medium text-slate-600 w-28 truncate text-right" title={item.name}>
+   402→            {item.name.replace('DR ', '')}
+   403→          </span>
+   404→          <div className="flex-1 h-7 bg-slate-100/80 rounded-md overflow-hidden relative">
+   405→            <div 
+   406→              className="absolute inset-y-0 left-0 bg-gradient-to-t from-[#009E60] to-[#34D399] rounded-md transition-all duration-500 ease-out group-hover:from-[#008C55] group-hover:to-[#009E60]"
+   407→              style={{ 
+   408→                width: `${(item.count / maxValue) * 100}%`,
+   409→                animationDelay: `${index * 80}ms`
+   410→              }}
+   411→            />
+   412→          </div>
+   413→          <span className="text-xs font-bold text-slate-700 w-8 text-right">{item.count}</span>
+   414→        </div>
+   415→      ))}
+   416→    </div>
+   417→  )
+   418→}
+   419→
+   420→// Composant Timeline Activités Récentes
+   421→function ActivityTimeline({ activities }: { activities: RecentActivity[] }) {
+   422→  return (
+   423→    <div className="relative space-y-0">
+   424→      {/* Vertical line */}
+   425→      <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-slate-200" />
+   426→      
+   427→      {activities.slice(0, 5).map((activity, index) => {
+   428→        const status = statusConfig[activity.statut]
+   429→        return (
+   430→          <div key={activity.id} className="relative flex gap-4 pb-5 last:pb-0 group">
+   431→            {/* Timeline dot */}
+   432→            <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+   433→              activity.statut === 'VALIDEE' ? 'bg-emerald-100 ring-2 ring-emerald-200' :
+   434→              activity.statut === 'EN_ATTENTE' ? 'bg-amber-100 ring-2 ring-amber-200' :
+   435→              activity.statut === 'REJETEE' ? 'bg-red-100 ring-2 ring-red-200' :
+   436→              'bg-slate-100 ring-2 ring-slate-200'
+   437→            }`}>
+   438→              {activity.statut === 'VALIDEE' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+   439→              {activity.statut === 'EN_ATTENTE' && <Clock className="w-3.5 h-3.5 text-amber-600" />}
+   440→              {activity.statut === 'REJETEE' && <X className="w-3.5 h-3.5 text-red-600" />}
+   441→              {activity.statut === 'BROUILLON' && <FileText className="w-3.5 h-3.5 text-slate-500" />}
+   442→            </div>
+   443→            
+   444→            {/* Content */}
+   445→            <div className="flex-1 min-w-0 pb-1">
+   446→              <div className="flex items-start justify-between gap-2">
+   447→                <div className="min-w-0 flex-1">
+   448→                  <p className="text-sm font-medium text-slate-900 truncate group-hover:text-[#F77F00] transition-colors">
+   449→                    {activity.activity}
+   450→                  </p>
+   451→                  <p className="text-xs text-slate-500 mt-0.5">{activity.direction}</p>
+   452→                  <div className="flex items-center gap-2 mt-1.5">
+   453→                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${status?.className}`}>
+   454→                      <span className={`w-1.5 h-1.5 rounded-full mr-1 ${status?.dotClass}`} />
+   455→                      {status?.label}
+   456→                    </Badge>
+   457→                    <span className="text-[10px] text-slate-400">{activity.user}</span>
+   458→                  </div>
+   459→                </div>
+   460→                <span className="text-[10px] text-slate-400 whitespace-nowrap flex-shrink-0">
+   461→                  {new Date(activity.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+   462→                </span>
+   463→              </div>
+   464→            </div>
+   465→          </div>
+   466→        )
+   467→      })}
+   468→    </div>
+   469→  )
+   470→}
+   471→
+   472→export default function AdminDashboardPage() {
+   473→  const [stats, setStats] = useState<DashboardStats | null>(null)
+   474→  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
+   475→  const [loading, setLoading] = useState(true)
+   476→  const [currentPage, setCurrentPage] = useState(1)
+   477→  const itemsPerPage = 5
+   478→
+   479→  useEffect(() => {
+   480→    async function fetchDashboardData() {
+   481→      try {
+   482→        // Fetch existing stats API
+   483→        const statsRes = await fetch('/api/admin/stats')
+   484→        if (statsRes.ok) {
+   485→          const statsData = await statsRes.json()
+   486→          setStats({
+   487→            totalUsers: statsData.totalUsers || mockStats.totalUsers,
+   488→            totalOrganizations: statsData.totalOrganizations || mockStats.totalOrganizations,
+   489→            monthlyActivities: statsData.monthlyActivities || mockStats.monthlyActivities,
+   490→            validationRate: statsData.validationRate || mockStats.validationRate,
+   491→            pendingRequests: statsData.pendingRequests || mockStats.pendingRequests,
+   492→            codesGenerated: statsData.codesGenerated || mockStats.codesGenerated,
+   493→            usersTrend: statsData.usersTrend || mockStats.usersTrend,
+   494→            organizationsTrend: statsData.organizationsTrend || mockStats.organizationsTrend,
+   495→            activitiesTrend: statsData.activitiesTrend || mockStats.activitiesTrend,
+   496→            validationTrend: statsData.validationTrend || mockStats.validationTrend,
+   497→          })
+   498→        } else {
+   499→          setStats(mockStats)
+   500→        }
+   501→
+   502→        // Use mock data for now (API can be connected later)
+   503→        setRecentActivities(mockRecentActivities)
+   504→      } catch (error) {
+   505→        console.error('Erreur lors du chargement des données:', error)
+   506→        // Fallback to mock data
+   507→        setStats(mockStats)
+   508→        setRecentActivities(mockRecentActivities)
+   509→      } finally {
+   510→        setLoading(false)
+   511→      }
+   512→    }
+   513→    
+   514→    fetchDashboardData()
+   515→  }, [])
+   516→
+   517→  // Pagination logic
+   518→  const totalPages = Math.ceil(recentActivities.length / itemsPerPage)
+   519→  const paginatedActivities = recentActivities.slice(
+   520→    (currentPage - 1) * itemsPerPage,
+   521→    currentPage * itemsPerPage
+   522→  )
+   523→
+   524→  // Sparkline data for each KPI
+   525→  const usersSparkData = [120, 132, 138, 145, 150, 156]
+   526→  const orgsSparkData = [18, 19, 20, 21, 22, 24]
+   527→  const activitiesSparkData = [220, 245, 268, 290, 315, 342]
+   528→  const validationSparkData = [82, 83, 84, 85, 86, 87]
+   529→  const pendingSparkData = [18, 16, 15, 14, 13, 12]
+   530→  const codesSparkData = [45, 52, 58, 68, 78, 89]
+   531→
+   532→  if (loading) {
+   533→    return (
+   534→      <div className="space-y-6 animate-pulse">
+   535→        <div className="h-8 w-64 bg-slate-200 rounded" />
+   536→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+   537→          {[...Array(6)].map((_, i) => (
+   538→            <Skeleton key={i} className="h-36 rounded-xl" />
+   539→          ))}
+   540→        </div>
+   541→      </div>
+   542→    )
+   543→  }
+   544→
+   545→  return (
+   546→    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+   547→      {/* Page Header */}
+   548→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   549→        <div className="space-y-1">
+   550→          <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
+   551→            Tableau de bord
+   552→          </h1>
+   553→          <p className="text-slate-500 text-sm">
+   554→            Vue d&apos;ensemble de la plateforme e-OSCS — Dernière mise à jour: {new Date().toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+   555→          </p>
+   556→        </div>
+   557→        <div className="flex items-center gap-2 sm:gap-3">
+   558→          <Button variant="outline" size="sm" className="gap-2 text-slate-600 border-slate-200 hover:bg-slate-50">
+   559→            <RefreshCw className="w-4 h-4" />
+   560→            Actualiser
+   561→          </Button>
+   562→          <Button size="sm" asChild className="gap-2 bg-gradient-to-r from-[#F77F00] to-[#FFA940] hover:from-[#e67300] hover:to-[#F77F00] text-white shadow-lg shadow-orange-500/25">
+   563→            <Link href="/admin/demandes">
+   564→              <PlusIcon className="w-4 h-4" />
+   565→              Nouvelle demande
+   566→            </Link>
+   567→          </Button>
+   568→        </div>
+   569→      </div>
+   570→
+   571→      {/* KPI Cards Grid - 6 cards */}
+   572→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+   573→        <KPICard
+   574→          title="Total utilisateurs"
+   575→          value={stats?.totalUsers || 0}
+   576→          icon={Users}
+   577→          trend={stats?.usersTrend}
+   578→          trendValue="+8.3%"
+   579→          description="vs mois dernier"
+   580→          colorClass="text-blue-600"
+   581→          iconBgClass="bg-blue-100 text-blue-600"
+   582→          sparkData={usersSparkData}
+   583→          sparkColor="#3B82F6"
+   584→        />
+   585→        
+   586→        <KPICard
+   587→          title="Organisations actives"
+   588→          value={stats?.totalOrganizations || 0}
+   589→          icon={Building2}
+   590→          trend={stats?.organizationsTrend}
+   591→          trendValue="+9.1%"
+   592→          description="directions connectées"
+   593→          colorClass="text-[#F77F00]"
+   594→          iconBgClass="bg-orange-100 text-[#F77F00]"
+   595→          sparkData={orgsSparkData}
+   596→          sparkColor="#F77F00"
+   597→        />
+   598→        
+   599→        <KPICard
+   600→          title="Activités ce mois"
+   601→          value={stats?.monthlyActivities?.toLocaleString() || 0}
+   602→          icon={Activity}
+   603→          trend={stats?.activitiesTrend}
+   604→          trendValue="+10.4%"
+   605→          description="total saisies"
+   606→          colorClass="text-[#009E60]"
+   607→          iconBgClass="bg-emerald-100 text-[#009E60]"
+   608→          sparkData={activitiesSparkData}
+   609→          sparkColor="#009E60"
+   610→        />
+   611→        
+   612→        <KPICard
+   613→          title="Taux validation"
+   614→          value={`${stats?.validationRate || 0}%`}
+   615→          icon={CheckCircle2}
+   616→          trend={stats?.validationTrend}
+   617→          trendValue="+2.1%"
+   618→          description="objectif: 90%"
+   619→          colorClass="text-purple-600"
+   620→          iconBgClass="bg-purple-100 text-purple-600"
+   621→          sparkData={validationSparkData}
+   622→          sparkColor="#8B5CF6"
+   623→        />
+   624→        
+   625→        <KPICard
+   626→          title="Demandes en attente"
+   627→          value={stats?.pendingRequests || 0}
+   628→          icon={Clock}
+   629→          trend="down"
+   630→          trendValue="-7.7%"
+   631→          description="à traiter"
+   632→          colorClass="text-amber-600"
+   633→          iconBgClass="bg-amber-100 text-amber-600"
+   634→          sparkData={pendingSparkData}
+   635→          sparkColor="#F59E0B"
+   636→          hasAlert={(stats?.pendingRequests || 0) > 0}
+   637→          alertCount={stats?.pendingRequests}
+   638→        />
+   639→        
+   640→        <KPICard
+   641→          title="Codes générés"
+   642→          value={stats?.codesGenerated || 0}
+   643→          icon={Key}
+   644→          trend="up"
+   645→          trendValue="+14.1%"
+   646→          description="ce trimestre"
+   647→          colorClass="text-cyan-600"
+   648→          iconBgClass="bg-cyan-100 text-cyan-600"
+   649→          sparkData={codesSparkData}
+   650→          sparkColor="#06B6D4"
+   651→        />
+   652→      </div>
+   653→
+   654→      {/* Main Content Grid */}
+   655→      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+   656→        
+   657→        {/* Left Column - Charts (2/3 width on XL) */}
+   658→        <div className="xl:col-span-2 space-y-6">
+   659→          
+   660→          {/* Row: Monthly Activities + Status Distribution */}
+   661→          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   662→            {/* Monthly Bar Chart */}
+   663→            <Card className="border-slate-200/80 hover:shadow-lg transition-shadow">
+   664→              <CardHeader className="pb-3">
+   665→                <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
+   666→                  <BarChart3 className="w-5 h-5 text-[#F77F00]" />
+   667→                  Activités par mois
+   668→                </CardTitle>
+   669→                <CardDescription>Évolution sur les 6 derniers mois</CardDescription>
+   670→              </CardHeader>
+   671→              <CardContent>
+   672→                <MonthlyBarChart data={mockMonthlyData} />
+   673→              </CardContent>
+   674→            </Card>
+   675→
+   676→            {/* Status Donut Chart */}
+   677→            <Card className="border-slate-200/80 hover:shadow-lg transition-shadow">
+   678→              <CardHeader className="pb-3">
+   679→                <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
+   680→                  <PieChart className="w-5 h-5 text-[#009E60]" />
+   681→                  Répartition par statut
+   682→                </CardTitle>
+   683→                <CardDescription>Ce mois-ci</CardDescription>
+   684→              </CardHeader>
+   685→              <CardContent className="flex justify-center">
+   686→                <StatusDonutChart />
+   687→              </CardContent>
+   688→            </Card>
+   689→          </div>
+   690→
+   691→          {/* Top Directions Chart */}
+   692→          <Card className="border-slate-200/80 hover:shadow-lg transition-shadow">
+   693→            <CardHeader className="pb-3">
+   694→              <div className="flex items-center justify-between">
+   695→                <div>
+   696→                  <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
+   697→                    <Zap className="w-5 h-5 text-[#009E60]" />
+   698→                    Top directions les plus actives
+   699→                  </CardTitle>
+   700→                  <CardDescription>Basé sur les activités ce mois</CardDescription>
+   701→                </div>
+   702→                <Button variant="ghost" size="sm" className="text-[#F77F00] hover:text-[#e67300] gap-1">
+   703→                  Voir tout
+   704→                  <ArrowRight className="w-4 h-4" />
+   705→                </Button>
+   706→              </div>
+   707→            </CardHeader>
+   708→            <CardContent>
+   709→              <TopDirectionsChart data={mockTopDirections} />
+   710→            </CardContent>
+   711→          </Card>
+   712→
+   713→          {/* Recent Activities Table */}
+   714→          <Card className="border-slate-200/80 hover:shadow-lg transition-shadow">
+   715→            <CardHeader className="pb-3">
+   716→              <div className="flex items-center justify-between">
+   717→                <div>
+   718→                  <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
+   719→                    <ClipboardList className="w-5 h-5 text-[#F77F00]" />
+   720→                    Activités récentes
+   721→                  </CardTitle>
+   722→                  <CardDescription>Liste des dernières activités saisies</CardDescription>
+   723→                </div>
+   724→                <Button variant="ghost" size="sm" className="text-[#F77F00] hover:text-[#e67300] gap-1">
+   725→                  Exporter
+   726→                  <Download className="w-4 h-4" />
+   727→                </Button>
+   728→              </div>
+   729→            </CardHeader>
+   730→            <CardContent>
+   731→              {paginatedActivities.length > 0 ? (
+   732→                <>
+   733→                  <Table>
+   734→                    <TableHeader>
+   735→                      <TableRow className="hover:bg-transparent border-slate-200">
+   736→                        <TableHead className="text-xs font-semibold text-slate-500 uppercase">Direction</TableHead>
+   737→                        <TableHead className="text-xs font-semibold text-slate-500 uppercase">Activité</TableHead>
+   738→                        <TableHead className="text-xs font-semibold text-slate-500 uppercase hidden md:table-cell">Utilisateur</TableHead>
+   739→                        <TableHead className="text-xs font-semibold text-slate-500 uppercase hidden sm:table-cell">Date</TableHead>
+   740→                        <TableHead className="text-xs font-semibold text-slate-500 uppercase">Statut</TableHead>
+   741→                        <TableHead className="text-right text-xs font-semibold text-slate-500 uppercase">Actions</TableHead>
+   742→                      </TableRow>
+   743→                    </TableHeader>
+   744→                    <TableBody>
+   745→                      {paginatedActivities.map((activity) => {
+   746→                        const status = statusConfig[activity.statut]
+   747→                        return (
+   748→                          <TableRow key={activity.id} className="group hover:bg-slate-50/50">
+   749→                            <TableCell className="font-medium text-sm text-slate-900 max-w-[150px] truncate">
+   750→                              {activity.direction.replace('DR ', '')}
+   751→                            </TableCell>
+   752→                            <TableCell className="text-sm text-slate-600 max-w-[180px] truncate">
+   753→                              {activity.activity}
+   754→                            </TableCell>
+   755→                            <TableCell className="text-sm text-slate-500 hidden md:table-cell">
+   756→                              {activity.user}
+   757→                            </TableCell>
+   758→                            <TableCell className="text-sm text-slate-500 hidden sm:table-cell">
+   759→                              {new Date(activity.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+   760→                            </TableCell>
+   761→                            <TableCell>
+   762→                              <Badge variant="outline" className={`text-[11px] ${status?.className}`}>
+   763→                                {status?.label}
+   764→                              </Badge>
+   765→                            </TableCell>
+   766→                            <TableCell className="text-right">
+   767→                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+   768→                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600">
+   769→                                  <Eye className="w-4 h-4" />
+   770→                                </Button>
+   771→                                {activity.statut === 'EN_ATTENTE' && (
+   772→                                  <>
+   773→                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-600">
+   774→                                      <Check className="w-4 h-4" />
+   775→                                    </Button>
+   776→                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600">
+   777→                                      <X className="w-4 h-4" />
+   778→                                    </Button>
+   779→                                  </>
+   780→                                )}
+   781→                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600">
+   782→                                  <MoreHorizontal className="w-4 h-4" />
+   783→                                </Button>
+   784→                              </div>
+   785→                            </TableCell>
+   786→                          </TableRow>
+   787→                        )
+   788→                      })}
+   789→                    </TableBody>
+   790→                  </Table>
+   791→                  
+   792→                  {/* Pagination */}
+   793→                  {totalPages > 1 && (
+   794→                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-100">
+   795→                      <p className="text-xs text-slate-500">
+   796→                        Affichage {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, recentActivities.length)} sur {recentActivities.length}
+   797→                      </p>
+   798→                      <div className="flex items-center gap-1">
+   799→                        <Button
+   800→                          variant="outline"
+   801→                          size="icon"
+   802→                          className="h-8 w-8"
+   803→                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+   804→                          disabled={currentPage === 1}
+   805→                        >
+   806→                          <ChevronLeft className="w-4 h-4" />
+   807→                        </Button>
+   808→                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+   809→                          <Button
+   810→                            key={page}
+   811→                            variant={currentPage === page ? "default" : "outline"}
+   812→                            size="icon"
+   813→                            className={`h-8 w-8 ${currentPage === page ? 'bg-[#F77F00] hover:bg-[#e67300]' : ''}`}
+   814→                            onClick={() => setCurrentPage(page)}
+   815→                          >
+   816→                            {page}
+   817→                          </Button>
+   818→                        ))}
+   819→                        <Button
+   820→                          variant="outline"
+   821→                          size="icon"
+   822→                          className="h-8 w-8"
+   823→                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+   824→                          disabled={currentPage === totalPages}
+   825→                        >
+   826→                          <ChevronRight className="w-4 h-4" />
+   827→                        </Button>
+   828→                      </div>
+   829→                    </div>
+   830→                  )}
+   831→                </>
+   832→              ) : (
+   833→                <div className="text-center py-12">
+   834→                  <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+   835→                  <p className="text-slate-500 font-medium">Aucune activité pour le moment</p>
+   836→                  <p className="text-sm text-slate-400 mt-1">Les nouvelles activités apparaîtront ici</p>
+   837→                </div>
+   838→              )}
+   839→            </CardContent>
+   840→          </Card>
+   841→        </div>
+   842→
+   843→        {/* Right Column (1/3 width on XL) */}
+   844→        <div className="space-y-6">
+   845→          
+   846→          {/* Activity Timeline */}
+   847→          <Card className="border-slate-200/80 hover:shadow-lg transition-shadow">
+   848→            <CardHeader className="pb-3">
+   849→              <div className="flex items-center justify-between">
+   850→                <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
+   851→                  <Calendar className="w-5 h-5 text-[#F77F00]" />
+   852→                  Timeline récent
+   853→                </CardTitle>
+   854→                <Button variant="ghost" size="sm" className="text-[#F77F00] hover:text-[#e67300] gap-1 text-xs">
+   855→                  Voir tout
+   856→                  <ArrowRight className="w-3 h-3" />
+   857→                </Button>
+   858→              </div>
+   859→              <CardDescription>Les 5 dernières activités</CardDescription>
+   860→            </CardHeader>
+   861→            <CardContent>
+   862→              <ActivityTimeline activities={mockRecentActivities} />
+   863→            </CardContent>
+   864→          </Card>
+   865→
+   866→          {/* Quick Actions Panel */}
+   867→          <Card className="border-slate-200/80 bg-gradient-to-br from-[#0F172A] to-slate-800 text-white overflow-hidden">
+   868→            <div className="absolute top-0 right-0 w-32 h-32 bg-[#F77F00]/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+   869→            <CardHeader className="pb-3 relative">
+   870→              <CardTitle className="text-base font-semibold text-white flex items-center gap-2">
+   871→                <Zap className="w-5 h-5 text-[#F77F00]" />
+   872→                Actions rapides
+   873→              </CardTitle>
+   874→              <CardDescription className="text-slate-400">Accès rapide aux fonctionnalités</CardDescription>
+   875→            </CardHeader>
+   876→            <CardContent className="relative space-y-2">
+   877→              <QuickActionButton
+   878→                icon={QrCode}
+   879→                label="Générer un code"
+   880→                href="/admin/codes-activation"
+   881→                badge="+ nouveau"
+   882→                color="orange"
+   883→              />
+   884→              <QuickActionButton
+   885→                icon={ClipboardList}
+   886→                label="Voir les demandes"
+   887→                href="/admin/demandes?statut=NOUVELLE"
+   888→                badge={`${stats?.pendingRequests || 0} en attente`}
+   889→                badgeVariant={stats?.pendingRequests ? 'warning' : 'default'}
+   890→                color="blue"
+   891→              />
+   892→              <QuickActionButton
+   893→                icon={Download}
+   894→                label="Exporter les données"
+   895→                href="#"
+   896→                color="green"
+   897→              />
+   898→              <QuickActionButton
+   899→                icon={FileSearch}
+   900→                label="Voir les logs système"
+   901→                href="/admin/config"
+   902→                color="purple"
+   903→              />
+   904→            </CardContent>
+   905→          </Card>
+   906→
+   907→          {/* System Health Card */}
+   908→          <Card className="border-slate-200/80">
+   909→            <CardHeader className="pb-3">
+   910→              <CardTitle className="text-base font-semibold text-slate-900 flex items-center gap-2">
+   911→                <Shield className="w-5 h-5 text-emerald-500" />
+   912→                Santé du système
+   913→              </CardTitle>
+   914→            </CardHeader>
+   915→            <CardContent className="space-y-4">
+   916→              <HealthItem label="API Status" status="operational" value="99.9%" />
+   917→              <HealthItem label="Base de données" status="operational" value="Normal" />
+   918→              <HealthItem label="Stockage" status="warning" value="78%" />
+   919→              <HealthItem label="Dernière sauvegarde" status="operational" value="Il y a 2h" />
+   920→              
+   921→              <div className="pt-3 border-t border-slate-100">
+   922→                <div className="flex items-center justify-between text-xs">
+   923→                  <span className="text-slate-500">Version</span>
+   924→                  <span className="font-mono text-slate-700">v2.4.1</span>
+   925→                </div>
+   926→                <div className="flex items-center justify-between text-xs mt-1">
+   927→                  <span className="text-slate-500">Environnement</span>
+   928→                  <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-200 bg-emerald-50">Production</Badge>
+   929→                </div>
+   930→              </div>
+   931→            </CardContent>
+   932→          </Card>
+   933→        </div>
+   934→      </div>
+   935→    </div>
+   936→  )
+   937→}
+   938→
+   939→// Sub-components
+   940→
+   941→function PlusIcon(props: React.SVGProps<SVGSVGElement>) {
+   942→  return (
+   943→    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+   944→      <path d="M5 12h14" /><path d="M12 5v14" />
+   945→    </svg>
+   946→  )
+   947→}
+   948→
+   949→interface QuickActionButtonProps {
+   950→  icon: React.ElementType
+   951→  label: string
+   952→  href: string
+   953→  badge?: string
+   954→  badgeVariant?: 'default' | 'warning'
+   955→  color: 'orange' | 'blue' | 'green' | 'purple'
+   956→}
+   957→
+   958→function QuickActionButton({ icon: Icon, label, href, badge, badgeVariant = 'default', color }: QuickActionButtonProps) {
+   959→  const colorClasses = {
+   960→    orange: 'text-orange-400 hover:bg-orange-500/10 hover:text-orange-300',
+   961→    blue: 'text-blue-400 hover:bg-blue-500/10 hover:text-blue-300',
+   962→    green: 'text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300',
+   963→    purple: 'text-purple-400 hover:bg-purple-500/10 hover:text-purple-300',
+   964→  }
+   965→  
+   966→  const badgeClasses = {
+   967→    default: 'bg-slate-700 text-slate-300',
+   968→    warning: 'bg-amber-500/20 text-amber-300',
+   969→  }
+   970→
+   971→  return (
+   972→    <Button
+   973→      variant="ghost"
+   974→      className={`w-full justify-start gap-3 h-auto py-2.5 px-3 ${colorClasses[color]}`}
+   975→      asChild
+   976→    >
+   977→      <Link href={href}>
+   978→        <Icon className="w-4 h-4 flex-shrink-0" />
+   979→        <span className="flex-1 text-left text-sm">{label}</span>
+   980→        {badge && (
+   981→          <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${badgeClasses[badgeVariant]}`}>
+   982→            {badge}
+   983→          </Badge>
+   984→        )}
+   985→      </Link>
+   986→    </Button>
+   987→  )
+   988→}
+   989→
+   990→interface HealthItemProps {
+   991→  label: string
+   992→  status: 'operational' | 'warning' | 'error'
+   993→  value: string
+   994→}
+   995→
+   996→function HealthItem({ label, status, value }: HealthItemProps) {
+   997→  const statusConfig = {
+   998→    operational: { dotClass: 'bg-emerald-500', textClass: 'text-emerald-600' },
+   999→    warning: { dotClass: 'bg-amber-500', textClass: 'text-amber-600' },
+  1000→    error: { dotClass: 'bg-red-500', textClass: 'text-red-600' },
+  1001→  }
+  1002→  
+  1003→  const config = statusConfig[status]
+  1004→
+  1005→  return (
+  1006→    <div className="flex items-center justify-between">
+  1007→      <div className="flex items-center gap-2">
+  1008→        <span className={`w-2 h-2 rounded-full ${config.dotClass} ${status === 'operational' ? 'animate-pulse' : ''}`} />
+  1009→        <span className="text-sm text-slate-600">{label}</span>
+  1010→      </div>
+  1011→      <span className={`text-sm font-medium ${config.textClass}`}>{value}</span>
+  1012→    </div>
+  1013→  )
+  1014→}
+  1015→
