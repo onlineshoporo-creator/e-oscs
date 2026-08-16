@@ -277,7 +277,9 @@ export function AdminSidebar({ collapsed, onToggle, pendingRequestsCount = 0 }: 
             )}
             
             <div className="space-y-1">
-              {mainNavigation.items.map((item) => renderNavItem(item))}
+              {mainNavigation.items.map((item) => (
+                <div key={item.href}>{renderNavItem(item)}</div>
+              ))}
             </div>
           </div>
 
@@ -303,7 +305,9 @@ export function AdminSidebar({ collapsed, onToggle, pendingRequestsCount = 0 }: 
                   "space-y-1 overflow-hidden transition-all duration-300",
                   reportsExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
                 )}>
-                  {reportsNavigation.items.map((item) => renderNavItem(item))}
+                  {reportsNavigation.items.map((item) => (
+                    <div key={item.href}>{renderNavItem(item)}</div>
+                  ))}
                 </div>
               </>
             ) : (
@@ -342,7 +346,9 @@ export function AdminSidebar({ collapsed, onToggle, pendingRequestsCount = 0 }: 
             )}
             
             <div className="space-y-1">
-              {systemNavigation.map((item) => renderNavItem(item))}
+              {systemNavigation.map((item) => (
+                <div key={item.href}>{renderNavItem(item)}</div>
+              ))}
             </div>
           </div>
         </nav>
