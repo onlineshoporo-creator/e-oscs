@@ -1,0 +1,892 @@
+     1→'use client'
+     2→
+     3→import React, { useState, useEffect, useCallback } from 'react'
+     4→import { 
+     5→  Search, 
+     6→  Filter, 
+     7→  Eye, 
+     8→  Phone, 
+     9→  CheckCircle2, 
+    10→  XCircle,
+    11→  ChevronLeft,
+    12→  ChevronRight,
+    13→  MoreHorizontal,
+    14→  Download,
+    15→  RefreshCw,
+    16→  MapPin,
+    17→  Mail,
+    18→  Calendar,
+    19→  Building2,
+    20→  User,
+    21→  MessageSquare,
+    22→  ClipboardList,
+    23→  Send,
+    24→  Clock,
+    25→  AlertCircle
+    26→} from 'lucide-react'
+    27→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+    28→import { Button } from '@/components/ui/button'
+    29→import { Badge } from '@/components/ui/badge'
+    30→import { Input } from '@/components/ui/input'
+    31→import {
+    32→  Select,
+    33→  SelectContent,
+    34→  SelectItem,
+    35→  SelectTrigger,
+    36→  SelectValue,
+    37→} from '@/components/ui/select'
+    38→import {
+    39→  Dialog,
+    40→  DialogContent,
+    41→  DialogDescription,
+    42→  DialogHeader,
+    43→  DialogTitle,
+    44→  DialogTrigger,
+    45→} from '@/components/ui/dialog'
+    46→import {
+    47→  DropdownMenu,
+    48→  DropdownMenuContent,
+    49→  DropdownMenuItem,
+    50→  DropdownMenuSeparator,
+    51→  DropdownMenuTrigger,
+    52→} from '@/components/ui/dropdown-menu'
+    53→import { Textarea } from '@/components/ui/textarea'
+    54→import { Skeleton } from '@/components/ui/skeleton'
+    55→import { toast } from 'sonner'
+    56→
+    57→// Types
+    58→interface SubscriptionRequest {
+    59→  id: string
+    60→  created_at: string
+    61→  nom_complet: string
+    62→  email: string
+    63→  telephone: string
+    64→  whatsapp?: string
+    65→  fonction?: string
+    66→  nom_organisation: string
+    67→  type_org: 'DR' | 'DD'
+    68→  region: string
+    69→  departement?: string
+    70→  nb_collaborateurs?: string
+    71→  message?: string
+    72→  statut: RequestStatus
+    73→  notes_admin?: string
+    74→  admin_updated_at?: string
+    75→}
+    76→
+    77→type RequestStatus = 'NOUVELLE' | 'EN_CONTACT' | 'APPROUVEE' | 'REJETEE' | 'CONVERTIE'
+    78→
+    79→interface Filters {
+    80→  statut: string
+    81→  region: string
+    82→  search: string
+    83→}
+    84→
+    85→interface Pagination {
+    86→  page: number
+    87→  limit: number
+    88→  total: number
+    89→  totalPages: number
+    90→}
+    91→
+    92→// Configuration des statuts - cohérente avec l'API
+    93→const statusConfig: Record<RequestStatus, { label: string; className: string; icon?: React.ElementType }> = {
+    94→  NOUVELLE: { 
+    95→    label: 'Nouvelle', 
+    96→    className: 'bg-slate-100 text-slate-700 border-slate-200',
+    97→    icon: Clock
+    98→  },
+    99→  EN_CONTACT: { 
+   100→    label: 'En contact', 
+   101→    className: 'bg-blue-100 text-blue-700 border-blue-200',
+   102→    icon: Send
+   103→  },
+   104→  APPROUVEE: { 
+   105→    label: 'Approuvée', 
+   106→    className: 'bg-green-100 text-green-700 border-green-200',
+   107→    icon: CheckCircle2
+   108→  },
+   109→  REJETEE: { 
+   110→    label: 'Rejetée', 
+   111→    className: 'bg-red-100 text-red-700 border-red-200',
+   112→    icon: XCircle
+   113→  },
+   114→  CONVERTIE: { 
+   115→    label: 'Convertie (Client)', 
+   116→    className: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+   117→    icon: CheckCircle2
+   118→  }
+   119→}
+   120→
+   121→// Régions de Côte d'Ivoire
+   122→const regionsCI = [
+   123→  'Toutes les régions',
+   124→  "Abidjan",
+   125→  "Lagunes",
+   126→  "District d'Abidjan",
+   127→  "Comoé",
+   128→  "Denguélé",
+   129→  "Gôh-Djiboua",
+   130→  "Lacs",
+   131→  "Montagnes",
+   132→  "Sassandra-Marahoué",
+   133→  "Vallée du Bandama",
+   134→  "Worodougou",
+   135→  "Zanzan",
+   136→  "San-Pédro",
+   137→  "Yamoussoukro"
+   138→]
+   139→
+   140→export default function DemandesPage() {
+   141→  const [requests, setRequests] = useState<SubscriptionRequest[]>([])
+   142→  const [loading, setLoading] = useState(true)
+   143→  const [filters, setFilters] = useState<Filters>({
+   144→    statut: '',
+   145→    region: '',
+   146→    search: ''
+   147→  })
+   148→  const [pagination, setPagination] = useState<Pagination>({
+   149→    page: 1,
+   150→    limit: 10,
+   151→    total: 0,
+   152→    totalPages: 0
+   153→  })
+   154→  const [selectedRequest, setSelectedRequest] = useState<SubscriptionRequest | null>(null)
+   155→  const [dialogOpen, setDialogOpen] = useState(false)
+   156→  const [actionLoading, setActionLoading] = useState(false)
+   157→  const [notesValue, setNotesValue] = useState('')
+   158→  const [stats, setStats] = useState<Record<string, number>>({})
+   159→
+   160→  // Fetch requests
+   161→  const fetchRequests = useCallback(async () => {
+   162→    setLoading(true)
+   163→    try {
+   164→      const params = new URLSearchParams({
+   165→        page: pagination.page.toString(),
+   166→        limit: pagination.limit.toString(),
+   167→        ...(filters.statut && { statut: filters.statut }),
+   168→        ...(filters.region && filters.region !== 'Toutes les régions' && { region: filters.region }),
+   169→        ...(filters.search && { search: filters.search })
+   170→      })
+   171→
+   172→      const response = await fetch(`/api/admin/demandes?${params}`)
+   173→      if (response.ok) {
+   174→        const data = await response.json()
+   175→        setRequests(data.data || [])
+   176→        setPagination(prev => ({
+   177→          ...prev,
+   178→          total: data.total || 0,
+   179→          totalPages: Math.ceil((data.total || 0) / prev.limit)
+   180→        }))
+   181→        
+   182→        // Calculer les stats localement
+   183→        const allRequests = data.data || []
+   184→        const statsObj: Record<string, number> = {}
+   185→        Object.keys(statusConfig).forEach(key => {
+   186→          statsObj[key] = allRequests.filter((r: SubscriptionRequest) => r.statut === key).length
+   187→        })
+   188→        statsObj['total'] = data.total || 0
+   189→        setStats(statsObj)
+   190→      } else {
+   191→        toast.error('Erreur lors du chargement des demandes')
+   192→      }
+   193→    } catch (error) {
+   194→      console.error('Erreur:', error)
+   195→      toast.error('Erreur de connexion au serveur')
+   196→    } finally {
+   197→      setLoading(false)
+   198→    }
+   199→  }, [pagination.page, pagination.limit, filters])
+   200→
+   201→  useEffect(() => {
+   202→    fetchRequests()
+   203→  }, [fetchRequests])
+   204→
+   205→  // Actions sur une demande
+   206→  const handleStatusUpdate = async (requestId: string, newStatus: RequestStatus, notes?: string) => {
+   207→    setActionLoading(true)
+   208→    try {
+   209→      const response = await fetch(`/api/admin/demandes/${requestId}`, {
+   210→        method: 'PATCH',
+   211→        headers: { 'Content-Type': 'application/json' },
+   212→        body: JSON.stringify({ statut: newStatus, notes_admin: notes || '' })
+   213→      })
+   214→
+   215→      if (response.ok) {
+   216→        toast.success(`Demande ${statusConfig[newStatus].label.toLowerCase()} avec succès`)
+   217→        fetchRequests()
+   218→        if (selectedRequest?.id === requestId) {
+   219→          setSelectedRequest(prev => prev ? { ...prev, statut: newStatus, notes_admin: notes } : null)
+   220→        }
+   221→      } else {
+   222→        throw new Error('Erreur lors de la mise à jour')
+   223→      }
+   224→    } catch (error) {
+   225→      console.error(error)
+   226→      toast.error('Erreur lors de la mise à jour du statut')
+   227→    } finally {
+   228→      setActionLoading(false)
+   229→    }
+   230→  }
+   231→
+   232→  // Approve request (create org + subscription)
+   233→  const handleApproveRequest = async (requestId: string) => {
+   234→    setActionLoading(true)
+   235→    try {
+   236→      const response = await fetch(`/api/admin/demandes/${requestId}`, {
+   237→        method: 'POST'
+   238→      })
+   239→
+   240→      if (response.ok) {
+   241→        toast.success('Organisation créée et abonnement activé avec succès !')
+   242→        setDialogOpen(false)
+   243→        fetchRequests()
+   244→      } else {
+   245→        const error = await response.json()
+   246→        throw new Error(error.message || "Erreur lors de l'approbation")
+   247→      }
+   248→    } catch (error) {
+   249→      console.error(error)
+   250→      toast.error(error instanceof Error ? error.message : "Erreur lors de l'approbation")
+   251→    } finally {
+   252→      setActionLoading(false)
+   253→    }
+   254→  }
+   255→
+   256→  const formatDate = (dateStr: string) => {
+   257→    return new Date(dateStr).toLocaleDateString('fr-FR', {
+   258→      day: 'numeric',
+   259→      month: 'short',
+   260→      year: 'numeric',
+   261→      hour: '2-digit',
+   262→      minute: '2-digit'
+   263→    })
+   264→  }
+   265→
+   266→  const getRelativeTime = (dateStr: string) => {
+   267→    const now = new Date()
+   268→    const date = new Date(dateStr)
+   269→    const diffMs = now.getTime() - date.getTime()
+   270→    const diffMins = Math.floor(diffMs / 60000)
+   271→    const diffHours = Math.floor(diffMs / 3600000)
+   272→    const diffDays = Math.floor(diffMs / 86400000)
+   273→
+   274→    if (diffMins < 60) return `Il y a ${diffMins} min`
+   275→    if (diffHours < 24) return `Il y a ${diffHours}h`
+   276→    return `Il y a ${diffDays}j`
+   277→  }
+   278→
+   279→  return (
+   280→    <div className="space-y-6">
+   281→      {/* Page header */}
+   282→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   283→        <div>
+   284→          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">Demandes d&apos;abonnement</h1>
+   285→          <p className="text-slate-500 mt-1">Gérez les demandes d&apos;accès à la plateforme e-OSCS</p>
+   286→        </div>
+   287→        <div className="flex items-center gap-3">
+   288→          <Button variant="outline" onClick={fetchRequests} disabled={loading} className="gap-2">
+   289→            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+   290→            Actualiser
+   291→          </Button>
+   292→          <Button variant="outline" className="gap-2" onClick={() => toast.info('Export CSV bientôt disponible')}>
+   293→            <Download className="w-4 h-4" />
+   294→            Exporter
+   295→          </Button>
+   296→        </div>
+   297→      </div>
+   298→
+   299→      {/* Stats cards */}
+   300→      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+   301→        {/* Total */}
+   302→        <Card className={`border-slate-200 ${!filters.statut ? 'ring-2 ring-orange-500' : ''}`}>
+   303→          <CardContent 
+   304→            className="p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+   305→            onClick={() => setFilters(prev => ({ ...prev, statut: '' }))}
+   306→          >
+   307→            <p className="text-xs text-slate-500 mb-1">Total</p>
+   308→            <p className="text-2xl font-bold text-slate-900">{stats['total'] ?? '--'}</p>
+   309→          </CardContent>
+   310→        </Card>
+   311→        
+   312→        {Object.entries(statusConfig).map(([key, config]) => (
+   313→          <Card key={key} className={`border-slate-200 ${filters.statut === key ? 'ring-2 ring-orange-500' : ''}`}>
+   314→            <CardContent 
+   315→              className="p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+   316→              onClick={() => setFilters(prev => ({ ...prev, statut: prev.statut === key ? '' : key }))}
+   317→            >
+   318→              <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+   319→                {config.icon && <config.icon className="w-3 h-3" />}
+   320→                {config.label}s
+   321→              </p>
+   322→              <p className="text-2xl font-bold text-slate-900">{stats[key] ?? '--'}</p>
+   323→            </CardContent>
+   324→          </Card>
+   325→        ))}
+   326→      </div>
+   327→
+   328→      {/* Filters */}
+   329→      <Card className="border-slate-200">
+   330→        <CardContent className="p-4">
+   331→          <div className="flex flex-col md:flex-row gap-4">
+   332→            {/* Search */}
+   333→            <div className="relative flex-1">
+   334→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+   335→              <Input
+   336→                placeholder="Rechercher par nom, email ou organisation..."
+   337→                value={filters.search}
+   338→                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+   339→                className="pl-10 bg-white"
+   340→              />
+   341→            </div>
+   342→
+   343→            {/* Status filter */}
+   344→            <Select value={filters.statut} onValueChange={(value) => setFilters(prev => ({ ...prev, statut: value }))}>
+   345→              <SelectTrigger className="w-full md:w-[180px]">
+   346→                <Filter className="w-4 h-4 mr-2 text-slate-400" />
+   347→                <SelectValue placeholder="Statut" />
+   348→              </SelectTrigger>
+   349→              <SelectContent>
+   350→                <SelectItem value="">Tous les statuts</SelectItem>
+   351→                {Object.entries(statusConfig).map(([key, config]) => (
+   352→                  <SelectItem key={key} value={key}>{config.label}</SelectItem>
+   353→                ))}
+   354→              </SelectContent>
+   355→            </Select>
+   356→
+   357→            {/* Region filter */}
+   358→            <Select value={filters.region} onValueChange={(value) => setFilters(prev => ({ ...prev, region: value }))}>
+   359→              <SelectTrigger className="w-full md:w-[200px]">
+   360→                <MapPin className="w-4 h-4 mr-2 text-slate-400" />
+   361→                <SelectValue placeholder="Région" />
+   362→              </SelectTrigger>
+   363→              <SelectContent>
+   364→                {regionsCI.map(region => (
+   365→                  <SelectItem key={region} value={region}>{region}</SelectItem>
+   366→                ))}
+   367→              </SelectContent>
+   368→            </Select>
+   369→          </div>
+   370→        </CardContent>
+   371→      </Card>
+   372→
+   373→      {/* Table */}
+   374→      <Card className="border-slate-200">
+   375→        <CardHeader className="pb-4">
+   376→          <div className="flex items-center justify-between">
+   377→            <div>
+   378→              <CardTitle className="text-lg font-semibold text-slate-900">
+   379→                Liste des demandes
+   380→              </CardTitle>
+   381→              <CardDescription>
+   382→                {pagination.total} demande(s) trouvée(s)
+   383→              </CardDescription>
+   384→            </div>
+   385→          </div>
+   386→        </CardHeader>
+   387→        <CardContent>
+   388→          {loading ? (
+   389→            <div className="space-y-3">
+   390→              {[...Array(5)].map((_, i) => (
+   391→                <Skeleton key={i} className="h-20 w-full" />
+   392→              ))}
+   393→            </div>
+   394→          ) : requests.length > 0 ? (
+   395→            <>
+   396→              {/* Desktop Table */}
+   397→              <div className="hidden md:block overflow-x-auto">
+   398→                <table className="w-full">
+   399→                  <thead>
+   400→                    <tr className="border-b border-slate-200">
+   401→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+   402→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Demandeur</th>
+   403→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Organisation</th>
+   404→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
+   405→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Région</th>
+   406→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Statut</th>
+   407→                      <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+   408→                    </tr>
+   409→                  </thead>
+   410→                  <tbody>
+   411→                    {requests.map((request, index) => {
+   412→                      const status = statusConfig[request.statut]
+   413→                      return (
+   414→                        <tr 
+   415→                          key={request.id} 
+   416→                          className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+   417→                            index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'
+   418→                          }`}
+   419→                        >
+   420→                          <td className="py-4 px-4">
+   421→                            <div className="flex items-center gap-2 text-sm text-slate-600">
+   422→                              <Calendar className="w-4 h-4 text-slate-400" />
+   423→                              <span>{formatDate(request.created_at)}</span>
+   424→                            </div>
+   425→                            <span className="text-xs text-slate-400 ml-6">{getRelativeTime(request.created_at)}</span>
+   426→                          </td>
+   427→                          <td className="py-4 px-4">
+   428→                            <div>
+   429→                              <p className="font-medium text-slate-900 flex items-center gap-2">
+   430→                                <User className="w-4 h-4 text-slate-400" />
+   431→                                {request.nom_complet}
+   432→                              </p>
+   433→                              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+   434→                                <Mail className="w-3 h-3" />
+   435→                                {request.email}
+   436→                              </p>
+   437→                            </div>
+   438→                          </td>
+   439→                          <td className="py-4 px-4">
+   440→                            <p className="font-medium text-slate-900 flex items-center gap-2">
+   441→                              <Building2 className="w-4 h-4 text-slate-400" />
+   442→                              {request.nom_organisation}
+   443→                            </p>
+   444→                          </td>
+   445→                          <td className="py-4 px-4">
+   446→                            <Badge variant="outline" className="font-mono text-xs bg-orange-50 text-orange-700 border-orange-200">
+   447→                              {request.type_org}
+   448→                            </Badge>
+   449→                          </td>
+   450→                          <td className="py-4 px-4">
+   451→                            <span className="text-sm text-slate-600 flex items-center gap-1">
+   452→                              <MapPin className="w-4 h-4 text-slate-400" />
+   453→                              {request.region}
+   454→                            </span>
+   455→                          </td>
+   456→                          <td className="py-4 px-4">
+   457→                            <Badge variant="outline" className={`${status.className} text-xs`}>
+   458→                              {status.icon && <status.icon className="w-3 h-3 mr-1" />}
+   459→                              {status.label}
+   460→                            </Badge>
+   461→                          </td>
+   462→                          <td className="py-4 px-4">
+   463→                            <div className="flex items-center justify-end gap-1">
+   464→                              {/* View details */}
+   465→                              <Dialog open={dialogOpen && selectedRequest?.id === request.id} onOpenChange={(open) => {
+   466→                                setDialogOpen(open)
+   467→                                if (open) {
+   468→                                  setSelectedRequest(request)
+   469→                                  setNotesValue(request.notes_admin || '')
+   470→                                }
+   471→                              }}>
+   472→                                <DialogTrigger asChild>
+   473→                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+   474→                                    <Eye className="w-4 h-4 text-slate-400 hover:text-orange-600" />
+   475→                                  </Button>
+   476→                                </DialogTrigger>
+   477→                                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+   478→                                  <DialogHeader>
+   479→                                    <DialogTitle>Détails de la demande</DialogTitle>
+   480→                                    <DialogDescription>
+   481→                                      Demande #{request.id.slice(-8)}
+   482→                                    </DialogDescription>
+   483→                                  </DialogHeader>
+   484→                                  
+   485→                                  {selectedRequest && (
+   486→                                    <div className="space-y-6 mt-4">
+   487→                                      {/* Status badge */}
+   488→                                      <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50">
+   489→                                        <span className="text-sm text-slate-600">Statut actuel</span>
+   490→                                        <Badge variant="outline" className={statusConfig[selectedRequest.statut].className}>
+   491→                                          {statusConfig[selectedRequest.statut].label}
+   492→                                        </Badge>
+   493→                                      </div>
+   494→
+   495→                                      {/* Info grid */}
+   496→                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   497→                                        <div className="space-y-3">
+   498→                                          <div className="flex items-start gap-3">
+   499→                                            <User className="w-5 h-5 text-slate-400 mt-0.5" />
+   500→                                            <div>
+   501→                                              <p className="text-xs text-slate-500">Demandeur</p>
+   502→                                              <p className="font-medium text-slate-900">{selectedRequest.nom_complet}</p>
+   503→                                            </div>
+   504→                                          </div>
+   505→                                          <div className="flex items-start gap-3">
+   506→                                            <Mail className="w-5 h-5 text-slate-400 mt-0.5" />
+   507→                                            <div>
+   508→                                              <p className="text-xs text-slate-500">Email</p>
+   509→                                              <p className="font-medium text-slate-900">{selectedRequest.email}</p>
+   510→                                            </div>
+   511→                                          </div>
+   512→                                          <div className="flex items-start gap-3">
+   513→                                            <Phone className="w-5 h-5 text-slate-400 mt-0.5" />
+   514→                                            <div>
+   515→                                              <p className="text-xs text-slate-500">Téléphone</p>
+   516→                                              <p className="font-medium text-slate-900">{selectedRequest.telephone}</p>
+   517→                                            </div>
+   518→                                          </div>
+   519→                                          {selectedRequest.whatsapp && (
+   520→                                            <div className="flex items-start gap-3">
+   521→                                              <Phone className="w-5 h-5 text-green-500 mt-0.5" />
+   522→                                              <div>
+   523→                                                <p className="text-xs text-slate-500">WhatsApp</p>
+   524→                                                <p className="font-medium text-slate-900">{selectedRequest.whatsapp}</p>
+   525→                                              </div>
+   526→                                            </div>
+   527→                                          )}
+   528→                                          {selectedRequest.fonction && (
+   529→                                            <div className="flex items-start gap-3">
+   530→                                              <ClipboardList className="w-5 h-5 text-slate-400 mt-0.5" />
+   531→                                              <div>
+   532→                                                <p className="text-xs text-slate-500">Fonction</p>
+   533→                                                <p className="font-medium text-slate-900">{selectedRequest.fonction}</p>
+   534→                                              </div>
+   535→                                            </div>
+   536→                                          )}
+   537→                                        </div>
+   538→                                        
+   539→                                        <div className="space-y-3">
+   540→                                          <div className="flex items-start gap-3">
+   541→                                            <Building2 className="w-5 h-5 text-slate-400 mt-0.5" />
+   542→                                            <div>
+   543→                                              <p className="text-xs text-slate-500">Organisation</p>
+   544→                                              <p className="font-medium text-slate-900">{selectedRequest.nom_organisation}</p>
+   545→                                            </div>
+   546→                                          </div>
+   547→                                          <div className="flex items-start gap-3">
+   548→                                            <MapPin className="w-5 h-5 text-slate-400 mt-0.5" />
+   549→                                            <div>
+   550→                                              <p className="text-xs text-slate-500">Type / Région</p>
+   551→                                              <p className="font-medium text-slate-900">
+   552→                                                <Badge variant="outline" className="mr-2 bg-orange-50 text-orange-700 border-orange-200">
+   553→                                                  {selectedRequest.type_org}
+   554→                                                </Badge>
+   555→                                                {selectedRequest.region}
+   556→                                                {selectedRequest.departement && ` - ${selectedRequest.departement}`}
+   557→                                              </p>
+   558→                                            </div>
+   559→                                          </div>
+   560→                                          {selectedRequest.nb_collaborateurs && (
+   561→                                            <div className="flex items-start gap-3">
+   562→                                              <UsersIcon className="w-5 h-5 text-slate-400 mt-0.5" />
+   563→                                              <div>
+   564→                                                <p className="text-xs text-slate-500">Collaborateurs</p>
+   565→                                                <p className="font-medium text-slate-900">{selectedRequest.nb_collaborateurs}</p>
+   566→                                              </div>
+   567→                                            </div>
+   568→                                          )}
+   569→                                          <div className="flex items-start gap-3">
+   570→                                            <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
+   571→                                            <div>
+   572→                                              <p className="text-xs text-slate-500">Reçue le</p>
+   573→                                              <p className="font-medium text-slate-900">{formatDate(selectedRequest.created_at)}</p>
+   574→                                            </div>
+   575→                                          </div>
+   576→                                        </div>
+   577→                                      </div>
+   578→
+   579→                                      {/* Message */}
+   580→                                      {selectedRequest.message && (
+   581→                                        <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+   582→                                          <p className="text-xs text-blue-600 mb-1 flex items-center gap-1">
+   583→                                            <MessageSquare className="w-3 h-3" />
+   584→                                            Message du demandeur
+   585→                                          </p>
+   586→                                          <p className="text-sm text-blue-900">{selectedRequest.message}</p>
+   587→                                        </div>
+   588→                                      )}
+   589→
+   590→                                      {/* Admin notes */}
+   591→                                      <div className="space-y-2">
+   592→                                        <label className="text-sm font-medium text-slate-700">Notes administrateur</label>
+   593→                                        <Textarea
+   594→                                          value={notesValue}
+   595→                                          onChange={(e) => setNotesValue(e.target.value)}
+   596→                                          placeholder="Ajoutez des notes internes..."
+   597→                                          rows={3}
+   598→                                        />
+   599→                                      </div>
+   600→
+   601→                                      {/* Actions */}
+   602→                                      <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-200">
+   603→                                        {selectedRequest.statut === 'NOUVELLE' && (
+   604→                                          <>
+   605→                                            <Button 
+   606→                                              onClick={() => handleStatusUpdate(selectedRequest.id, 'EN_CONTACT', notesValue)}
+   607→                                              disabled={actionLoading}
+   608→                                              size="sm"
+   609→                                              className="bg-blue-600 hover:bg-blue-700"
+   610→                                            >
+   611→                                              <Send className="w-4 h-4 mr-1" />
+   612→                                              Contacter
+   613→                                            </Button>
+   614→                                            <Button 
+   615→                                              onClick={() => handleApproveRequest(selectedRequest.id)}
+   616→                                              disabled={actionLoading}
+   617→                                              size="sm"
+   618→                                              className="bg-green-600 hover:bg-green-700"
+   619→                                            >
+   620→                                              <CheckCircle2 className="w-4 h-4 mr-1" />
+   621→                                              Approuver & Créer org.
+   622→                                            </Button>
+   623→                                            <Button 
+   624→                                              onClick={() => handleStatusUpdate(selectedRequest.id, 'REJETEE', notesValue)}
+   625→                                              disabled={actionLoading}
+   626→                                              variant="destructive"
+   627→                                              size="sm"
+   628→                                            >
+   629→                                              <XCircle className="w-4 h-4 mr-1" />
+   630→                                              Rejeter
+   631→                                            </Button>
+   632→                                          </>
+   633→                                        )}
+   634→                                        
+   635→                                        {selectedRequest.statut === 'EN_CONTACT' && (
+   636→                                          <>
+   637→                                            <Button 
+   638→                                              onClick={() => handleApproveRequest(selectedRequest.id)}
+   639→                                              disabled={actionLoading}
+   640→                                              size="sm"
+   641→                                              className="bg-green-600 hover:bg-green-700"
+   642→                                            >
+   643→                                              <CheckCircle2 className="w-4 h-4 mr-1" />
+   644→                                              Approuver
+   645→                                            </Button>
+   646→                                            <Button 
+   647→                                              onClick={() => handleStatusUpdate(selectedRequest.id, 'APPROUVEE', notesValue)}
+   648→                                              disabled={actionLoading}
+   649→                                              size="sm"
+   650→                                            >
+   651→                                              Approuver (en attente)
+   652→                                            </Button>
+   653→                                            <Button 
+   654→                                              onClick={() => handleStatusUpdate(selectedRequest.id, 'REJETEE', notesValue)}
+   655→                                              disabled={actionLoading}
+   656→                                              variant="destructive"
+   657→                                              size="sm"
+   658→                                            >
+   659→                                              <XCircle className="w-4 h-4 mr-1" />
+   660→                                              Rejeter
+   661→                                            </Button>
+   662→                                          </>
+   663→                                        )}
+   664→
+   665→                                        {(selectedRequest.statut === 'APPROUVEE' || selectedRequest.statut === 'REJETEE') && (
+   666→                                          <Button 
+   667→                                            onClick={() => handleStatusUpdate(selectedRequest.id, 'NOUVELLE', notesValue)}
+   668→                                            disabled={actionLoading}
+   669→                                            variant="outline"
+   670→                                            size="sm"
+   671→                                          >
+   672→                                            Réouvrir
+   673→                                          </Button>
+   674→                                        )}
+   675→
+   676→                                        {selectedRequest.statut === 'CONVERTIE' && (
+   677→                                          <div className="text-sm text-green-600 flex items-center gap-1">
+   678→                                            <CheckCircle2 className="w-4 h-4" />
+   679→                                            Cette demande a été convertie en organisation active
+   680→                                          </div>
+   681→                                        )}
+   682→
+   683→                                        <Button 
+   684→                                          onClick={() => handleStatusUpdate(selectedRequest.id, selectedRequest.statut, notesValue)}
+   685→                                          disabled={actionLoading}
+   686→                                          variant="outline"
+   687→                                          size="sm"
+   688→                                          className="ml-auto"
+   689→                                        >
+   690→                                          Sauvegarder les notes
+   691→                                        </Button>
+   692→                                      </div>
+   693→
+   694→                                      {/* Existing admin notes */}
+   695→                                      {selectedRequest.notes_admin && (
+   696→                                        <div className="mt-4 p-3 rounded bg-amber-50 border border-amber-200">
+   697→                                          <p className="text-xs text-amber-600 mb-1">Notes précédentes:</p>
+   698→                                          <p className="text-sm text-amber-900">{selectedRequest.notes_admin}</p>
+   699→                                          {selectedRequest.admin_updated_at && (
+   700→                                            <p className="text-xs text-amber-500 mt-1">
+   701→                                              Mis à jour: {formatDate(selectedRequest.admin_updated_at)}
+   702→                                            </p>
+   703→                                          )}
+   704→                                        </div>
+   705→                                      )}
+   706→                                    </div>
+   707→                                  )}
+   708→                                </DialogContent>
+   709→                              </Dialog>
+   710→
+   711→                              {/* Quick actions dropdown */}
+   712→                              <DropdownMenu>
+   713→                                <DropdownMenuTrigger asChild>
+   714→                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+   715→                                    <MoreHorizontal className="w-4 h-4 text-slate-400" />
+   716→                                  </Button>
+   717→                                </DropdownMenuTrigger>
+   718→                                <DropdownMenuContent align="end">
+   719→                                  <DropdownMenuItem onClick={() => {
+   720→                                    setSelectedRequest(request)
+   721→                                    setNotesValue(request.notes_admin || '')
+   722→                                    setDialogOpen(true)
+   723→                                  }}>
+   724→                                    <Eye className="w-4 h-4 mr-2" />
+   725→                                    Voir détails
+   726→                                  </DropdownMenuItem>
+   727→                                  <DropdownMenuSeparator />
+   728→                                  {request.statut === 'NOUVELLE' && (
+   729→                                    <>
+   730→                                      <DropdownMenuItem onClick={() => handleStatusUpdate(request.id, 'EN_CONTACT')}>
+   731→                                        <Send className="w-4 h-4 mr-2 text-blue-600" />
+   732→                                        Marquer en contact
+   733→                                      </DropdownMenuItem>
+   734→                                      <DropdownMenuItem onClick={() => handleApproveRequest(request.id)} className="text-green-600">
+   735→                                        <CheckCircle2 className="w-4 h-4 mr-2" />
+   736→                                        Approuver
+   737→                                      </DropdownMenuItem>
+   738→                                      <DropdownMenuItem onClick={() => handleStatusUpdate(request.id, 'REJETEE')} className="text-red-600">
+   739→                                        <XCircle className="w-4 h-4 mr-2" />
+   740→                                        Rejeter
+   741→                                      </DropdownMenuItem>
+   742→                                    </>
+   743→                                  )}
+   744→                                  {request.statut === 'EN_CONTACT' && (
+   745→                                    <>
+   746→                                      <DropdownMenuItem onClick={() => handleApproveRequest(request.id)} className="text-green-600">
+   747→                                        <CheckCircle2 className="w-4 h-4 mr-2" />
+   748→                                        Approuver
+   749→                                      </DropdownMenuItem>
+   750→                                      <DropdownMenuItem onClick={() => handleStatusUpdate(request.id, 'REJETEE')} className="text-red-600">
+   751→                                        <XCircle className="w-4 h-4 mr-2" />
+   752→                                        Rejeter
+   753→                                      </DropdownMenuItem>
+   754→                                    </>
+   755→                                  )}
+   756→                                </DropdownMenuContent>
+   757→                              </DropdownMenu>
+   758→                            </div>
+   759→                          </td>
+   760→                        </tr>
+   761→                      )
+   762→                    })}
+   763→                  </tbody>
+   764→                </table>
+   765→              </div>
+   766→
+   767→              {/* Mobile cards */}
+   768→              <div className="md:hidden space-y-3">
+   769→                {requests.map((request) => {
+   770→                  const status = statusConfig[request.statut]
+   771→                  return (
+   772→                    <Card key={request.id} className="border-slate-200">
+   773→                      <CardContent className="p-4">
+   774→                        <div className="flex items-start justify-between mb-3">
+   775→                          <div>
+   776→                            <p className="font-medium text-slate-900">{request.nom_complet}</p>
+   777→                            <p className="text-sm text-slate-500">{request.nom_organisation}</p>
+   778→                          </div>
+   779→                          <Badge variant="outline" className={`${status.className} text-xs`}>
+   780→                            {status.label}
+   781→                          </Badge>
+   782→                        </div>
+   783→                        <div className="space-y-1 text-sm text-slate-600">
+   784→                          <p className="flex items-center gap-1">
+   785→                            <Mail className="w-3 h-3" />{request.email}
+   786→                          </p>
+   787→                          <p className="flex items-center gap-1">
+   788→                            <Phone className="w-3 h-3" />{request.telephone}
+   789→                          </p>
+   790→                          <p className="flex items-center gap-1">
+   791→                            <MapPin className="w-3 h-3" />{request.region}
+   792→                          </p>
+   793→                        </div>
+   794→                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+   795→                          <span className="text-xs text-slate-400">{getRelativeTime(request.created_at)}</span>
+   796→                          <Button 
+   797→                            variant="ghost" 
+   798→                            size="sm"
+   799→                            onClick={() => {
+   800→                              setSelectedRequest(request)
+   801→                              setNotesValue(request.notes_admin || '')
+   802→                              setDialogOpen(true)
+   803→                            }}
+   804→                          >
+   805→                            <Eye className="w-4 h-4 mr-1" />
+   806→                            Détails
+   807→                          </Button>
+   808→                        </div>
+   809→                      </CardContent>
+   810→                    </Card>
+   811→                  )
+   812→                })}
+   813→              </div>
+   814→
+   815→              {/* Pagination */}
+   816→              {pagination.totalPages > 1 && (
+   817→                <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200">
+   818→                  <p className="text-sm text-slate-500">
+   819→                    Page {pagination.page} sur {pagination.totalPages}
+   820→                  </p>
+   821→                  <div className="flex items-center gap-2">
+   822→                    <Button
+   823→                      variant="outline"
+   824→                      size="icon"
+   825→                      onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
+   826→                      disabled={pagination.page <= 1}
+   827→                      className="h-8 w-8"
+   828→                    >
+   829→                      <ChevronLeft className="w-4 h-4" />
+   830→                    </Button>
+   831→                    {[...Array(Math.min(5, pagination.totalPages))].map((_, i) => {
+   832→                      const pageNum = i + 1
+   833→                      return (
+   834→                        <Button
+   835→                          key={pageNum}
+   836→                          variant={pagination.page === pageNum ? 'default' : 'outline'}
+   837→                          size="icon"
+   838→                          onClick={() => setPagination(p => ({ ...p, page: pageNum }))}
+   839→                          className={`h-8 w-8 ${pagination.page === pageNum ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
+   840→                        >
+   841→                          {pageNum}
+   842→                        </Button>
+   843→                      )
+   844→                    })}
+   845→                    <Button
+   846→                      variant="outline"
+   847→                      size="icon"
+   848→                      onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
+   849→                      disabled={pagination.page >= pagination.totalPages}
+   850→                      className="h-8 w-8"
+   851→                    >
+   852→                      <ChevronRight className="w-4 h-4" />
+   853→                    </Button>
+   854→                  </div>
+   855→                </div>
+   856→              )}
+   857→            </>
+   858→          ) : (
+   859→            /* Empty state */
+   860→            <div className="text-center py-12">
+   861→              <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+   862→              <h3 className="text-lg font-medium text-slate-900 mb-1">Aucune demande trouvée</h3>
+   863→              <p className="text-slate-500 mb-4">
+   864→                {filters.statut || filters.search || (filters.region && filters.region !== 'Toutes les régions')
+   865→                  ? 'Essayez de modifier vos filtres'
+   866→                  : 'Les nouvelles demandes d\'abonnement apparaîtront ici'}
+   867→              </p>
+   868→              {(filters.statut || filters.search || (filters.region && filters.region !== 'Toutes les régions')) && (
+   869→                <Button variant="outline" onClick={() => setFilters({ statut: '', region: '', search: '' })}>
+   870→                  Effacer les filtres
+   871→                </Button>
+   872→              )}
+   873→            </div>
+   874→          )}
+   875→        </CardContent>
+   876→      </Card>
+   877→    </div>
+   878→  )
+   879→}
+   880→
+   881→// Icon component for users count
+   882→function UsersIcon({ className }: { className?: string }) {
+   883→  return (
+   884→    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+   885→      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+   886→      <circle cx="9" cy="7" r="4"/>
+   887→      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+   888→      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+   889→    </svg>
+   890→  )
+   891→}
+   892→

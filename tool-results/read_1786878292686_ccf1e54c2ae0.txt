@@ -1,0 +1,815 @@
+     1→'use client'
+     2→
+     3→import React, { useState, useEffect, useCallback } from 'react'
+     4→import { 
+     5→  Search, 
+     6→  Building2, 
+     7→  Users, 
+     8→  MapPin,
+     9→  Phone,
+    10→  Mail,
+    11→  MoreHorizontal,
+    12→  Eye,
+    13→  Power,
+    14→  PowerOff,
+    15→  Filter,
+    16→  Grid3X3,
+    17→  List,
+    18→  RefreshCw,
+    19→  ChevronLeft,
+    20→  ChevronRight,
+    21→  Calendar
+    22→} from 'lucide-react'
+    23→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+    24→import { Button } from '@/components/ui/button'
+    25→import { Badge } from '@/components/ui/badge'
+    26→import { Input } from '@/components/ui/input'
+    27→import {
+    28→  Select,
+    29→  SelectContent,
+    30→  SelectItem,
+    31→  SelectTrigger,
+    32→  SelectValue,
+    33→} from '@/components/ui/select'
+    34→import {
+    35→  Dialog,
+    36→  DialogContent,
+    37→  DialogDescription,
+    38→  DialogHeader,
+    39→  DialogTitle,
+    40→} from '@/components/ui/dialog'
+    41→import {
+    42→  DropdownMenu,
+    43→  DropdownMenuContent,
+    44→  DropdownMenuItem,
+    45→  DropdownMenuSeparator,
+    46→  DropdownMenuTrigger,
+    47→} from '@/components/ui/dropdown-menu'
+    48→import { Skeleton } from '@/components/ui/skeleton'
+    49→import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+    50→import { toast } from 'sonner'
+    51→
+    52→// Types
+    53→interface Organization {
+    54→  id: string
+    55→  created_at: string
+    56→  nom: string
+    57→  type_org: 'DR' | 'DD'
+    58→  region: string
+    59→  departement?: string
+    60→  telephone?: string
+    61→  email?: string
+    62→  logo_url?: string
+    63→  actif: boolean
+    64→  members_count?: number
+    65→  subscription?: {
+    66→    statut: string
+    67→    plan_nom: string
+    68→    date_fin: string
+    69→  }
+    70→}
+    71→
+    72→type ViewMode = 'grid' | 'list'
+    73→
+    74→interface Filters {
+    75→  search: string
+    76→  type: string
+    77→  region: string
+    78→  status: string
+    79→}
+    80→
+    81→interface Pagination {
+    82→  page: number
+    83→  limit: number
+    84→  total: number
+    85→  totalPages: number
+    86→}
+    87→
+    88→// Régions de Côte d'Ivoire
+    89→const regionsCI = [
+    90→  "Toutes régions",
+    91→  "Abidjan",
+    92→  "Lagunes",
+    93→  "District d'Abidjan",
+    94→  "Comoé",
+    95→  "Denguélé",
+    96→  "Gôh-Djiboua",
+    97→  "Lacs",
+    98→  "Montagnes",
+    99→  "Sassandra-Marahoué",
+   100→  "Vallée du Bandama",
+   101→  "Worodougou",
+   102→  "Zanzan",
+   103→  "San-Pédro",
+   104→  "Yamoussoukro"
+   105→]
+   106→
+   107→export default function OrganisationsPage() {
+   108→  const [organizations, setOrganizations] = useState<Organization[]>([])
+   109→  const [loading, setLoading] = useState(true)
+   110→  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+   111→  const [filters, setFilters] = useState<Filters>({
+   112→    search: '',
+   113→    type: '',
+   114→    region: '',
+   115→    status: ''
+   116→  })
+   117→  const [pagination, setPagination] = useState<Pagination>({
+   118→    page: 1,
+   119→    limit: 12,
+   120→    total: 0,
+   121→    totalPages: 0
+   122→  })
+   123→  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null)
+   124→  const [dialogOpen, setDialogOpen] = useState(false)
+   125→  const [actionLoading, setActionLoading] = useState(false)
+   126→  const [stats, setStats] = useState({ total: 0, actives: 0, dr: 0, dd: 0 })
+   127→
+   128→  // Fetch organizations
+   129→  const fetchOrganizations = useCallback(async () => {
+   130→    setLoading(true)
+   131→    try {
+   132→      const params = new URLSearchParams({
+   133→        page: pagination.page.toString(),
+   134→        limit: pagination.limit.toString(),
+   135→        ...(filters.search && { search: filters.search }),
+   136→        ...(filters.type && { type_org: filters.type }),
+   137→        ...(filters.region && filters.region !== 'Toutes régions' && { region: filters.region }),
+   138→        ...(filters.status !== '' && { actif: filters.status === 'actif' ? 'true' : 'false' })
+   139→      })
+   140→
+   141→      const response = await fetch(`/api/admin/organisations?${params}`)
+   142→      if (response.ok) {
+   143→        const data = await response.json()
+   144→        const orgs = data.data || []
+   145→        setOrganizations(orgs)
+   146→        setPagination(prev => ({
+   147→          ...prev,
+   148→          total: data.total || 0,
+   149→          totalPages: Math.ceil((data.total || 0) / prev.limit)
+   150→        }))
+   151→        
+   152→        // Calculer les stats localement
+   153→        setStats({
+   154→          total: orgs.length,
+   155→          actives: orgs.filter((o: Organization) => o.actif).length,
+   156→          dr: orgs.filter((o: Organization) => o.type_org === 'DR').length,
+   157→          dd: orgs.filter((o: Organization) => o.type_org === 'DD').length
+   158→        })
+   159→      } else {
+   160→        toast.error('Erreur lors du chargement des organisations')
+   161→      }
+   162→    } catch (error) {
+   163→      console.error('Erreur:', error)
+   164→      toast.error('Erreur de connexion au serveur')
+   165→    } finally {
+   166→      setLoading(false)
+   167→    }
+   168→  }, [pagination.page, pagination.limit, filters])
+   169→
+   170→  useEffect(() => {
+   171→    fetchOrganizations()
+   172→  }, [fetchOrganizations])
+   173→
+   174→  // Toggle organization status - utiliser le bon endpoint
+   175→  const toggleOrgStatus = async (orgId: string, currentStatus: boolean) => {
+   176→    setActionLoading(true)
+   177→    try {
+   178→      const response = await fetch(`/api/admin/organisations/${orgId}`, {
+   179→        method: 'PATCH',
+   180→        headers: { 'Content-Type': 'application/json' },
+   181→        body: JSON.stringify({ toggleStatus: true })
+   182→      })
+   183→
+   184→      if (response.ok) {
+   185→        toast.success(currentStatus 
+   186→          ? 'Organisation suspendue avec succès' 
+   187→          : 'Organisation réactivée avec succès'
+   188→        )
+   189→        fetchOrganizations()
+   190→        if (selectedOrg?.id === orgId) {
+   191→          setSelectedOrg(prev => prev ? { ...prev, actif: !currentStatus } : null)
+   192→        }
+   193→      } else {
+   194→        throw new Error('Erreur lors de la mise à jour')
+   195→      }
+   196→    } catch (error) {
+   197→      console.error(error)
+   198→      toast.error('Erreur lors de la modification du statut')
+   199→    } finally {
+   200→      setActionLoading(false)
+   201→    }
+   202→  }
+   203→
+   204→  const formatDate = (dateStr: string) => {
+   205→    return new Date(dateStr).toLocaleDateString('fr-FR', {
+   206→      day: 'numeric',
+   207→      month: 'short',
+   208→      year: 'numeric'
+   209→    })
+   210→  }
+   211→
+   212→  const getSubscriptionStatus = (org: Organization) => {
+   213→    if (!org.subscription) return null
+   214→    
+   215→    const now = new Date()
+   216→    const endDate = new Date(org.subscription.date_fin)
+   217→    const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+   218→    
+   219→    if (daysLeft <= 0) return { label: 'Expiré', className: 'bg-red-100 text-red-700 border-red-200' }
+   220→    if (daysLeft <= 7) return { label: `Expire ${daysLeft}j`, className: 'bg-amber-100 text-amber-700 border-amber-200' }
+   221→    return { label: org.subscription.plan_nom, className: 'bg-green-100 text-green-700 border-green-200' }
+   222→  }
+   223→
+   224→  return (
+   225→    <div className="space-y-6">
+   226→      {/* Page header */}
+   227→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   228→        <div>
+   229→          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">Organisations</h1>
+   230→          <p className="text-slate-500 mt-1">Gérez les Directions Régionales et Départementales</p>
+   231→        </div>
+   232→        <div className="flex items-center gap-3">
+   233→          <Button variant="outline" onClick={fetchOrganizations} disabled={loading} className="gap-2">
+   234→            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+   235→            Actualiser
+   236→          </Button>
+   237→        </div>
+   238→      </div>
+   239→
+   240→      {/* Stats cards */}
+   241→      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   242→        <Card className="border-slate-200">
+   243→          <CardContent className="p-4 flex items-center gap-4">
+   244→            <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
+   245→              <Building2 className="w-6 h-6" />
+   246→            </div>
+   247→            <div>
+   248→              <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+   249→              <p className="text-xs text-slate-500">Total organisations</p>
+   250→            </div>
+   251→          </CardContent>
+   252→        </Card>
+   253→        <Card className="border-slate-200">
+   254→          <CardContent className="p-4 flex items-center gap-4">
+   255→            <div className="p-3 rounded-xl bg-green-100 text-green-600">
+   256→              <Power className="w-6 h-6" />
+   257→            </div>
+   258→            <div>
+   259→              <p className="text-2xl font-bold text-slate-900">{stats.actives}</p>
+   260→              <p className="text-xs text-slate-500">Actives</p>
+   261→            </div>
+   262→          </CardContent>
+   263→        </Card>
+   264→        <Card className="border-slate-200">
+   265→          <CardContent className="p-4 flex items-center gap-4">
+   266→            <div className="p-3 rounded-xl bg-orange-100 text-orange-600">
+   267→              <Building2 className="w-6 h-6" />
+   268→            </div>
+   269→            <div>
+   270→              <p className="text-2xl font-bold text-slate-900">{stats.dr}</p>
+   271→              <p className="text-xs text-slate-500">Directions Régionales</p>
+   272→            </div>
+   273→          </CardContent>
+   274→        </Card>
+   275→        <Card className="border-slate-200">
+   276→          <CardContent className="p-4 flex items-center gap-4">
+   277→            <div className="p-3 rounded-xl bg-purple-100 text-purple-600">
+   278→              <Building2 className="w-6 h-6" />
+   279→            </div>
+   280→            <div>
+   281→              <p className="text-2xl font-bold text-slate-900">{stats.dd}</p>
+   282→              <p className="text-xs text-slate-500">Directions Départementales</p>
+   283→            </div>
+   284→          </CardContent>
+   285→        </Card>
+   286→      </div>
+   287→
+   288→      {/* Filters & View toggle */}
+   289→      <Card className="border-slate-200">
+   290→        <CardContent className="p-4">
+   291→          <div className="flex flex-col md:flex-row gap-4">
+   292→            {/* Search */}
+   293→            <div className="relative flex-1">
+   294→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+   295→              <Input
+   296→                placeholder="Rechercher une organisation..."
+   297→                value={filters.search}
+   298→                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+   299→                className="pl-10 bg-white"
+   300→              />
+   301→            </div>
+   302→
+   303→            {/* Type filter */}
+   304→            <Select value={filters.type} onValueChange={(value) => setFilters(prev => ({ ...prev, type: value }))}>
+   305→              <SelectTrigger className="w-full md:w-[160px]">
+   306→                <SelectValue placeholder="Type" />
+   307→              </SelectTrigger>
+   308→              <SelectContent>
+   309→                <SelectItem value="">Tous types</SelectItem>
+   310→                <SelectItem value="DR">Direction Régionale</SelectItem>
+   311→                <SelectItem value="DD">Direction Départementale</SelectItem>
+   312→              </SelectContent>
+   313→            </Select>
+   314→
+   315→            {/* Region filter */}
+   316→            <Select value={filters.region} onValueChange={(value) => setFilters(prev => ({ ...prev, region: value }))}>
+   317→              <SelectTrigger className="w-full md:w-[180px]">
+   318→                <MapPin className="w-4 h-4 mr-2 text-slate-400" />
+   319→                <SelectValue placeholder="Région" />
+   320→              </SelectTrigger>
+   321→              <SelectContent>
+   322→                {regionsCI.map(region => (
+   323→                  <SelectItem key={region} value={region}>{region}</SelectItem>
+   324→                ))}
+   325→              </SelectContent>
+   326→            </Select>
+   327→
+   328→            {/* Status filter */}
+   329→            <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+   330→              <SelectTrigger className="w-full md:w-[140px]">
+   331→                <SelectValue placeholder="Statut" />
+   332→              </SelectTrigger>
+   333→              <SelectContent>
+   334→                <SelectItem value="">Tous statuts</SelectItem>
+   335→                <SelectItem value="actif">Actives</SelectItem>
+   336→                <SelectItem value="inactif">Inactives</SelectItem>
+   337→              </SelectContent>
+   338→            </Select>
+   339→
+   340→            {/* View mode toggle */}
+   341→            <div className="hidden md:flex items-center border border-slate-200 rounded-lg p-1">
+   342→              <Button
+   343→                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+   344→                size="icon"
+   345→                className={`h-8 w-8 ${viewMode === 'grid' ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
+   346→                onClick={() => setViewMode('grid')}
+   347→              >
+   348→                <Grid3X3 className="w-4 h-4" />
+   349→              </Button>
+   350→              <Button
+   351→                variant={viewMode === 'list' ? 'default' : 'ghost'}
+   352→                size="icon"
+   353→                className={`h-8 w-8 ${viewMode === 'list' ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
+   354→                onClick={() => setViewMode('list')}
+   355→              >
+   356→                <List className="w-4 h-4" />
+   357→              </Button>
+   358→            </div>
+   359→          </div>
+   360→        </CardContent>
+   361→      </Card>
+   362→
+   363→      {/* Content */}
+   364→      {loading ? (
+   365→        viewMode === 'grid' ? (
+   366→          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   367→            {[...Array(6)].map((_, i) => (
+   368→              <Card key={i} className="border-slate-200">
+   369→                <CardContent className="p-6">
+   370→                  <Skeleton className="h-6 w-3/4 mb-4" />
+   371→                  <Skeleton className="h-4 w-1/2 mb-2" />
+   372→                  <Skeleton className="h-4 w-full mb-4" />
+   373→                  <div className="flex justify-between">
+   374→                    <Skeleton className="h-8 w-20" />
+   375→                    <Skeleton className="h-8 w-20" />
+   376→                  </div>
+   377→                </CardContent>
+   378→              </Card>
+   379→            ))}
+   380→          </div>
+   381→        ) : (
+   382→          <div className="space-y-3">
+   383→            {[...Array(5)].map((_, i) => (
+   384→              <Skeleton key={i} className="h-20 w-full" />
+   385→            ))}
+   386→          </div>
+   387→        )
+   388→      ) : organizations.length > 0 ? (
+   389→        <>
+   390→          {viewMode === 'grid' ? (
+   391→            /* Grid View */
+   392→            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   393→              {organizations.map((org) => (
+   394→                <Card key={org.id} className={`border-slate-200 hover:shadow-lg transition-all duration-300 group ${!org.actif ? 'opacity-60' : ''}`}>
+   395→                  <CardContent className="p-6">
+   396→                    <div className="flex items-start justify-between mb-4">
+   397→                      <div className="flex items-center gap-3">
+   398→                        <Avatar className="h-12 w-12 ring-2 ring-offset-2 ring-orange-100">
+   399→                          <AvatarFallback className={`${
+   400→                            org.type_org === 'DR' 
+   401→                              ? 'bg-gradient-to-br from-blue-500 to-blue-600' 
+   402→                              : 'bg-gradient-to-br from-purple-500 to-purple-600'
+   403→                          } text-white font-bold`}>
+   404→                            {org.nom.slice(0, 2).toUpperCase()}
+   405→                          </AvatarFallback>
+   406→                        </Avatar>
+   407→                        <div>
+   408→                          <h3 className="font-semibold text-slate-900 group-hover:text-orange-600 transition-colors line-clamp-1">
+   409→                            {org.nom}
+   410→                          </h3>
+   411→                          <Badge variant="outline" className={`text-[10px] mt-1 ${
+   412→                            org.type_org === 'DR' 
+   413→                              ? 'border-blue-200 text-blue-700 bg-blue-50' 
+   414→                              : 'border-purple-200 text-purple-700 bg-purple-50'
+   415→                          }`}>
+   416→                            {org.type_org}
+   417→                          </Badge>
+   418→                        </div>
+   419→                      </div>
+   420→                      
+   421→                      <DropdownMenu>
+   422→                        <DropdownMenuTrigger asChild>
+   423→                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+   424→                            <MoreHorizontal className="w-4 h-4 text-slate-400" />
+   425→                          </Button>
+   426→                        </DropdownMenuTrigger>
+   427→                        <DropdownMenuContent align="end">
+   428→                          <DropdownMenuItem onClick={() => { setSelectedOrg(org); setDialogOpen(true); }}>
+   429→                            <Eye className="mr-2 h-4 w-4" />
+   430→                            Voir détails
+   431→                          </DropdownMenuItem>
+   432→                          <DropdownMenuSeparator />
+   433→                          <DropdownMenuItem 
+   434→                            onClick={() => toggleOrgStatus(org.id, org.actif)}
+   435→                            disabled={actionLoading}
+   436→                            className={org.actif ? 'text-amber-600 focus:text-amber-600' : 'text-green-600 focus:text-green-600'}
+   437→                          >
+   438→                            {org.actif ? (
+   439→                              <>
+   440→                                <PowerOff className="mr-2 h-4 w-4" />
+   441→                                Suspendre
+   442→                              </>
+   443→                            ) : (
+   444→                              <>
+   445→                                <Power className="mr-2 h-4 w-4" />
+   446→                                Réactiver
+   447→                              </>
+   448→                            )}
+   449→                          </DropdownMenuItem>
+   450→                        </DropdownMenuContent>
+   451→                      </DropdownMenu>
+   452→                    </div>
+   453→
+   454→                    <div className="space-y-2 mb-4">
+   455→                      <div className="flex items-center gap-2 text-sm text-slate-600">
+   456→                        <MapPin className="w-4 h-4 text-slate-400" />
+   457→                        <span>{[org.departement, org.region].filter(Boolean).join(', ') || 'Non spécifié'}</span>
+   458→                      </div>
+   459→                      {org.email && (
+   460→                        <div className="flex items-center gap-2 text-sm text-slate-600">
+   461→                          <Mail className="w-4 h-4 text-slate-400" />
+   462→                          <span className="truncate">{org.email}</span>
+   463→                        </div>
+   464→                      )}
+   465→                      {org.telephone && (
+   466→                        <div className="flex items-center gap-2 text-sm text-slate-600">
+   467→                          <Phone className="w-4 h-4 text-slate-400" />
+   468→                          <span>{org.telephone}</span>
+   469→                        </div>
+   470→                      )}
+   471→                    </div>
+   472→
+   473→                    <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+   474→                      <div className="flex items-center gap-2">
+   475→                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
+   476→                          org.actif 
+   477→                            ? 'bg-green-100 text-green-700' 
+   478→                            : 'bg-red-100 text-red-700'
+   479→                        }`}>
+   480→                          <span className={`w-1.5 h-1.5 rounded-full ${org.actif ? 'bg-green-500' : 'bg-red-500'}`} />
+   481→                          {org.actif ? 'Active' : 'Inactive'}
+   482→                        </span>
+   483→                      </div>
+   484→                      
+   485→                      {(() => {
+   486→                        const subStatus = getSubscriptionStatus(org)
+   487→                        return subStatus ? (
+   488→                          <Badge variant="outline" className={`text-[10px] ${subStatus.className}`}>
+   489→                            {subStatus.label}
+   490→                          </Badge>
+   491→                        ) : null
+   492→                      })()}
+   493→                    </div>
+   494→                  </CardContent>
+   495→                </Card>
+   496→              ))}
+   497→            </div>
+   498→          ) : (
+   499→            /* List View */
+   500→            <Card className="border-slate-200">
+   501→              <CardContent className="p-0">
+   502→                <table className="w-full">
+   503→                  <thead>
+   504→                    <tr className="border-b border-slate-200">
+   505→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Organisation</th>
+   506→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
+   507→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Localisation</th>
+   508→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Membres</th>
+   509→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Abonnement</th>
+   510→                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Statut</th>
+   511→                      <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+   512→                    </tr>
+   513→                  </thead>
+   514→                  <tbody>
+   515→                    {organizations.map((org, index) => (
+   516→                      <tr 
+   517→                        key={org.id}
+   518→                        className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+   519→                          index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'
+   520→                        } ${!org.actif ? 'opacity-60' : ''}`}
+   521→                      >
+   522→                        <td className="py-4 px-4">
+   523→                          <div className="flex items-center gap-3">
+   524→                            <Avatar className="h-9 w-9">
+   525→                              <AvatarFallback className={`${
+   526→                                org.type_org === 'DR' 
+   527→                                  ? 'bg-gradient-to-br from-blue-500 to-blue-600' 
+   528→                                  : 'bg-gradient-to-br from-purple-500 to-purple-600'
+   529→                              } text-white text-xs font-bold`}>
+   530→                                {org.nom.slice(0, 2).toUpperCase()}
+   531→                              </AvatarFallback>
+   532→                            </Avatar>
+   533→                            <div>
+   534→                              <p className="font-medium text-slate-900">{org.nom}</p>
+   535→                              {org.email && (
+   536→                                <p className="text-xs text-slate-500">{org.email}</p>
+   537→                              )}
+   538→                            </div>
+   539→                          </div>
+   540→                        </td>
+   541→                        <td className="py-4 px-4">
+   542→                          <Badge variant="outline" className={`${
+   543→                            org.type_org === 'DR' 
+   544→                              ? 'border-blue-200 text-blue-700 bg-blue-50' 
+   545→                              : 'border-purple-200 text-purple-700 bg-purple-50'
+   546→                          }`}>
+   547→                            {org.type_org}
+   548→                          </Badge>
+   549→                        </td>
+   550→                        <td className="py-4 px-4">
+   551→                          <span className="text-sm text-slate-600 flex items-center gap-1">
+   552→                            <MapPin className="w-4 h-4 text-slate-400" />
+   553→                            {[org.departement, org.region].filter(Boolean).join(', ') || '-'}
+   554→                          </span>
+   555→                        </td>
+   556→                        <td className="py-4 px-4">
+   557→                          <span className="text-sm text-slate-600 flex items-center gap-1">
+   558→                            <Users className="w-4 h-4 text-slate-400" />
+   559→                            {org.members_count || '--'}
+   560→                          </span>
+   561→                        </td>
+   562→                        <td className="py-4 px-4">
+   563→                          {(() => {
+   564→                            const subStatus = getSubscriptionStatus(org)
+   565→                            return subStatus ? (
+   566→                              <Badge variant="outline" className={`text-xs ${subStatus.className}`}>
+   567→                                {subStatus.label}
+   568→                              </Badge>
+   569→                            ) : (
+   570→                              <span className="text-xs text-slate-400">-</span>
+   571→                            )
+   572→                          })()}
+   573→                        </td>
+   574→                        <td className="py-4 px-4">
+   575→                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+   576→                            org.actif 
+   577→                              ? 'bg-green-100 text-green-700' 
+   578→                              : 'bg-red-100 text-red-700'
+   579→                          }`}>
+   580→                            <span className={`w-1.5 h-1.5 rounded-full ${org.actif ? 'bg-green-500' : 'bg-red-500'}`} />
+   581→                            {org.actif ? 'Active' : 'Inactive'}
+   582→                          </span>
+   583→                        </td>
+   584→                        <td className="py-4 px-4">
+   585→                          <div className="flex items-center justify-end gap-1">
+   586→                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSelectedOrg(org); setDialogOpen(true); }}>
+   587→                              <Eye className="w-4 h-4 text-slate-400" />
+   588→                            </Button>
+   589→                            <Button 
+   590→                              variant="ghost" 
+   591→                              size="icon" 
+   592→                              className={`h-8 w-8 ${org.actif ? 'text-amber-500 hover:text-amber-600 hover:bg-amber-50' : 'text-green-500 hover:text-green-600 hover:bg-green-50'}`}
+   593→                              onClick={() => toggleOrgStatus(org.id, org.actif)}
+   594→                              disabled={actionLoading}
+   595→                            >
+   596→                              {org.actif ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+   597→                            </Button>
+   598→                          </div>
+   599→                        </td>
+   600→                      </tr>
+   601→                    ))}
+   602→                  </tbody>
+   603→                </table>
+   604→              </CardContent>
+   605→            </Card>
+   606→          )}
+   607→
+   608→          {/* Pagination */}
+   609→          {pagination.totalPages > 1 && (
+   610→            <div className="flex items-center justify-between pt-4">
+   611→              <p className="text-sm text-slate-500">
+   612→                Affichage {(pagination.page - 1) * pagination.limit + 1}-{Math.min(pagination.page * pagination.limit, pagination.total)} sur {pagination.total}
+   613→              </p>
+   614→              <div className="flex items-center gap-2">
+   615→                <Button
+   616→                  variant="outline"
+   617→                  size="icon"
+   618→                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+   619→                  disabled={pagination.page <= 1}
+   620→                >
+   621→                  <ChevronLeft className="w-4 h-4" />
+   622→                </Button>
+   623→                
+   624→                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+   625→                  let pageNum: number
+   626→                  if (pagination.totalPages <= 5) {
+   627→                    pageNum = i + 1
+   628→                  } else if (pagination.page <= 3) {
+   629→                    pageNum = i + 1
+   630→                  } else if (pagination.page >= pagination.totalPages - 2) {
+   631→                    pageNum = pagination.totalPages - 4 + i
+   632→                  } else {
+   633→                    pageNum = pagination.page - 2 + i
+   634→                  }
+   635→                  
+   636→                  return (
+   637→                    <Button
+   638→                      key={pageNum}
+   639→                      variant={pagination.page === pageNum ? 'default' : 'outline'}
+   640→                      size="icon"
+   641→                      onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+   642→                      className={`h-8 w-8 ${pagination.page === pageNum ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
+   643→                    >
+   644→                      {pageNum}
+   645→                    </Button>
+   646→                  )
+   647→                })}
+   648→                
+   649→                <Button
+   650→                  variant="outline"
+   651→                  size="icon"
+   652→                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+   653→                  disabled={pagination.page >= pagination.totalPages}
+   654→                >
+   655→                  <ChevronRight className="w-4 h-4" />
+   656→                </Button>
+   657→              </div>
+   658→            </div>
+   659→          )}
+   660→        </>
+   661→      ) : (
+   662→        /* Empty state */
+   663→        <Card className="border-slate-200">
+   664→          <CardContent className="py-12 text-center">
+   665→            <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+   666→            <h3 className="text-lg font-medium text-slate-900 mb-1">Aucune organisation trouvée</h3>
+   667→            <p className="text-slate-500 mb-4">
+   668→              {filters.search || filters.type || (filters.region && filters.region !== 'Toutes régions') || filters.status
+   669→                ? 'Essayez de modifier vos filtres'
+   670→                : 'Les organisations créées apparaîtront ici'}
+   671→            </p>
+   672→            {(filters.search || filters.type || (filters.region && filters.region !== 'Toutes régions') || filters.status) && (
+   673→              <Button variant="outline" onClick={() => setFilters({ search: '', type: '', region: '', status: '' })}>
+   674→                Effacer les filtres
+   675→              </Button>
+   676→            )}
+   677→          </CardContent>
+   678→        </Card>
+   679→      )}
+   680→
+   681→      {/* Detail dialog */}
+   682→      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+   683→        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+   684→          <DialogHeader>
+   685→            <DialogTitle>Détails de l&apos;organisation</DialogTitle>
+   686→            <DialogDescription>
+   687→              {selectedOrg?.nom}
+   688→            </DialogDescription>
+   689→          </DialogHeader>
+   690→          
+   691→          {selectedOrg && (
+   692→            <div className="space-y-6 mt-4">
+   693→              {/* Header info */}
+   694→              <div className="flex items-center gap-4 p-4 rounded-lg bg-slate-50">
+   695→                <Avatar className="h-16 w-16 ring-2 ring-offset-2 ring-orange-100">
+   696→                  <AvatarFallback className={`${
+   697→                    selectedOrg.type_org === 'DR' 
+   698→                      ? 'bg-gradient-to-br from-blue-500 to-blue-600' 
+   699→                      : 'bg-gradient-to-br from-purple-500 to-purple-600'
+   700→                  } text-white text-lg font-bold`}>
+   701→                    {selectedOrg.nom.slice(0, 2).toUpperCase()}
+   702→                  </AvatarFallback>
+   703→                </Avatar>
+   704→                <div className="flex-1">
+   705→                  <h3 className="font-semibold text-lg text-slate-900">{selectedOrg.nom}</h3>
+   706→                  <div className="flex items-center gap-2 mt-1">
+   707→                    <Badge variant="outline" className={`${
+   708→                      selectedOrg.type_org === 'DR' 
+   709→                        ? 'border-blue-200 text-blue-700 bg-blue-50' 
+   710→                        : 'border-purple-200 text-purple-700 bg-purple-50'
+   711→                    }`}>
+   712→                      {selectedOrg.type_org}
+   713→                    </Badge>
+   714→                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+   715→                      selectedOrg.actif 
+   716→                        ? 'bg-green-100 text-green-700' 
+   717→                        : 'bg-red-100 text-red-700'
+   718→                    }`}>
+   719→                      <span className={`w-1.5 h-1.5 rounded-full ${selectedOrg.actif ? 'bg-green-500' : 'bg-red-500'}`} />
+   720→                      {selectedOrg.actif ? 'Active' : 'Inactive'}
+   721→                    </span>
+   722→                  </div>
+   723→                </div>
+   724→              </div>
+   725→
+   726→              {/* Info grid */}
+   727→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   728→                <div className="space-y-3">
+   729→                  <div className="flex items-start gap-3">
+   730→                    <MapPin className="w-5 h-5 text-slate-400 mt-0.5" />
+   731→                    <div>
+   732→                      <p className="text-xs text-slate-500">Localisation</p>
+   733→                      <p className="font-medium text-slate-900">
+   734→                        {[selectedOrg.departement, selectedOrg.region].filter(Boolean).join(', ') || '-'}
+   735→                      </p>
+   736→                    </div>
+   737→                  </div>
+   738→                  <div className="flex items-start gap-3">
+   739→                    <Mail className="w-5 h-5 text-slate-400 mt-0.5" />
+   740→                    <div>
+   741→                      <p className="text-xs text-slate-500">Email</p>
+   742→                      <p className="font-medium text-slate-900">{selectedOrg.email || '-'}</p>
+   743→                    </div>
+   744→                  </div>
+   745→                </div>
+   746→                
+   747→                <div className="space-y-3">
+   748→                  <div className="flex items-start gap-3">
+   749→                    <Phone className="w-5 h-5 text-slate-400 mt-0.5" />
+   750→                    <div>
+   751→                      <p className="text-xs text-slate-500">Téléphone</p>
+   752→                      <p className="font-medium text-slate-900">{selectedOrg.telephone || '-'}</p>
+   753→                    </div>
+   754→                  </div>
+   755→                  <div className="flex items-start gap-3">
+   756→                    <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
+   757→                    <div>
+   758→                      <p className="text-xs text-slate-500">Créée le</p>
+   759→                      <p className="font-medium text-slate-900">{formatDate(selectedOrg.created_at)}</p>
+   760→                    </div>
+   761→                  </div>
+   762→                </div>
+   763→              </div>
+   764→
+   765→              {/* Subscription info */}
+   766→              {selectedOrg.subscription && (
+   767→                <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+   768→                  <p className="text-sm font-medium text-green-800 mb-2">Abonnement actif</p>
+   769→                  <div className="flex items-center justify-between">
+   770→                    <span className="text-green-700">{selectedOrg.subscription.plan_nom}</span>
+   771→                    <span className="text-sm text-green-600">
+   772→                      Jusqu&apos;au {formatDate(selectedOrg.subscription.date_fin)}
+   773→                    </span>
+   774→                  </div>
+   775→                </div>
+   776→              )}
+   777→
+   778→              {/* Members count */}
+   779→              <div className="flex items-center gap-4 p-4 rounded-lg bg-slate-50">
+   780→                <Users className="w-5 h-5 text-slate-400" />
+   781→                <div>
+   782→                  <p className="text-xs text-slate-500">Nombre de membres</p>
+   783→                  <p className="font-semibold text-slate-900">{selectedOrg.members_count || 0} membre(s)</p>
+   784→                </div>
+   785→              </div>
+   786→
+   787→              {/* Actions */}
+   788→              <div className="flex gap-2 pt-4 border-t border-slate-200">
+   789→                <Button 
+   790→                  onClick={() => toggleOrgStatus(selectedOrg.id, selectedOrg.actif)}
+   791→                  disabled={actionLoading}
+   792→                  variant={selectedOrg.actif ? 'destructive' : 'default'}
+   793→                  className={selectedOrg.actif ? '' : 'bg-green-600 hover:bg-green-700'}
+   794→                >
+   795→                  {selectedOrg.actif ? (
+   796→                    <>
+   797→                      <PowerOff className="w-4 h-4 mr-2" />
+   798→                      Suspendre
+   799→                    </>
+   800→                  ) : (
+   801→                    <>
+   802→                      <Power className="w-4 h-4 mr-2" />
+   803→                      Réactiver
+   804→                    </>
+   805→                  )}
+   806→                </Button>
+   807→              </div>
+   808→            </div>
+   809→          )}
+   810→        </DialogContent>
+   811→      </Dialog>
+   812→    </div>
+   813→  )
+   814→}
+   815→
