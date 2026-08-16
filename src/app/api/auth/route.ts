@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { createHash } from 'crypto'
 
 // ============================================
 // CONFIGURATION SUPABASE
@@ -115,7 +116,6 @@ const inMemoryUsers = new Map<string, {
 
 // Initialiser le super admin en mémoire
 function ensureSuperAdminExists() {
-  const { createHash } = require('crypto')
   const passwordHash = createHash('sha256').update(SUPER_ADMIN_CREDENTIALS.password).digest('hex')
   
   if (!inMemoryUsers.has(SUPER_ADMIN_CREDENTIALS.email)) {
@@ -185,7 +185,6 @@ async function handleSignIn(email: string, password: string): Promise<AuthResult
     }
     
     // Vérifier le mot de passe avec SHA256
-    const { createHash } = require('crypto')
     const passwordHash = createHash('sha256').update(password).digest('hex')
     
     if (user.passwordHash !== passwordHash) {
@@ -291,7 +290,6 @@ async function handleSignUp(
       return { success: false, error: 'Le mot de passe doit contenir au moins 6 caractères.' }
     }
     
-    const { createHash } = require('crypto')
     const passwordHash = createHash('sha256').update(password).digest('hex')
     const userId = `user-${Date.now()}`
     
