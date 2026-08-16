@@ -1,8 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// e-OSCS Prisma Schema
+// Base de données SQLite pour authentification locale et données
 
 generator client {
   provider = "prisma-client-js"
@@ -13,13 +10,114 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================
+// MODÈLES D'AUTHENTIFICATION
+// ============================================
+
+/// Utilisateur du système e-OSCS
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  email           String   @unique
+  passwordHash    String   // Hash bcrypt du mot de passe
+  nomComplet      String?
+  telephone       String?
+  
+  // Rôle et permissions
+  role            String   @default("user") // user, admin, super_admin
+  
+  // Organisation (optionnel pour super_admin)
+  organisationId  String?
+  organisationNom String?
+  typeOrg         String?  // DR, DD
+  region          String?
+  departement     String?
+  
+  // Statut
+  isActive        Boolean  @default(true)
+  emailVerified   Boolean  @default(false)
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  activites       Activite[]
+  demandes        DemandeAcces[]
+  
+  @@map("users")
 }
+
+/// Demande d'accès à la plateforme
+model DemandeAcces {
+  id              String   @id @default(cuid())
+  nomComplet      String
+  email           String
+  telephone       String
+  nomOrganisation String
+  typeOrg         String   // DR, DD
+  region          String
+  departement     String?
+  message         String?
+  statut          String   @default("NOUVELLE") // NOUVELLE, APPROVEE, REJETEE
+  
+  userId          String?  // Rempli si approuvée et compte créé
+  processedAt     DateTime?
+  processedBy     String?
+  notes           String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user            User?    @relation(fields: [userId], references: [id])
+  
+  @@map("demandes_acces")
+}
+
+// ============================================
+// MODÈLES MÉTIER - ACTIVITÉS
+// ============================================
+
+/// Activité de solidarité saisie par un agent
+model Activite {
+  id              String   @id @default(cuid())
+  titre           String
+  description     String?
+  typeActivite    String?  // Formation, Distribution, Sensibilisation, etc.
+  statut          String   @default("BROUILLON") // BROUILLON, SOUMISE, VALIDEE, REJETEE
+  
+  // Dates
+  dateDebut       DateTime?
+  dateFin         DateTime?
+  
+  // Localisation
+  region          String?
+  departement     String?
+  commune         String?
+  lieuPrecis      String?
+  
+  // Chiffres
+  beneficiairesHommes   Int?
+  beneficiairesFemmes   Int?
+  beneficiairesTotal    Int?
+  budgetPrevu     Float?
+  budgetReel      Float?
+  
+  // Auteur
+  authorId        String
+  author          User     @relation(fields: [authorId], references: [id])
+  
+  validatedBy     String?
+  validatedAt     DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("activites")
+}
+
+// ============================================
+// MODÈLES SYSTÈME (pour compatibilité)
+// ============================================
 
 model Post {
   id        String   @id @default(cuid())
@@ -29,4 +127,6 @@ model Post {
   authorId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  @@map("posts")
 }

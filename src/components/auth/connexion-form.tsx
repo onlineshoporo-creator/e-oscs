@@ -173,8 +173,10 @@ export function ConnexionForm() {
       
       if (result.success) {
         showSuccess('Connexion réussie !', 'Bienvenue sur e-OSCS. Redirection...', { duration: 3000 })
+        // Utiliser le redirectTo retourné par l'API ou celui par défaut
+        const redirectUrl = result.data?.redirectTo || redirectTo
         setTimeout(() => {
-          router.push(redirectTo)
+          router.push(redirectUrl)
           router.refresh()
         }, 500)
       } else {

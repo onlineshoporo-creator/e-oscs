@@ -7,6 +7,8 @@
  * 
  * Ce client contourne RLS et possède tous les privilèges.
  * Ne JAMAIS l'exposer au client (browser).
+ * 
+ * ⚠️ Résilient : retourne un client dummy si Supabase n'est pas configuré
  */
 
 import 'server-only'
@@ -19,10 +21,14 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
  * Vérifie si Supabase est correctement configuré
  */
 export function isSupabaseConfigured(): boolean {
-  return !!(supabaseUrl && serviceRoleKey && 
+  return !!(
+    supabaseUrl && 
+    serviceRoleKey && 
     supabaseUrl !== 'https://votre-projet.supabase.co' &&
     serviceRoleKey !== 'votre-anon-key-ici' &&
-    serviceRoleKey !== 'votre-service-role-key-ici')
+    serviceRoleKey !== 'votre-service-role-key-ici' &&
+    supabaseUrl.startsWith('https://')
+  )
 }
 
 /**
@@ -34,15 +40,9 @@ let _supabaseAdmin: ReturnType<typeof createClient> | null = null
 export function getSupabaseAdmin() {
   if (!_supabaseAdmin) {
     if (!isSupabaseConfigured()) {
-      console.warn('⚠️ Supabase non configuré - certaines fonctionnalités seront désactivées')
-      // Retourner un client dummy qui lance des erreurs explicites
-      _supabaseAdmin = createClient(
-        'https://placeholder.supabase.co',
-        'placeholder-key',
-        {
-          auth: { autoRefreshToken: false, persistSession: false },
-        }
-      ) as any
+      console.warn('⚠️ Supabase Admin non configuré - certaines fonctionnalités seront désactivées')
+      // Retourner un client dummy qui ne crash pas
+      _supabaseAdmin = createDummyAdminClient()
     } else {
       _supabaseAdmin = createClient(supabaseUrl!, serviceRoleKey!, {
         auth: {
@@ -53,6 +53,19 @@ export function getSupabaseAdmin() {
     }
   }
   return _supabaseAdmin
+}
+
+/**
+ * Crée un client Supabase Admin dummy
+ */
+function createDummyAdminClient() {
+  return createClient(
+    'https://placeholder.supabase.co',
+    'placeholder-key',
+    {
+      auth: { autoRefreshToken: false, persistSession: false },
+    }
+  ) as any
 }
 
 /**
@@ -77,6 +90,9 @@ export const supabaseAdmin = new Proxy({} as ReturnType<typeof createClient>, {
  */
 export async function executeSQL<T = any>(sql: string): Promise<{ data: T[] | null; error: Error | null }> {
   try {
+    if (!isSupabaseConfigured()) {
+      return { data: null, error: new Error('Supabase non configuré') }
+    }
     const { data, error } = await getSupabaseAdmin().rpc('exec_sql', { query_sql: sql })
     if (error) return { data: null, error }
     return { data: data as T[], error: null }
