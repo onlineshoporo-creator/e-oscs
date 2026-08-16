@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import {
   PlusCircle,
@@ -146,23 +145,8 @@ function getRelativeDate(dateStr: string): string {
 }
 
 export default async function AgentHomePage() {
-  // Récupérer les infos utilisateur pour personnaliser l'accueil
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  let userName = 'Agent'
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', user.id)
-      .single()
-    
-    if (profile?.full_name) {
-      // Prendre seulement le prénom
-      userName = profile.full_name.split(' ')[0]
-    }
-  }
+  // Nom par défaut (sera personnalisé quand Supabase sera configuré)
+  const userName = 'Agent'
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -533,7 +517,7 @@ export default async function AgentHomePage() {
                 Vous avez des actions en attente
               </p>
               <p className="text-sm text-blue-600 mt-1">
-                {mockStats.brouillons > 0 && `${mockStats.brouillon(s) ? mockStats.brouillons : mockStats.brouillons} brouillon(s) à compléter. `}
+                {mockStats.brouillons > 0 && `${mockStats.brouillons} brouillon(s) à compléter. `}
                 {mockStats.soumises > mockStats.validees && `${mockStats.soumises - mockStats.validees} activité(s) en attente de validation.`}
               </p>
             </div>
