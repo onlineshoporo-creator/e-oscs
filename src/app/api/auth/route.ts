@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createHash } from 'crypto'
+import { inMemoryStore } from '@/lib/in-memory-store'
 
 // ============================================
 // CONFIGURATION SUPABASE
@@ -341,6 +342,7 @@ async function handleSignOut(): Promise<AuthResult> {
 
 /**
  * Demande d'accès / inscription organisation
+ * Stocke la demande dans le inMemoryStore pour qu'elle apparaisse dans le panel admin
  */
 async function handleRequestAccess(data: Record<string, unknown>): Promise<AuthResult> {
   try {
@@ -384,17 +386,32 @@ async function handleRequestAccess(data: Record<string, unknown>): Promise<AuthR
       return { success: false, error: 'La région est requise.' }
     }
 
-    // Log la demande (en production, sauvegarder dans Supabase/DB)
+    // Log la demande
     console.log(`📋 Nouvelle demande d'accès: ${email} (${nom_organisation})`)
     console.log(`   Type: ${type_org}, Région: ${region}`)
 
-    // Simuler une création réussie
-    const demandeId = `demande-${Date.now()}`
+    // ★ STOCKER LA DEMANDE DANS LE IN-MEMORY STORE ★
+    // Cela permet au super admin de voir la demande dans son panel
+    const demande = inMemoryStore.createDemande({
+      nom_complet: nom_complet.trim(),
+      email: email.trim(),
+      telephone: telephone.trim(),
+      nom_organisation: nom_organisation.trim(),
+      type_org: type_org as 'DR' | 'DD',
+      region: region.trim(),
+      departement: departement?.trim() || undefined,
+      message: message?.trim() || undefined,
+      statut: 'NOUVELLE'
+    })
+
+    console.log(`✅ Demande d'accès stockée avec ID: ${demande.id}`)
+    console.log(`   → Visible dans le panel admin: /admin/demandes`)
+    console.log(`   → Notification créée automatiquement`)
 
     return {
       success: true,
       message: 'Votre demande a été enregistrée avec succès ! Nous vous contacterons sous 48 heures ouvrées.',
-      data: { demandeId }
+      data: { demandeId: demande.id }
     }
   } catch (error) {
     console.error('Erreur handleRequestAccess:', error)
