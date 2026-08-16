@@ -1,44 +1,32 @@
 /**
- * API Notifications - e-OSCS (Super Admin)
+ * API Notifications - e-OSCS
  * 
- * Gestion des notifications du super admin avec stockage en mémoire
+ * Gestion des notifications du super admin avec stockage en mémoire (fallback Vercel)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { inMemoryStore } from '@/lib/in-memory-store'
 
-// GET - Récupérer les notifications (avec pagination et filtres)
+// GET - Récupérer toutes les notifications
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
     const onlyUnread = searchParams.get('unread') === 'true'
-
-    // Récupérer toutes les notifications
+    
     let notifications = inMemoryStore.getNotifications()
-
-    // Filtrer non lues si demandé
+    
+    // Filtrer par non lues si demandé
     if (onlyUnread) {
       notifications = notifications.filter(n => !n.lue)
     }
-
-    // Pagination
-    const total = notifications.length
-    const totalPages = Math.ceil(total / limit)
-    const start = (page - 1) * limit
-    const paginatedNotifs = notifications.slice(start, start + limit)
-
+    
     // Compter les non lues
     const unreadCount = inMemoryStore.getUnreadCount()
-
+    
     return NextResponse.json({
-      data: paginatedNotifs,
-      total,
+      data: notifications,
       unreadCount,
-      page,
-      limit,
-      totalPages
+      total: notifications.length
     })
 
   } catch (error) {
@@ -50,13 +38,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Créer une notification manuelle (pour tests/admin)
+// POST - Créer une notification manuelle
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
     const { type, titre, description, lien } = body
-
+    
     // Validation
     if (!titre?.trim()) {
       return NextResponse.json(
@@ -65,7 +53,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const validTypes = ['demande_abonnement', 'organisation_activee', 'paiement_recu', 'systeme']
+    // Types valides
+    const validTypes = ['demande_abonnement', 'organisation_activee', 'paiement_recu', 'systeme', 'info']
     const notifType = validTypes.includes(type) ? type : 'systeme'
 
     // Créer la notification
@@ -90,45 +79,34 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH - Marquer comme lu / tout marquer comme lu
+// PATCH - Marquer comme lues / tout marquer comme lu
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, markAllRead } = body
+    const { action, notificationId } = body
 
-    if (markAllRead) {
-      // Tout marquer comme lu
+    if (action === 'markAllRead') {
+      // Marquer toutes comme lues
       inMemoryStore.markAllAsRead()
-      
-      console.log('✅ Toutes les notifications marquées comme lues')
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Toutes les notifications ont été marquées comme lues'
-      })
+      return NextResponse.json({ success: true, message: 'Toutes les notifications marquées comme lues' })
     }
 
-    if (!id) {
-      return NextResponse.json(
-        { error: 'ID requis pour marquer une notification spécifique' },
-        { status: 400 }
-      )
+    if (action === 'markRead' && notificationId) {
+      // Marquer une spécifique comme lue
+      const success = inMemoryStore.markAsRead(notificationId)
+      if (!success) {
+        return NextResponse.json(
+          { error: 'Notification non trouvée' },
+          { status: 404 }
+        )
+      }
+      return NextResponse.json({ success: true })
     }
 
-    // Marquer une notification spécifique comme lue
-    const result = inMemoryStore.markAsRead(id)
-
-    if (!result) {
-      return NextResponse.json(
-        { error: 'Notification non trouvée' },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Notification marquée comme lue'
-    })
+    return NextResponse.json(
+      { error: 'Action invalide. Utilisez "markRead" ou "markAllRead"' },
+      { status: 400 }
+    )
 
   } catch (error) {
     console.error('Erreur mise à jour notification:', error)
@@ -143,42 +121,31 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-    const clearAll = searchParams.get('clearAll') === 'true'
+    const deleteAll = searchParams.get('all') === 'true'
+    const notificationId = searchParams.get('id')
 
-    if (clearAll) {
+    if (deleteAll) {
       // Supprimer toutes les notifications
       inMemoryStore.clearAllNotifications()
-      
-      console.log('🗑️ Toutes les notifications supprimées')
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Toutes les notifications ont été supprimées'
-      })
+      return NextResponse.json({ success: true, message: 'Toutes les notifications supprimées' })
     }
 
-    if (!id) {
-      return NextResponse.json(
-        { error: 'ID requis pour supprimer une notification spécifique' },
-        { status: 400 }
-      )
+    if (notificationId) {
+      // Supprimer une notification spécifique
+      const success = inMemoryStore.deleteNotification(notificationId)
+      if (!success) {
+        return NextResponse.json(
+          { error: 'Notification non trouvée' },
+          { status: 404 }
+        )
+      }
+      return NextResponse.json({ success: true })
     }
 
-    // Supprimer une notification spécifique
-    const result = inMemoryStore.deleteNotification(id)
-
-    if (!result) {
-      return NextResponse.json(
-        { error: 'Notification non trouvée' },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Notification supprimée'
-    })
+    return NextResponse.json(
+      { error: 'ID requis ou paramètre all=true' },
+      { status: 400 }
+    )
 
   } catch (error) {
     console.error('Erreur suppression notification:', error)
@@ -186,22 +153,5 @@ export async function DELETE(request: NextRequest) {
       { error: 'Erreur lors de la suppression' },
       { status: 500 }
     )
-  }
-}
-
-// GET endpoint spécial pour le compteur de notifications non lues
-export async function HEAD() {
-  try {
-    const unreadCount = inMemoryStore.getUnreadCount()
-    
-    return new NextResponse(null, {
-      headers: {
-        'X-Unread-Count': String(unreadCount)
-      }
-    })
-  } catch (error) {
-    return new NextResponse(null, {
-      status: 500
-    })
   }
 }

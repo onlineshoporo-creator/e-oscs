@@ -36,6 +36,7 @@ interface AdminSidebarProps {
   collapsed: boolean
   onToggle: () => void
   pendingRequestsCount?: number
+  unreadNotificationsCount?: number
 }
 
 // Navigation sections avec support de collapse
@@ -72,6 +73,13 @@ const mainNavigation: NavSection = {
       title: 'Organisations',
       href: '/admin/organisations',
       icon: Building2,
+    },
+    {
+      title: 'Notifications',
+      href: '/admin/notifications',
+      icon: Bell,
+      badgeKey: 'unreadNotifications',
+      badgeColor: 'bg-[#F77F00]',
     },
     {
       title: 'Plans & Tarifs',
@@ -130,7 +138,7 @@ const systemNavigation: NavItem[] = [
   },
 ]
 
-export function AdminSidebar({ collapsed, onToggle, pendingRequestsCount = 0 }: AdminSidebarProps) {
+export function AdminSidebar({ collapsed, onToggle, pendingRequestsCount = 0, unreadNotificationsCount = 0 }: AdminSidebarProps) {
   const pathname = usePathname()
   const [reportsExpanded, setReportsExpanded] = useState(false)
   
@@ -142,6 +150,7 @@ export function AdminSidebar({ collapsed, onToggle, pendingRequestsCount = 0 }: 
   // Get badge value for an item
   const getBadgeValue = (item: NavItem) => {
     if (item.badgeKey === 'pendingRequests') return pendingRequestsCount
+    if (item.badgeKey === 'unreadNotifications') return unreadNotificationsCount
     return item.badgeValue || 0
   }
 

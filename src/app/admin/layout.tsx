@@ -13,25 +13,35 @@ export default function AdminLayout({
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
 
-  // Fetch pending requests count
+  // Fetch pending requests count and notifications count
   useEffect(() => {
-    async function fetchPendingCount() {
+    async function fetchCounts() {
       try {
-        const response = await fetch('/api/admin/stats?metric=pending_requests')
-        if (response.ok) {
-          const data = await response.json()
+        // Fetch pending requests
+        const statsResponse = await fetch('/api/admin/stats?metric=pending_requests')
+        if (statsResponse.ok) {
+          const data = await statsResponse.json()
           setPendingRequestsCount(data.count || 0)
         }
+        
+        // Fetch unread notifications count
+        const notifResponse = await fetch('/api/admin/notifications')
+        if (notifResponse.ok) {
+          const data = await notifResponse.json()
+          setUnreadNotificationsCount(data.unreadCount || 0)
+        }
       } catch (error) {
-        console.error('Erreur lors de la récupération du compteur:', error)
+        console.error('Erreur lors de la récupération des compteurs:', error)
       }
     }
-    fetchPendingCount()
+    
+    fetchCounts()
     
     // Refresh every 30 seconds
-    const interval = setInterval(fetchPendingCount, 30000)
+    const interval = setInterval(fetchCounts, 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -56,6 +66,7 @@ export default function AdminLayout({
         collapsed={sidebarCollapsed} 
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         pendingRequestsCount={pendingRequestsCount}
+        unreadNotificationsCount={unreadNotificationsCount}
       />
       
       {/* Main content */}
