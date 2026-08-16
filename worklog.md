@@ -1430,3 +1430,23 @@ Stage Summary:
 - Pages admin corrigées et pushées
 - Vercel va redéployer automatiquement
 - Les erreurs client-side devraient être résolues
+
+---
+Task ID: 4
+Agent: Main Agent (Full-stack)
+Task: Correction définitive erreurs client-side pages admin
+
+Work Log:
+- Identifié que l'erreur "client-side exception" persistait sur Vercel
+- Diagnostiqué que le problème pouvait venir de la bibliothèque sonner (toast)
+- Réécrit page Organisations avec version simplifiée (sans sonner)
+- Réécrit page Demandes avec version simplifiée (sans sonner)
+- Corrigé erreur syntaxe JSX dans demandes/page.tsx (accolade manquante)
+- Vérifié build Next.js passe sans erreur (0 lint, 0 build error)
+- Commit c948baf pushé sur GitHub/Vercel
+
+Stage Summary:
+- Pages admin complètement réécrites pour être plus robustes
+- Suppression dépendance sonner qui causait potentiellement l'erreur
+- Code simplifié et maintenable
+- Déploiement Vercel en cours
