@@ -1474,3 +1474,41 @@ Stage Summary:
 - Code plus robuste pour environnement Vercel serverless
 - Toutes les fonctionnalités préservées (liste, filtres, dialog, actions)
 - Pushé sur GitHub pour déploiement automatique Vercel
+
+---
+Task ID: 4
+Agent: Main Agent (Full-stack)
+Task: Construire module Notifications + intégration Landing -> Admin
+
+Work Log:
+- Vérifié que le formulaire landing (request-form-section.tsx) envoie vers /api/admin/demandes ✅
+- Créé API notifications complète (/api/admin/notifications/route.ts):
+  - GET: récupérer toutes les notifications + compteur non lues
+  - POST: créer notification manuelle
+  - PATCH: marquer comme lu / tout marquer comme lu
+  - DELETE: supprimer une ou toutes les notifications
+- Créé page Notifications (/admin/notifications/page.tsx):
+  - Liste des notifications avec icônes par type
+  - Badge de statut (non lue/lue)
+  - Actions: marquer lu, supprimer, naviguer vers lien
+  - Stats rapides (total, demandes, organisations, non lues)
+  - Bouton "tout marquer comme lu"
+  - Design responsive avec couleurs CI
+- Modifié sidebar admin:
+  - Ajouté lien "Notifications" avec Bell icon
+  - Ajouté badge pour nombre de notifications non lues
+  - Nouvelle prop unreadNotificationsCount
+- Modifié layout admin:
+  - Fetch du compteur de notifications non lues
+  - Passage de la prop au sidebar
+  - Auto-refresh toutes les 30s
+- Vérifié: lint OK, page compile et retourne HTTP 200
+- Commit pushé: ee8182a
+
+Stage Summary:
+- Module Notifications complet et fonctionnel
+- Intégration Landing Page -> Panel Admin opérationnelle
+- Les demandes du formulaire landing apparaissent dans:
+  1. Module "Demandes d'abonnement" 
+  2. Module "Notifications" (automatique)
+- Pushé sur GitHub pour déploiement Vercel
