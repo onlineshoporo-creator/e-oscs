@@ -1412,3 +1412,21 @@ Stage Summary:
 - Le formulaire de la landing page envoie les demandes à /api/admin/demandes
 - Le super admin reçoit automatiquement une notification pour chaque nouvelle demande
 - Code pushé sur GitHub → Vercel va déployer automatiquement
+
+---
+Task ID: 3
+Agent: Main Agent (Full-stack)
+Task: Corriger erreurs client-side pages admin + Push GitHub
+
+Work Log:
+- Diagnostiqué erreur "client-side exception" sur /admin/organisations et /admin/demandes
+- Réécrit page Organisations avec code plus robuste et simple
+- Réécrit page Demandes avec gestion d'erreurs améliorée
+- Corrigé warnings React keys dans AdminSidebar (ajout key props aux .map())
+- Vérifié build Next.js passe sans erreur (0 erreur lint, 0 erreur build)
+- Commit 2159b15 pushé sur GitHub/Vercel
+
+Stage Summary:
+- Pages admin corrigées et pushées
+- Vercel va redéployer automatiquement
+- Les erreurs client-side devraient être résolues
